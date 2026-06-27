@@ -7,7 +7,9 @@ resolver = "3"
 # Project-specific dependencies are listed here.
 
 members = [
-	"crates/brust",
+	"crates/tepra-api",
+	"crates/tepra-core",
+	"crates/tepra-web",
 ]
 
 [workspace.package]
