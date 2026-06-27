@@ -75,7 +75,7 @@ async fn tapefeed_sends_get_and_succeeds() {
         .await;
 
     let client = ReqwestTepraClient::new(server.uri());
-    client.tapefeed(PRINTER_NAME).await.unwrap();
+    client.tapefeed(PRINTER_NAME, false).await.unwrap();
 
     server.verify().await;
 }

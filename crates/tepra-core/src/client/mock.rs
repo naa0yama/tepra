@@ -60,7 +60,7 @@ pub enum MockCall {
     OnlineStatus(String),
     LwStatus(String),
     Print(String, PrintRequest),
-    Tapefeed(String),
+    Tapefeed(String, bool),
     JobProgress(String, u64),
     JobInfo(String, u64),
     JobControl(String, JobControlRequest),
@@ -221,8 +221,8 @@ impl TepraClient for MockTepraClient {
             .expect("MockTepraClient::print called but response queue is empty")
     }
 
-    async fn tapefeed(&self, name: &str) -> Res<()> {
-        self.record(MockCall::Tapefeed(name.to_owned()));
+    async fn tapefeed(&self, name: &str, cutflag: bool) -> Res<()> {
+        self.record(MockCall::Tapefeed(name.to_owned(), cutflag));
         self.q()
             .tapefeed
             .pop_front()
@@ -412,8 +412,8 @@ mod tests {
         let mock = MockTepraClient::new();
         mock.push_tapefeed(Ok(()));
 
-        mock.tapefeed("PT-P710BT").await.unwrap();
-        assert!(matches!(&mock.calls()[0], MockCall::Tapefeed(n) if n == "PT-P710BT"));
+        mock.tapefeed("PT-P710BT", false).await.unwrap();
+        assert!(matches!(&mock.calls()[0], MockCall::Tapefeed(n, false) if n == "PT-P710BT"));
     }
 
     // --- job_progress --------------------------------------------------------

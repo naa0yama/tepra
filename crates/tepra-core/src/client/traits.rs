@@ -42,8 +42,8 @@ pub trait TepraClient: Send + Sync {
     /// `POST /api/printer/print/{name}` — submit a print job.
     async fn print(&self, name: &str, req: PrintRequest) -> Result<PrintResponse, TepraError>;
 
-    /// `GET /api/printer/tapefeed/{name}` — advance tape by one label.
-    async fn tapefeed(&self, name: &str) -> Result<(), TepraError>;
+    /// `GET /api/printer/tapefeed/{name}?cutflag=<bool>` — advance tape; cut if `cutflag` is true.
+    async fn tapefeed(&self, name: &str, cutflag: bool) -> Result<(), TepraError>;
 
     /// `GET /api/printer/job/progress/{name}?jobid=N` — poll job progress.
     async fn job_progress(&self, name: &str, jobid: u64)

@@ -39,8 +39,7 @@ impl ReqwestTepraClient {
 
     async fn get_json<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, TepraError> {
         let url = format!("{}{}", self.base_url, path);
-        let send_result = self.client.get(&url).send().await;
-        let resp = match send_result {
+        let resp = match self.client.get(&url).send().await {
             Ok(r) => r,
             Err(e) => {
                 return Err(TepraError::Transport {
@@ -56,11 +55,75 @@ impl ReqwestTepraClient {
             }),
         }
     }
-}
 
-fn not_implemented(endpoint: &str) -> TepraError {
-    TepraError::Transport {
-        source: anyhow::anyhow!("not yet implemented: {endpoint}"),
+    async fn get_query_json<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        query: &str,
+    ) -> Result<T, TepraError> {
+        let url = format!("{}{}?{}", self.base_url, path, query);
+        let resp = match self.client.get(&url).send().await {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(TepraError::Transport {
+                    source: anyhow::Error::new(e).context(format!("GET {url}")),
+                });
+            }
+        };
+        match resp.json::<T>().await {
+            Ok(v) => Ok(v),
+            Err(e) => Err(TepraError::Parse {
+                source: anyhow::Error::new(e)
+                    .context(format!("deserializing response from GET {url}")),
+            }),
+        }
+    }
+
+    async fn get_query_empty(&self, path: &str, query: &str) -> Result<(), TepraError> {
+        let url = format!("{}{}?{}", self.base_url, path, query);
+        match self.client.get(&url).send().await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(TepraError::Transport {
+                source: anyhow::Error::new(e).context(format!("GET {url}")),
+            }),
+        }
+    }
+
+    async fn post_json<B: serde::Serialize + Sync, T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<T, TepraError> {
+        let url = format!("{}{}", self.base_url, path);
+        let resp = match self.client.post(&url).json(body).send().await {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(TepraError::Transport {
+                    source: anyhow::Error::new(e).context(format!("POST {url}")),
+                });
+            }
+        };
+        match resp.json::<T>().await {
+            Ok(v) => Ok(v),
+            Err(e) => Err(TepraError::Parse {
+                source: anyhow::Error::new(e)
+                    .context(format!("deserializing response from POST {url}")),
+            }),
+        }
+    }
+
+    async fn post_empty<B: serde::Serialize + Sync>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<(), TepraError> {
+        let url = format!("{}{}", self.base_url, path);
+        match self.client.post(&url).json(body).send().await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(TepraError::Transport {
+                source: anyhow::Error::new(e).context(format!("POST {url}")),
+            }),
+        }
     }
 }
 
@@ -93,13 +156,16 @@ impl TepraClient for ReqwestTepraClient {
     }
 
     async fn print(&self, name: &str, req: PrintRequest) -> Result<PrintResponse, TepraError> {
-        let _ = (&self.base_url, &self.client, name, req);
-        Err(not_implemented("POST /api/printer/print/:name"))
+        self.post_json(&format!("/api/printer/print/{name}"), &req)
+            .await
     }
 
-    async fn tapefeed(&self, name: &str) -> Result<(), TepraError> {
-        let _ = (&self.base_url, &self.client, name);
-        Err(not_implemented("GET /api/printer/tapefeed/:name"))
+    async fn tapefeed(&self, name: &str, cutflag: bool) -> Result<(), TepraError> {
+        self.get_query_empty(
+            &format!("/api/printer/tapefeed/{name}"),
+            &format!("cutflag={cutflag}"),
+        )
+        .await
     }
 
     async fn job_progress(
@@ -107,26 +173,32 @@ impl TepraClient for ReqwestTepraClient {
         name: &str,
         jobid: u64,
     ) -> Result<JobProgressResponse, TepraError> {
-        let _ = (&self.base_url, &self.client, name, jobid);
-        Err(not_implemented("GET /api/printer/job/progress/:name"))
+        self.get_query_json(
+            &format!("/api/printer/job/progress/{name}"),
+            &format!("jobid={jobid}"),
+        )
+        .await
     }
 
     async fn job_info(&self, name: &str, jobid: u64) -> Result<JobInfoResponse, TepraError> {
-        let _ = (&self.base_url, &self.client, name, jobid);
-        Err(not_implemented("GET /api/printer/job/info/:name"))
+        self.get_query_json(
+            &format!("/api/printer/job/info/{name}"),
+            &format!("jobid={jobid}"),
+        )
+        .await
     }
 
     async fn job_control(&self, name: &str, req: JobControlRequest) -> Result<(), TepraError> {
-        let _ = (&self.base_url, &self.client, name, req);
-        Err(not_implemented("POST /api/printer/job/control/:name"))
+        self.post_empty(&format!("/api/printer/job/control/{name}"), &req)
+            .await
     }
 
     async fn import_frame(
         &self,
         req: ImportFrameRequest,
     ) -> Result<Vec<ImportFrameItem>, TepraError> {
-        let _ = (&self.base_url, &self.client, req);
-        Err(not_implemented("POST /api/printer/template/importframe"))
+        self.post_json("/api/printer/template/importframe", &req)
+            .await
     }
 
     async fn get_margin(
@@ -134,7 +206,7 @@ impl TepraClient for ReqwestTepraClient {
         name: &str,
         req: GetMarginRequest,
     ) -> Result<GetMarginResponse, TepraError> {
-        let _ = (&self.base_url, &self.client, name, req);
-        Err(not_implemented("POST /api/printer/getmargin/:name"))
+        self.post_json(&format!("/api/printer/getmargin/{name}"), &req)
+            .await
     }
 }
