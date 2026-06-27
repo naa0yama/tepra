@@ -30,8 +30,10 @@ process-metrics = ["otel", "dep:sysinfo"]
 [dependencies]
 ## Core
 anyhow.workspace = true
+async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+thiserror.workspace = true
 
 ## Logging
 tracing.workspace = true
@@ -53,6 +55,7 @@ sysinfo = { workspace = true, optional = true }
 # -
 [dev-dependencies]
 opentelemetry_sdk = { workspace = true, features = ["testing"] }
+tokio = { workspace = true }
 
 # - -------------------------------------------------------------------------------------------------
 # - Lints

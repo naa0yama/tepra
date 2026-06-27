@@ -2,7 +2,9 @@
 
 #![warn(missing_docs)]
 
+pub mod client;
 pub mod dto;
+pub mod error;
 pub mod otel;
 
 /// Crate version baked at compile time.

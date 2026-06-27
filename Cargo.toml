@@ -43,6 +43,7 @@ rand = { version = "0.10", default-features = false, features = ["thread_rng"] }
 
 ## Core
 anyhow = "1.0"
+async-trait = "0.1"
 
 ## Logging
 tracing = "0.1.41"
