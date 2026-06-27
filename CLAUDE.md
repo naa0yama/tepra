@@ -1,0 +1,119 @@
+# Project Summary
+
+- Think in English, explain, and respond to chat in Japanese.
+- Use half-width brackets instead of full-width brackets in the Japanese explanations output.
+- When writing Japanese and half-width alphanumeric characters or codes in one sentence, please enclose the half-width alphanumeric characters in backquotes and leave half-width spaces before and after them.
+
+## Commands
+
+All tasks use `mise run <task>`:
+
+| Task                  | Command                       |
+| --------------------- | ----------------------------- |
+| Setup                 | `mise run setup`              |
+| Build                 | `mise run build`              |
+| Build (release)       | `mise run build:release`      |
+| Build (timings)       | `mise run build:timings`      |
+| Check                 | `mise run check`              |
+| Test                  | `mise run test`               |
+| TDD watch             | `mise run test:watch`         |
+| Doc tests             | `mise run test:doc`           |
+| Trace test            | `mise run test:trace`         |
+| Format                | `mise run fmt`                |
+| Format check          | `mise run fmt:check`          |
+| Lint (clippy)         | `mise run clippy`             |
+| Lint strict           | `mise run clippy:strict`      |
+| Lint                  | `mise run lint`               |
+| Lint (GitHub Actions) | `mise run lint:gh`            |
+| AST rules             | `mise run ast-grep`           |
+| Check no plans        | `mise run check:no-plans`     |
+| Pre-commit (required) | `mise run pre-commit`         |
+| Pre-push              | `mise run pre-push`           |
+| Coverage              | `mise run coverage`           |
+| Coverage (HTML)       | `mise run coverage:html`      |
+| Audit                 | `mise run audit`              |
+| Deny (licenses/deps)  | `mise run deny`               |
+| Miri (UB detection)   | `mise run miri`               |
+| Clean (full)          | `mise run clean`              |
+| Clean (sweep)         | `mise run clean:sweep`        |
+| Badges (init)         | `mise run badges:init`        |
+| Claude Code (install) | `mise run claudecode:install` |
+| O2 (install)          | `mise run o2:install`         |
+| O2 (start)            | `mise run o2`                 |
+| O2 (stop)             | `mise run o2:stop`            |
+| Dev (start)           | `mise run dev:up`             |
+| Dev (stop)            | `mise run dev:down`           |
+| Dev (exec)            | `mise run dev:exec`           |
+| Dev (status)          | `mise run dev:status`         |
+| Traefik setup         | `mise run traefik:setup`      |
+
+## Commit Convention
+
+Conventional Commits: `<type>: <description>` or `<type>(<scope>): <description>`
+
+Allowed types: feat, update, fix, style, refactor, docs, perf, test, build, ci, chore, remove, revert
+
+## Artifacts Convention
+
+When using `subagent-driven-development`, save progress to:
+
+```
+.claude/artifacts/
+  plans/        # session feature plans (ephemeral)
+  <task-slug>/  # subagent work (PLAN.md, IMPL.md, REVIEW.md)
+```
+
+All files are ephemeral. Absorb design decisions into `docs/specs/`,
+then delete the artifacts.
+
+`check:no-plans` (runs in `pre-commit`) blocks commit when unabsorbed `.md`
+files exist under `.claude/artifacts/` — except task dirs where `PLAN.md`
+has `status: active` (in-progress tasks are exempt from blocking).
+
+Each task's `PLAN.md` frontmatter (required):
+
+- `status`: `active` (in-progress) or `completed` (code review passed)
+- `source_spec`: path to the originating plan file in `plans/`
+
+## Workflow
+
+1. Write tests (for new features / bug fixes)
+2. Implement
+3. Run `mise run test` — all tests must pass
+4. Stage only the relevant files
+5. Run `mise run pre-commit` (runs clean:sweep, fmt:check, clippy:strict, ast-grep, lint:gh, check:no-plans)
+6. If errors, fix → re-stage → re-run `mise run pre-commit`
+
+## Token-Efficient Commands
+
+Prefer these low-output patterns to reduce context token consumption:
+
+**mise run (targeted)**
+
+- `mise run test` — full suite
+- `mise run test -- test_name` — substring match; `--` separates mise args from nextest args
+
+**code search**
+
+- Prefer rust-analyzer-lsp symbol search / go-to-definition over `grep`/`find` for Rust code navigation
+- Use `grep -l` (filenames only) when file content is not needed
+
+## Code Comments
+
+- Write all code comments (doc comments, inline comments) in concise English.
+
+## Skill Maintenance
+
+- **Global skills** (`~/.claude/skills/`): Shared across all Rust projects. Update these when changing rules that apply universally (error handling, import grouping, test templates, ast-grep rules, workflow agents).
+  - `rust-implementation/` — idiomatic Rust patterns (naming, types, errors, testing, CLI design)
+  - `rust-project-conventions/` — shared base rules (error context, logging, imports, async)
+  - `rust-qa/`, `rust-review/`, `rust-docs/` — QA / review / docs agents
+  - `deps-sync/`, `deps-sync-mise/` — dependency sync (language-agnostic)
+  - `rust-deps-sync/`, `rust-deps-sync-crates/`, `rust-deps-sync-tests/` — Rust dependency sync
+  - `jaeger-trace/`, `o2-trace/` — trace analysis agents
+- **Project skills** (`.claude/skills/`): Project-specific overrides only.
+  - `project-conventions/` — project name, command table, OTel config, Miri categories, module layout
+  - `lib-*/`, `tool-*/` — auto-generated by `/deps-sync`
+- When modifying coding rules in `CLAUDE.md`, update the corresponding skill files:
+  - Universal rules → `~/.claude/skills/rust-project-conventions/`
+  - Project-specific rules → `.claude/skills/project-conventions/`

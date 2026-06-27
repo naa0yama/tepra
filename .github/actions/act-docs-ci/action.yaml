@@ -1,0 +1,27 @@
+# yaml-language-server: $schema=https://www.schemastore.org/github-action.json
+name: "Docs CI"
+description: "Check documentation formatting with dprint"
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      with:
+        persist-credentials: false
+
+    - name: Cache dprint plugins
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ~/.cache/dprint
+        key: dprint-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('dprint.jsonc') }}
+        restore-keys: |
+          dprint-v1-${{ runner.os }}-${{ runner.arch }}-
+
+    - uses: jdx/mise-action@e6a8b3978addb5a52f2b4cd9d91eafa7f0ab959d # v4.2.0
+      with:
+        install_args: dprint
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+
+    - name: Check formatting
+      shell: bash
+      run: dprint check
