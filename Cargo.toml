@@ -31,7 +31,7 @@ repository = "https://github.com/naa0yama/boilerplate-rust"
 clap = { version = "4.5.45", default-features = false, features = ["std", "derive", "help", "usage", "error-context", "color", "suggestions"] }
 
 ## Data
-reqwest = { version = "0.13.1", default-features = false, features = ["blocking", "rustls-no-provider"] }
+reqwest = { version = "0.13.1", default-features = false, features = ["blocking", "json", "multipart", "rustls-tls", "stream"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.137"
@@ -70,6 +70,36 @@ assert_cmd = "=2.2.2"
 predicates = "=3.1.4"
 tempfile = "=3.27.0"
 tracing-mock = "=0.1.0-beta.3"
+
+# --- HTTP / Web ---
+axum = { version = "0.7", features = ["multipart"] }
+tokio = { version = "1", features = ["full"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["trace", "fs"] }
+
+# --- Templating / Frontend ---
+askama = { version = "0.12", features = ["with-axum"] }
+askama_axum = "0.4"
+
+# --- Domain ---
+dashmap = "6"
+phf = { version = "0.11", features = ["macros"] }
+thiserror = "2"
+ulid = { version = "1", features = ["serde"] }
+
+# --- Config ---
+figment = { version = "0.10", features = ["env", "toml"] }
+
+# --- OpenAPI ---
+utoipa = { version = "5", features = ["axum_extras"] }
+
+# --- URL ---
+url = "2"
+
+# --- Test (integration) ---
+axum-test = "16"
+insta = { version = "1", features = ["yaml", "redactions"] }
+wiremock = "0.6"
 
 # - -------------------------------------------------------------------------------------------------
 # - Lints
