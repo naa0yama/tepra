@@ -12,9 +12,7 @@
 mod process;
 
 #[cfg(feature = "otel")]
-use crate::otel::conventions::{attribute as tepra_attr, metric as tepra_metric};
-#[cfg(feature = "otel")]
-use opentelemetry::metrics::{Counter, Histogram, UpDownCounter};
+use opentelemetry::metrics::Histogram;
 #[cfg(feature = "otel")]
 use opentelemetry_semantic_conventions::{attribute, metric as semconv};
 
@@ -26,12 +24,6 @@ use opentelemetry_semantic_conventions::{attribute, metric as semconv};
 #[cfg(feature = "otel")]
 pub struct Meters {
     // --- Sync instruments ---
-    run_duration: Histogram<f64>,
-    greeting_count: Counter<u64>,
-    greeting_errors: Counter<u64>,
-    iteration_count: Counter<u64>,
-    iteration_duration: Histogram<f64>,
-    iteration_in_flight: UpDownCounter<i64>,
     http_request_duration: Histogram<f64>,
     // --- Observable process metrics (feature = "process-metrics") ---
     // Disabled under Miri: sysinfo calls sysconf(_SC_CLK_TCK) which Miri does not stub.
@@ -65,36 +57,6 @@ impl Meters {
         let meter = opentelemetry::global::meter(env!("CARGO_PKG_NAME"));
 
         Self {
-            run_duration: meter
-                .f64_histogram(tepra_metric::RUN_DURATION)
-                .with_unit("s")
-                .with_description("End-to-end command execution latency")
-                .build(),
-            greeting_count: meter
-                .u64_counter(tepra_metric::GREETING_COUNT)
-                .with_unit("{call}")
-                .with_description("Total greeting calls attributed by resolved gender")
-                .build(),
-            greeting_errors: meter
-                .u64_counter(tepra_metric::GREETING_ERRORS)
-                .with_unit("{error}")
-                .with_description("Greeting calls that resulted in an error")
-                .build(),
-            iteration_count: meter
-                .u64_counter(tepra_metric::ITERATION_COUNT)
-                .with_unit("{iter}")
-                .with_description("Total iterations executed in the count demo")
-                .build(),
-            iteration_duration: meter
-                .f64_histogram(tepra_metric::ITERATION_DURATION)
-                .with_unit("s")
-                .with_description("Per-iteration sleep delay in the count demo")
-                .build(),
-            iteration_in_flight: meter
-                .i64_up_down_counter(tepra_metric::ITERATION_IN_FLIGHT)
-                .with_unit("{iter}")
-                .with_description("Iterations currently executing (UpDownCounter demo)")
-                .build(),
             http_request_duration: meter
                 .f64_histogram(semconv::HTTP_CLIENT_REQUEST_DURATION)
                 .with_unit("s")
@@ -106,56 +68,6 @@ impl Meters {
             #[cfg(all(feature = "process-metrics", not(miri)))]
             _process: process::ProcessMetricHandles::register(&meter),
         }
-    }
-
-    /// Record end-to-end command execution latency.
-    ///
-    /// `command` should be one of `"greet"`, `"count"`, or `"http"`.
-    pub fn record_run_duration(&self, duration_s: f64, command: &str) {
-        self.run_duration.record(
-            duration_s,
-            &[opentelemetry::KeyValue::new(
-                tepra_attr::COMMAND,
-                command.to_owned(),
-            )],
-        );
-    }
-
-    /// Record a greeting call attributed by the resolved gender string.
-    ///
-    /// Low-cardinality values: `"man"`, `"woman"`, `"none"`, `"invalid"`.
-    pub fn record_greeting(&self, gender: &str) {
-        self.greeting_count.add(
-            1,
-            &[opentelemetry::KeyValue::new(
-                tepra_attr::GENDER,
-                gender.to_owned(),
-            )],
-        );
-    }
-
-    /// Record a greeting error attributed by error type.
-    ///
-    /// Low-cardinality values: `"invalid_gender"`, `"unknown"`.
-    pub fn record_greeting_error(&self, error_type: &str) {
-        self.greeting_errors.add(
-            1,
-            &[opentelemetry::KeyValue::new(
-                attribute::ERROR_TYPE,
-                error_type.to_owned(),
-            )],
-        );
-    }
-
-    /// Record one completed iteration and its sleep duration in seconds.
-    pub fn record_iteration(&self, duration_s: f64) {
-        self.iteration_count.add(1, &[]);
-        self.iteration_duration.record(duration_s, &[]);
-    }
-
-    /// Adjust the in-flight iteration counter by `delta` (`+1` start, `-1` end).
-    pub fn in_flight_add(&self, delta: i64) {
-        self.iteration_in_flight.add(delta, &[]);
     }
 
     /// Record an HTTP client request with `OTel` HTTP semantic convention attributes.
@@ -194,16 +106,6 @@ pub struct Meters;
 
 #[cfg(not(feature = "otel"))]
 impl Meters {
-    /// Record end-to-end command execution latency (no-op).
-    pub fn record_run_duration(&self, _duration_s: f64, _command: &str) {}
-    /// Record a greeting call (no-op).
-    pub fn record_greeting(&self, _gender: &str) {}
-    /// Record a greeting error (no-op).
-    pub fn record_greeting_error(&self, _error_type: &str) {}
-    /// Record one completed iteration (no-op).
-    pub fn record_iteration(&self, _duration_s: f64) {}
-    /// Adjust the in-flight counter (no-op).
-    pub fn in_flight_add(&self, _delta: i64) {}
     /// Record an HTTP client request (no-op).
     pub fn record_http_request(
         &self,
@@ -224,7 +126,6 @@ impl Meters {
 mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
-    use crate::otel::conventions::{attribute as tepra_attr, metric as tepra_metric};
     use opentelemetry::metrics::MeterProvider as _;
     use opentelemetry_sdk::metrics::{
         InMemoryMetricExporter, SdkMeterProvider,
@@ -248,108 +149,6 @@ mod tests {
             .flat_map(opentelemetry_sdk::metrics::data::ResourceMetrics::scope_metrics)
             .flat_map(opentelemetry_sdk::metrics::data::ScopeMetrics::metrics)
             .find(|m| m.name() == name)
-    }
-
-    #[test]
-    fn greeting_count_increments_with_attributes() {
-        use opentelemetry::KeyValue;
-
-        let (provider, exporter) = test_provider();
-        let meter = provider.meter("test");
-
-        let greeting_count = meter
-            .u64_counter(tepra_metric::GREETING_COUNT)
-            .with_unit("{call}")
-            .with_description("Total greeting calls attributed by resolved gender")
-            .build();
-
-        greeting_count.add(1, &[KeyValue::new(tepra_attr::GENDER, "man")]);
-        greeting_count.add(1, &[KeyValue::new(tepra_attr::GENDER, "woman")]);
-        greeting_count.add(1, &[KeyValue::new(tepra_attr::GENDER, "man")]);
-
-        provider.force_flush().expect("flush failed");
-
-        let metrics = exporter.get_finished_metrics().expect("no data");
-        let metric = find_metric(&metrics, tepra_metric::GREETING_COUNT)
-            .expect("tepra.greeting.count not found");
-
-        let total = match metric.data() {
-            AggregatedMetrics::U64(MetricData::Sum(sum)) => sum
-                .data_points()
-                .map(opentelemetry_sdk::metrics::data::SumDataPoint::value)
-                .sum::<u64>(),
-            other => panic!("unexpected metric type: {other:?}"),
-        };
-        assert_eq!(total, 3);
-
-        provider.shutdown().unwrap();
-    }
-
-    #[test]
-    fn iteration_histogram_records_all_durations() {
-        let (provider, exporter) = test_provider();
-        let meter = provider.meter("test");
-
-        let histogram = meter
-            .f64_histogram(tepra_metric::ITERATION_DURATION)
-            .with_unit("s")
-            .with_description("Per-iteration sleep delay in the count demo")
-            .build();
-
-        histogram.record(1.0, &[]);
-        histogram.record(3.0, &[]);
-        histogram.record(5.0, &[]);
-
-        provider.force_flush().expect("flush failed");
-
-        let metrics = exporter.get_finished_metrics().expect("no data");
-        let metric = find_metric(&metrics, tepra_metric::ITERATION_DURATION)
-            .expect("tepra.iteration.duration not found");
-
-        let (count, sum) = match metric.data() {
-            AggregatedMetrics::F64(MetricData::Histogram(hist)) => {
-                let dp = hist.data_points().next().expect("no data points");
-                (dp.count(), dp.sum())
-            }
-            other => panic!("unexpected metric type: {other:?}"),
-        };
-        assert_eq!(count, 3);
-        assert!((sum - 9.0).abs() < f64::EPSILON);
-
-        provider.shutdown().unwrap();
-    }
-
-    #[test]
-    fn in_flight_counter_tracks_net_change() {
-        let (provider, exporter) = test_provider();
-        let meter = provider.meter("test");
-
-        let in_flight = meter
-            .i64_up_down_counter(tepra_metric::ITERATION_IN_FLIGHT)
-            .with_unit("{iter}")
-            .with_description("Iterations currently executing (UpDownCounter demo)")
-            .build();
-
-        in_flight.add(1, &[]);
-        in_flight.add(1, &[]);
-        in_flight.add(-1, &[]);
-
-        provider.force_flush().expect("flush failed");
-
-        let metrics = exporter.get_finished_metrics().expect("no data");
-        let metric = find_metric(&metrics, tepra_metric::ITERATION_IN_FLIGHT)
-            .expect("tepra.iteration.in_flight not found");
-
-        let value = match metric.data() {
-            AggregatedMetrics::I64(MetricData::Sum(sum)) => sum
-                .data_points()
-                .map(opentelemetry_sdk::metrics::data::SumDataPoint::value)
-                .sum::<i64>(),
-            other => panic!("unexpected metric type: {other:?}"),
-        };
-        assert_eq!(value, 1);
-
-        provider.shutdown().unwrap();
     }
 
     #[test]
@@ -390,6 +189,42 @@ mod tests {
         assert_eq!(count, 1);
         assert!((sum - 0.123).abs() < 1e-9);
 
+        provider.shutdown().unwrap();
+    }
+
+    #[test]
+    fn meters_record_http_request_via_struct() {
+        use opentelemetry_semantic_conventions::metric as semconv;
+
+        let (provider, exporter) = test_provider();
+        opentelemetry::global::set_meter_provider(provider.clone());
+
+        let meters = super::Meters::new();
+        meters.record_http_request(0.042, "POST", 201, "example.com", "https");
+
+        provider.force_flush().expect("flush failed");
+
+        let metrics = exporter.get_finished_metrics().expect("no data");
+        let metric = find_metric(&metrics, semconv::HTTP_CLIENT_REQUEST_DURATION)
+            .expect("http.client.request.duration not found");
+
+        let count = match metric.data() {
+            AggregatedMetrics::F64(MetricData::Histogram(hist)) => {
+                hist.data_points().next().expect("no data points").count()
+            }
+            other => panic!("unexpected metric type: {other:?}"),
+        };
+        assert_eq!(count, 1);
+
+        provider.shutdown().unwrap();
+    }
+
+    #[test]
+    fn meters_debug_does_not_panic() {
+        let (provider, _) = test_provider();
+        opentelemetry::global::set_meter_provider(provider.clone());
+        let meters = super::Meters::default();
+        let _ = format!("{meters:?}");
         provider.shutdown().unwrap();
     }
 }
