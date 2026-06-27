@@ -28,4 +28,8 @@ pub enum TepraError {
         #[source]
         source: anyhow::Error,
     },
+
+    /// The per-printer actor worker has shut down; the request cannot be processed.
+    #[error("Printer actor has shut down")]
+    ActorShutdown,
 }
