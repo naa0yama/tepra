@@ -3,6 +3,7 @@
 pub mod actor;
 pub mod handlers;
 pub mod router;
+pub mod state;
 
 /// Returns the crate version from Cargo metadata.
 #[must_use]
