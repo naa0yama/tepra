@@ -1,0 +1,33 @@
+{
+	"printFile": {
+		"templateFile": {
+			"fileName": "label.lbx",
+			"base64Str": "dGVzdA=="
+		},
+		"csvFile": null,
+		"imageFile": null
+	},
+	"printParameter": {
+		"copies": 1,
+		"tapeCut": 2,
+		"halfCut": 1,
+		"printSpeed": 1,
+		"density": { "mode": 1, "value": 0 },
+		"tapeID": 261,
+		"priorityCutSetting": 1,
+		"halfCutSeparate": 1,
+		"marginLeftRight": 0,
+		"displayTapeWidth": 1,
+		"errorMessage": {
+			"mode": 1,
+			"fileOutput": 0,
+			"filePath": ""
+		},
+		"displayTransferTape": 1,
+		"displayPrintSetting": 1,
+		"cutTitle": 0,
+		"kanaZen": 0,
+		"displayPrintPreview": 1,
+		"stretchImage": 0
+	}
+}

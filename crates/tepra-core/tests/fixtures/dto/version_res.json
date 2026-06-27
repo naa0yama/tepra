@@ -1,0 +1,6 @@
+{
+	"webApiModule": "1.0.0.1000",
+	"printerDrivers": [
+		{ "driverName": "TEPRA-PRO SR-R980", "version": "2.0.0.2000" }
+	]
+}

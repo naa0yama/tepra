@@ -30,6 +30,8 @@ process-metrics = ["otel", "dep:sysinfo"]
 [dependencies]
 ## Core
 anyhow.workspace = true
+serde.workspace = true
+serde_json.workspace = true
 
 ## Logging
 tracing.workspace = true

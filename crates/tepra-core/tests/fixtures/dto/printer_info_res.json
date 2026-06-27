@@ -1,0 +1,9 @@
+{
+	"driverName": "TEPRA-PRO SR-R980",
+	"dpi": 180,
+	"tapeList": [
+		{ "tapeID": 261 },
+		{ "tapeID": 262 },
+		{ "tapeID": 263 }
+	]
+}
