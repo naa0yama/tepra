@@ -1,7 +1,4 @@
 //! HTTP implementation of [`TepraClient`] using `reqwest`.
-//!
-//! All methods are stubs returning `TepraError::Transport` until T9b
-//! implements the actual HTTP calls.
 
 use async_trait::async_trait;
 
@@ -39,44 +36,60 @@ impl ReqwestTepraClient {
             client: reqwest::Client::new(),
         }
     }
+
+    async fn get_json<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, TepraError> {
+        let url = format!("{}{}", self.base_url, path);
+        let send_result = self.client.get(&url).send().await;
+        let resp = match send_result {
+            Ok(r) => r,
+            Err(e) => {
+                return Err(TepraError::Transport {
+                    source: anyhow::Error::new(e).context(format!("GET {url}")),
+                });
+            }
+        };
+        match resp.json::<T>().await {
+            Ok(v) => Ok(v),
+            Err(e) => Err(TepraError::Parse {
+                source: anyhow::Error::new(e)
+                    .context(format!("deserializing response from GET {url}")),
+            }),
+        }
+    }
 }
 
 fn not_implemented(endpoint: &str) -> TepraError {
     TepraError::Transport {
-        source: anyhow::anyhow!("not yet implemented (T9b): {endpoint}"),
+        source: anyhow::anyhow!("not yet implemented: {endpoint}"),
     }
 }
 
 #[async_trait]
 impl TepraClient for ReqwestTepraClient {
     async fn list_printers(&self) -> Result<Vec<PrinterListItem>, TepraError> {
-        let _ = (&self.base_url, &self.client);
-        Err(not_implemented("GET /api/printer"))
+        self.get_json("/api/printer").await
     }
 
     async fn version(&self) -> Result<VersionResponse, TepraError> {
-        let _ = (&self.base_url, &self.client);
-        Err(not_implemented("GET /api/printer/version"))
+        self.get_json("/api/printer/version").await
     }
 
     async fn autoselect(&self) -> Result<AutoselectResponse, TepraError> {
-        let _ = (&self.base_url, &self.client);
-        Err(not_implemented("GET /api/printer/autoselect"))
+        self.get_json("/api/printer/autoselect").await
     }
 
     async fn printer_info(&self, name: &str) -> Result<PrinterInfoResponse, TepraError> {
-        let _ = (&self.base_url, &self.client, name);
-        Err(not_implemented("GET /api/printer/info/:name"))
+        self.get_json(&format!("/api/printer/info/{name}")).await
     }
 
     async fn online_status(&self, name: &str) -> Result<OnlineStatusResponse, TepraError> {
-        let _ = (&self.base_url, &self.client, name);
-        Err(not_implemented("GET /api/printer/onlinestatus/:name"))
+        self.get_json(&format!("/api/printer/onlinestatus/{name}"))
+            .await
     }
 
     async fn lw_status(&self, name: &str) -> Result<LwStatusResponse, TepraError> {
-        let _ = (&self.base_url, &self.client, name);
-        Err(not_implemented("GET /api/printer/lwstatus/:name"))
+        self.get_json(&format!("/api/printer/lwstatus/{name}"))
+            .await
     }
 
     async fn print(&self, name: &str, req: PrintRequest) -> Result<PrintResponse, TepraError> {
