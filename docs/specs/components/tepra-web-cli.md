@@ -46,10 +46,11 @@ tepra-api serve \
 2. `Commands::Serve(args)` の場合:
    - `ReqwestTepraClient::new(args.creator_base)` を `Arc` で生成
    - `AppState::new_with_template_dir(client, args.template_dir)` を構築
-   - 4 つの router builder を `.merge()` し、 `args.bind` に bind して
-     `axum::serve` で起動
+   - 4 つの router builder を `.merge()` し、 `.layer(TraceLayer::new_for_http())`
+     を付加して `args.bind` に bind し、 `axum::serve` で起動
 3. `Commands::Version` の場合: バージョン文字列を 1 行出力
 
 ## 関連 ADR
 
 - `docs/adr/latest/0005-cli-subcommand-split.md` — subcommand 分割の判断
+- `docs/adr/latest/0006-http-observability-with-tower-http-tracelayer.md` — TraceLayer 導入の判断

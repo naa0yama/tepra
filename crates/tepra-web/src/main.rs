@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use clap::Parser as _;
 use tepra_web::cli::{Cli, Commands};
+use tower_http::trace::TraceLayer;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -28,7 +29,8 @@ async fn main() -> anyhow::Result<()> {
             let router = tepra_api::router::build_router(client)
                 .merge(tepra_api::router::build_jobs_router(state.clone()))
                 .merge(tepra_api::router::build_templates_router(state.clone()))
-                .merge(tepra_api::router::build_ui_router(state));
+                .merge(tepra_api::router::build_ui_router(state))
+                .layer(TraceLayer::new_for_http());
 
             let listener = tokio::net::TcpListener::bind(&args.bind)
                 .await
