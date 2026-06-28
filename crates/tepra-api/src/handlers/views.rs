@@ -13,19 +13,40 @@ use crate::{
 };
 
 /// `GET /ui/` — printer list index page.
-pub async fn index(_state: State<AppState>) -> impl IntoResponse {
-    IndexTemplate { printers: vec![] }
+///
+/// # Errors
+///
+/// Returns `502 Bad Gateway` when the Creator API client fails.
+pub async fn index(State(state): State<AppState>) -> Result<impl IntoResponse, StatusCode> {
+    let items = state
+        .client
+        .list_printers()
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    let printers = items.into_iter().map(|p| p.printer_name).collect();
+    Ok(IndexTemplate { printers })
 }
 
 /// `GET /ui/printers/{name}` — per-printer detail page.
+///
+/// # Errors
+///
+/// Returns `502 Bad Gateway` when the Creator API client fails.
 pub async fn printer_detail(
     Path(name): Path<String>,
-    _state: State<AppState>,
-) -> impl IntoResponse {
-    PrinterDetailTemplate {
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let resp = state
+        .client
+        .online_status(&name)
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    Ok(PrinterDetailTemplate {
         printer_name: name,
-        online: false,
-    }
+        online: resp.online,
+    })
 }
 
 /// `GET /ui/jobs/{printer}/{job_id}` — HTMX job-card partial.
