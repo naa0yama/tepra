@@ -139,6 +139,24 @@ mise run ast-grep         # ast-grep カスタムルールチェック
 mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep + lint:gh + check:no-plans
 ```
 
+### `tepra-api` サーバー起動
+
+```bash
+# HTTP サーバー起動 ( default: 0.0.0.0:3000 / creator-base http://localhost:29108 )
+cargo run -p tepra-web -- serve --template-dir ./templates
+
+# bind / creator-base を明示
+cargo run -p tepra-web -- serve \
+  --template-dir ./templates \
+  --bind 127.0.0.1:8080 \
+  --creator-base http://localhost:29108
+
+# バージョン表示
+cargo run -p tepra-web -- version
+```
+
+詳細は `docs/specs/components/tepra-web-cli.md` を参照。
+
 ## プロジェクト構造
 
 ```
@@ -169,19 +187,15 @@ mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep +
 │   └── settings.json           # ワークスペース設定
 ├── ast-rules/                  # ast-grep プロジェクトルール
 ├── crates/                     # ワークスペースクレート
-│   └── brust/                  # CLI バイナリクレート
-│       ├── src/
-│       │   ├── main.rs         # アプリケーションのエントリーポイント
-│       │   ├── libs.rs         # モジュール定義
-│       │   ├── metrics.rs      # OTel メトリクス instruments
-│       │   └── libs/
-│       │       ├── count.rs    # イテレーションカウンターモジュール
-│       │       ├── hello.rs    # Hello モジュール
-│       │       └── http.rs     # HTTP クライアント (OTel メトリクス付き)
-│       ├── tests/
-│       │   └── integration_test.rs  # 統合テスト
-│       ├── build.rs            # ビルドスクリプト
-│       └── Cargo.toml          # クレート設定
+│   ├── tepra-core/             # ドメイン型 + KING JIM WebAPI クライアント
+│   │   ├── src/lib.rs
+│   │   └── Cargo.toml
+│   ├── tepra-api/              # REST API レイヤー
+│   │   ├── src/lib.rs
+│   │   └── Cargo.toml
+│   └── tepra-web/              # HTTP サーバー + テンプレート (バイナリ: tepra-api)
+│       ├── src/lib.rs
+│       └── Cargo.toml
 ├── docs/                       # ドキュメント
 ├── .editorconfig               # エディター設定
 ├── .gitignore                  # Git除外設定

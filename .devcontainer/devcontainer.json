@@ -56,6 +56,11 @@
 		}
 	},
 	"portsAttributes": {
+		"3000": {
+			"onAutoForward": "notify",
+			"label": "tepra-api",
+			"requireLocalPort": false
+		},
 		"5080": {
 			"onAutoForward": "notify",
 			"label": "OpenObserve UI",
