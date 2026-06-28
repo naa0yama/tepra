@@ -2023,6 +2023,7 @@ dependencies = [
 name = "tepra-api"
 version = "0.1.25"
 dependencies = [
+ "anyhow",
  "askama",
  "askama_axum",
  "async-trait",
@@ -2031,6 +2032,7 @@ dependencies = [
  "insta",
  "serde",
  "serde_json",
+ "tempfile",
  "tepra-core",
  "tokio",
  "tower",

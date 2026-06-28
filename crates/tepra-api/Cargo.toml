@@ -9,6 +9,7 @@ repository.workspace = true
 [lib]
 
 [dependencies]
+anyhow = { workspace = true }
 askama = { workspace = true }
 askama_axum = { workspace = true }
 axum = { workspace = true }

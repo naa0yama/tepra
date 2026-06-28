@@ -113,24 +113,3 @@ async fn test_import_frame_client_error_returns_502() {
 
     assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
 }
-
-// ---------------------------------------------------------------------------
-// 2. GET /api/templates  (RED — list_templates is todo!())
-// ---------------------------------------------------------------------------
-
-#[tokio::test]
-#[should_panic = "not yet implemented"]
-async fn test_list_templates_panics_stub() {
-    let mock = Arc::new(MockTepraClient::new());
-    let dir = std::env::temp_dir();
-
-    make_app(mock, dir)
-        .oneshot(
-            Request::builder()
-                .uri("/api/templates")
-                .body(Body::empty())
-                .unwrap(),
-        )
-        .await
-        .unwrap();
-}
