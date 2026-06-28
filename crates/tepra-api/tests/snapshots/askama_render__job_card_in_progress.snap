@@ -1,0 +1,22 @@
+---
+source: crates/tepra-api/tests/askama_render.rs
+assertion_line: 86
+expression: html
+---
+<div id="job-1"
+
+  hx-get="/ui/jobs/PT-P710BT/1"
+  hx-trigger="every 1s"
+  hx-swap="outerHTML"
+
+  class="card bg-base-100 shadow p-4 m-2">
+  <p class="font-bold">PT-P710BT</p>
+  <p>ジョブ #1</p>
+
+  <p>進捗:
+
+    42%
+
+  </p>
+
+</div>

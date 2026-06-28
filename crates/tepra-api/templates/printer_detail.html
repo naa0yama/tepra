@@ -1,8 +1,18 @@
 <!DOCTYPE html>
 <html lang="ja">
-<head><meta charset="UTF-8"><title>Printer Detail</title></head>
-<body>
-<h1>Printer</h1>
-<!-- T15b: render printer_name and online status here -->
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>TEPRA - {{ printer_name }}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@4/dist/full.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@1/dist/htmx.min.js" defer></script>
+</head>
+<body class="min-h-screen bg-base-200">
+<div class="container mx-auto p-4">
+  <h1 class="text-2xl font-bold mb-4">{{ printer_name }}</h1>
+  <div class="badge {% if online %}badge-success{% else %}badge-error{% endif %}">
+    {% if online %}オンライン{% else %}オフライン{% endif %}
+  </div>
+</div>
 </body>
 </html>

@@ -10,7 +10,7 @@ use axum::{
 use tepra_core::client::traits::TepraClient;
 
 use crate::{
-    handlers::{jobs, printers, templates},
+    handlers::{jobs, printers, templates, views},
     state::AppState,
 };
 
@@ -49,5 +49,14 @@ pub fn build_templates_router(state: AppState) -> Router {
             post(templates::import_frame),
         )
         .route("/api/templates", get(templates::list_template_files))
+        .with_state(state)
+}
+
+/// Build the web UI router (`/ui/*` routes, HTML + HTMX).
+pub fn build_ui_router(state: AppState) -> Router {
+    Router::new()
+        .route("/ui/", get(views::index))
+        .route("/ui/printers/{name}", get(views::printer_detail))
+        .route("/ui/jobs/{printer}/{job_id}", get(views::job_card))
         .with_state(state)
 }
