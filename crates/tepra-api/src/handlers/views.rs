@@ -1,8 +1,9 @@
 //! View handlers — HTML page responses for the web UI (HTMX/DaisyUI).
-#![allow(clippy::unused_async, clippy::module_name_repetitions)]
+#![allow(clippy::module_name_repetitions)]
 
 use axum::{
     extract::{Path, State},
+    http::StatusCode,
     response::IntoResponse,
 };
 
@@ -28,15 +29,31 @@ pub async fn printer_detail(
 }
 
 /// `GET /ui/jobs/{printer}/{job_id}` — HTMX job-card partial.
+///
+/// # Errors
+///
+/// Returns `502 Bad Gateway` when the Creator API client fails.
 pub async fn job_card(
     Path((printer_name, job_id)): Path<(String, u64)>,
-    _state: State<AppState>,
-) -> impl IntoResponse {
-    JobCardTemplate {
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let resp = state
+        .client
+        .job_progress(&printer_name, job_id)
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    let progress = if resp.job_end || resp.canceled {
+        None
+    } else {
+        Some(resp.data_progress)
+    };
+
+    Ok(JobCardTemplate {
         printer_name,
         job_id,
-        job_end: false,
-        canceled: false,
-        progress: None,
-    }
+        job_end: resp.job_end,
+        canceled: resp.canceled,
+        progress,
+    })
 }

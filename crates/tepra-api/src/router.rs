@@ -56,7 +56,7 @@ pub fn build_templates_router(state: AppState) -> Router {
 pub fn build_ui_router(state: AppState) -> Router {
     Router::new()
         .route("/ui/", get(views::index))
-        .route("/ui/printers/{name}", get(views::printer_detail))
-        .route("/ui/jobs/{printer}/{job_id}", get(views::job_card))
+        .route("/ui/printers/:name", get(views::printer_detail))
+        .route("/ui/jobs/:printer/:job_id", get(views::job_card))
         .with_state(state)
 }
