@@ -16,6 +16,8 @@ use askama::Template;
 pub struct IndexTemplate {
     /// Display names of all known printers.
     pub printers: Vec<String>,
+    /// Creator API error message, if the API call failed.
+    pub error: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -30,6 +32,8 @@ pub struct PrinterDetailTemplate {
     pub printer_name: String,
     /// Whether the printer is currently reachable.
     pub online: bool,
+    /// Creator API error message, if the API call failed.
+    pub error: Option<String>,
 }
 
 // ---------------------------------------------------------------------------

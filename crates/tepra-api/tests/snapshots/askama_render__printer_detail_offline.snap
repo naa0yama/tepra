@@ -1,6 +1,5 @@
 ---
 source: crates/tepra-api/tests/askama_render.rs
-assertion_line: 66
 expression: html
 ---
 <!DOCTYPE html>
@@ -14,6 +13,7 @@ expression: html
 </head>
 <body class="min-h-screen bg-base-200">
 <div class="container mx-auto p-4">
+
   <h1 class="text-2xl font-bold mb-4">QL-800</h1>
   <div class="badge badge-error">
     オフライン

@@ -23,7 +23,10 @@ use tepra_api::views::{IndexTemplate, JobCardTemplate, PrinterDetailTemplate};
 
 #[test]
 fn test_index_render_empty_printers() {
-    let tmpl = IndexTemplate { printers: vec![] };
+    let tmpl = IndexTemplate {
+        printers: vec![],
+        error: None,
+    };
     let html = tmpl.render().unwrap();
     assert!(html.contains("<!DOCTYPE html") || html.contains("<html"));
     insta::assert_snapshot!("index_empty", html);
@@ -33,6 +36,7 @@ fn test_index_render_empty_printers() {
 fn test_index_render_multiple_printers() {
     let tmpl = IndexTemplate {
         printers: vec!["PT-P710BT".into(), "QL-800".into()],
+        error: None,
     };
     let html = tmpl.render().unwrap();
     assert!(html.contains("PT-P710BT"));
@@ -49,6 +53,7 @@ fn test_printer_detail_online() {
     let tmpl = PrinterDetailTemplate {
         printer_name: "PT-P710BT".into(),
         online: true,
+        error: None,
     };
     let html = tmpl.render().unwrap();
     assert!(html.contains("PT-P710BT"));
@@ -60,6 +65,7 @@ fn test_printer_detail_offline() {
     let tmpl = PrinterDetailTemplate {
         printer_name: "QL-800".into(),
         online: false,
+        error: None,
     };
     let html = tmpl.render().unwrap();
     assert!(html.contains("QL-800"));

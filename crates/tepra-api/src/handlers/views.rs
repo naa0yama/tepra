@@ -12,41 +12,33 @@ use crate::{
     views::{IndexTemplate, JobCardTemplate, PrinterDetailTemplate},
 };
 
-/// `GET /ui/` — printer list index page.
-///
-/// # Errors
-///
-/// Returns `502 Bad Gateway` when the Creator API client fails.
-pub async fn index(State(state): State<AppState>) -> Result<impl IntoResponse, StatusCode> {
-    let items = state
-        .client
-        .list_printers()
-        .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+const CREATOR_API_ERROR: &str = "TEPRA Creator WebAPI に接続できません";
 
-    let printers = items.into_iter().map(|p| p.printer_name).collect();
-    Ok(IndexTemplate { printers })
+/// `GET /ui/` — printer list index page.
+pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
+    let result = state.client.list_printers().await;
+    let (printers, error) = result.map_or_else(
+        |_| (vec![], Some(CREATOR_API_ERROR.to_owned())),
+        |items| (items.into_iter().map(|p| p.printer_name).collect(), None),
+    );
+    IndexTemplate { printers, error }
 }
 
 /// `GET /ui/printers/{name}` — per-printer detail page.
-///
-/// # Errors
-///
-/// Returns `502 Bad Gateway` when the Creator API client fails.
 pub async fn printer_detail(
     Path(name): Path<String>,
     State(state): State<AppState>,
-) -> Result<impl IntoResponse, StatusCode> {
-    let resp = state
-        .client
-        .online_status(&name)
-        .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
-
-    Ok(PrinterDetailTemplate {
+) -> impl IntoResponse {
+    let result = state.client.online_status(&name).await;
+    let (online, error) = result.map_or_else(
+        |_| (false, Some(CREATOR_API_ERROR.to_owned())),
+        |resp| (resp.online, None),
+    );
+    PrinterDetailTemplate {
         printer_name: name,
-        online: resp.online,
-    })
+        online,
+        error,
+    }
 }
 
 /// `GET /ui/jobs/{printer}/{job_id}` — HTMX job-card partial.
