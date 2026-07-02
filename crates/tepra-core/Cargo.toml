@@ -35,6 +35,7 @@ reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
 
 ## Logging
 tracing.workspace = true
@@ -56,7 +57,7 @@ sysinfo = { workspace = true, optional = true }
 # - Dev Dependencies
 # -
 [dev-dependencies]
-opentelemetry_sdk = { workspace = true, features = ["testing"] }
+opentelemetry_sdk = { workspace = true, features = ["testing", "experimental_metrics_custom_reader"] }
 tokio = { workspace = true }
 wiremock.workspace = true
 
