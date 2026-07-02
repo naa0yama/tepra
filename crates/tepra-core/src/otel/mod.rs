@@ -158,6 +158,36 @@ pub fn init_telemetry() -> anyhow::Result<TelemetryGuard> {
     Ok(TelemetryGuard::Disabled)
 }
 
+#[cfg(feature = "otel")]
+impl TelemetryGuard {
+    /// Build a telemetry guard for integration tests backed by a caller-supplied span exporter.
+    ///
+    /// Installs a `tracing_opentelemetry` subscriber layer that bridges tracing spans
+    /// to the in-memory provider. The caller should clone the exporter before passing
+    /// it here, retaining the original to query finished spans after requests complete.
+    ///
+    /// Uses [`SimpleSpanProcessor`][opentelemetry_sdk::trace::SimpleSpanProcessor] so
+    /// spans are exported synchronously when ended — no async flushing needed in tests.
+    pub fn build_for_test<E: opentelemetry_sdk::trace::SpanExporter + 'static>(
+        exporter: E,
+    ) -> Self {
+        use opentelemetry::trace::TracerProvider as _;
+        use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
+        use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
+
+        let resource = Resource::builder_empty().build();
+        let provider = SdkTracerProvider::builder()
+            .with_simple_exporter(exporter)
+            .with_resource(resource)
+            .build();
+        let tracer = provider.tracer("tepra-web-test");
+        let _ = tracing_subscriber::registry()
+            .with(tracing_opentelemetry::layer().with_tracer(tracer))
+            .try_init();
+        Self::Disabled
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -18,6 +18,9 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Serve(args) => {
+            let _telemetry =
+                tepra_core::otel::init_telemetry().context("failed to initialise telemetry")?;
+
             let client = Arc::new(tepra_core::client::ReqwestTepraClient::new(
                 args.creator_base,
             ));

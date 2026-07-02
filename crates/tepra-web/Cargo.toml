@@ -28,7 +28,10 @@ walkdir = "2"
 
 [dev-dependencies]
 assert_cmd = { workspace = true }
+opentelemetry = { workspace = true }
+opentelemetry_sdk = { workspace = true, features = ["testing"] }
 predicates = { workspace = true }
+tower = { workspace = true }
 
 [lints]
 workspace = true
