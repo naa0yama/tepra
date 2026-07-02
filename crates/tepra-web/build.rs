@@ -19,6 +19,7 @@ fn main() -> anyhow::Result<()> {
             "cargo:warning=pnpm not found; writing stub assets. \
              Real build requires `mise exec -- cargo build`."
         );
+        emit_git_hash();
         write_stubs(&out_dir)?;
         return Ok(());
     }
@@ -88,6 +89,9 @@ fn main() -> anyhow::Result<()> {
     println!("cargo:rerun-if-changed={}", htmx_src.display());
 
     // 6. rerun-if-changed
+    // GIT_HASH for OTel resource attribute vcs.repository.ref.revision
+    emit_git_hash();
+
     println!("cargo:rerun-if-changed=package.json");
     println!("cargo:rerun-if-changed=pnpm-lock.yaml");
     println!("cargo:rerun-if-changed=src/styles");
@@ -101,6 +105,20 @@ fn main() -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn emit_git_hash() {
+    let hash = Command::new("git")
+        .args(["rev-parse", "--short=12", "HEAD"])
+        .output()
+        .ok()
+        .and_then(|o| String::from_utf8(o.stdout).ok())
+        .map(|s| s.trim().to_owned())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "unknown".to_owned());
+    println!("cargo:rustc-env=GIT_HASH={hash}");
+    println!("cargo:rerun-if-changed=.git/HEAD");
+    println!("cargo:rerun-if-changed=.git/refs/heads");
 }
 
 fn write_stubs(out_dir: &str) -> anyhow::Result<()> {
