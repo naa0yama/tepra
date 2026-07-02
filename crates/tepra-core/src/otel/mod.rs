@@ -3,6 +3,8 @@
 pub mod metrics;
 /// Resource builder (service identity attributes).
 pub mod resource;
+/// OTLP span exporter and tracer provider builder.
+pub mod tracer;
 
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _};
