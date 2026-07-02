@@ -2,6 +2,8 @@
 
 /// Application-specific OTel semantic convention constants mirror.
 pub mod conventions;
+/// OTLP log exporter and logger provider builder.
+pub mod logger;
 /// OTLP metric exporter and meter provider builder.
 pub mod meter;
 pub mod metrics;
