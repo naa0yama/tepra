@@ -2,7 +2,7 @@
 
 use std::{path::PathBuf, sync::Arc};
 
-use tepra_core::client::traits::TepraClient;
+use tepra_core::{client::traits::TepraClient, otel::metrics::Meters};
 
 use crate::actor::registry::PrinterRegistry;
 
@@ -16,6 +16,8 @@ pub struct AppState {
     pub registry: Arc<PrinterRegistry>,
     /// Directory that holds label template files served by `GET /api/templates`.
     pub template_dir: PathBuf,
+    /// `OTel` metric instruments. `None` when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset.
+    meters: Option<Arc<Meters>>,
 }
 
 impl std::fmt::Debug for AppState {
@@ -35,12 +37,26 @@ impl AppState {
             client,
             registry,
             template_dir,
+            meters: None,
         }
     }
 
     /// Construct a new `AppState` backed by `client` with an empty template directory.
     pub fn new(client: Arc<dyn TepraClient>) -> Self {
         Self::new_with_template_dir(client, PathBuf::new())
+    }
+
+    /// Attach metric instruments to the state (builder pattern).
+    #[must_use]
+    pub fn with_meters(mut self, meters: Arc<Meters>) -> Self {
+        self.meters = Some(meters);
+        self
+    }
+
+    /// Return the metric instruments, if any.
+    #[must_use]
+    pub const fn meters(&self) -> Option<&Arc<Meters>> {
+        self.meters.as_ref()
     }
 }
 
@@ -83,5 +99,18 @@ mod tests {
         let state = AppState::new(mock_client());
         let s = format!("{state:?}");
         assert!(s.contains("AppState"));
+    }
+
+    #[test]
+    fn with_meters_stores_meters_and_accessor_returns_some() {
+        let meters = Arc::new(tepra_core::otel::metrics::Meters::default());
+        let state = AppState::new(mock_client()).with_meters(Arc::clone(&meters));
+        assert!(state.meters().is_some());
+    }
+
+    #[test]
+    fn new_state_has_no_meters() {
+        let state = AppState::new(mock_client());
+        assert!(state.meters().is_none());
     }
 }

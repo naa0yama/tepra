@@ -1,5 +1,9 @@
 //! OpenTelemetry instrumentation root module.
 
+/// Application-specific OTel semantic convention constants mirror.
+pub mod conventions;
+/// OTLP metric exporter and meter provider builder.
+pub mod meter;
 pub mod metrics;
 /// Resource builder (service identity attributes).
 pub mod resource;
