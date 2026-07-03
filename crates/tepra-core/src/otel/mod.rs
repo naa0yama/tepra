@@ -122,6 +122,10 @@ impl Drop for TelemetryGuard {
 /// The W3C Trace Context propagator is registered unconditionally so that
 /// incoming `traceparent` headers are extracted even without OTLP export.
 ///
+/// `service_name` is the `OTel` `service.name` Resource attribute. Pass
+/// `env!("CARGO_PKG_NAME")` from the binary crate so that the running binary
+/// name is reported, not the library crate name.
+///
 /// `git_hash` is injected by the calling binary (e.g. `env!("GIT_HASH")`) and
 /// stored in the `vcs.repository.ref.revision` resource attribute. Pass `""`
 /// when no hash is available (tests, library use).
@@ -130,7 +134,10 @@ impl Drop for TelemetryGuard {
 ///
 /// Returns an error if `OTEL_EXPORTER_OTLP_ENDPOINT` is set but OTLP provider
 /// initialisation fails.
-pub fn init_telemetry(git_hash: &'static str) -> anyhow::Result<TelemetryGuard> {
+pub fn init_telemetry(
+    service_name: &'static str,
+    git_hash: &'static str,
+) -> anyhow::Result<TelemetryGuard> {
     use anyhow::Context as _;
 
     let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
@@ -148,7 +155,7 @@ pub fn init_telemetry(git_hash: &'static str) -> anyhow::Result<TelemetryGuard> 
     if endpoint.is_some() {
         #[cfg(feature = "otel")]
         {
-            let resource = resource::build(git_hash);
+            let resource = resource::build(service_name, git_hash);
             let tracer_provider =
                 tracer::build(resource.clone()).context("failed to build OTLP tracer provider")?;
             let meter_provider =
@@ -180,7 +187,10 @@ pub fn init_telemetry(git_hash: &'static str) -> anyhow::Result<TelemetryGuard> 
         }
         // otel feature disabled: fall through to Disabled path
         #[cfg(not(feature = "otel"))]
-        let _ = git_hash;
+        {
+            let _ = service_name;
+            let _ = git_hash;
+        }
     }
 
     // eprintln! is intentional: tracing::warn! is unreliable before subscriber
@@ -237,8 +247,8 @@ mod tests {
     fn disabled_when_endpoint_unset() {
         // Safety: nextest runs each test in an isolated process; no concurrent env mutation.
         unsafe { std::env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT") };
-        let guard =
-            init_telemetry("").expect("init_telemetry must not fail when endpoint is absent");
+        let guard = init_telemetry("tepra-web", "")
+            .expect("init_telemetry must not fail when endpoint is absent");
         assert!(matches!(guard, TelemetryGuard::Disabled));
     }
 
@@ -246,8 +256,8 @@ mod tests {
     fn tracing_works_after_disabled_init() {
         // Safety: nextest runs each test in an isolated process; no concurrent env mutation.
         unsafe { std::env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT") };
-        let _guard =
-            init_telemetry("").expect("init_telemetry must not fail when endpoint is absent");
+        let _guard = init_telemetry("tepra-web", "")
+            .expect("init_telemetry must not fail when endpoint is absent");
         // Must not panic regardless of whether a subscriber was already registered.
         tracing::info!("smoke test: telemetry disabled path");
     }
@@ -270,7 +280,7 @@ mod batch_runtime_tests {
             std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:14317");
         }
 
-        let guard = init_telemetry("abc123").expect("init_telemetry must not fail");
+        let guard = init_telemetry("tepra-web", "abc123").expect("init_telemetry must not fail");
 
         assert!(
             matches!(guard, TelemetryGuard::Otlp { .. }),
