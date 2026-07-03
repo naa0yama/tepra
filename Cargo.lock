@@ -2264,6 +2264,7 @@ dependencies = [
  "axum",
  "dashmap",
  "insta",
+ "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "serde",
  "serde_json",

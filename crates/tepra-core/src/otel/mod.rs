@@ -253,6 +253,34 @@ mod tests {
     }
 }
 
+/// Cycle 12.6: Tokio runtime propagation tests for OTLP batch processors.
+///
+/// Verifies that building providers and calling `force_flush` from within a
+/// `multi_thread` Tokio runtime does not panic, even with an unreachable endpoint.
+#[cfg(all(test, not(miri), feature = "otel"))]
+mod batch_runtime_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+    use super::*;
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn init_telemetry_with_otlp_endpoint_does_not_panic() {
+        // Safety: nextest runs each test in an isolated process.
+        unsafe {
+            std::env::set_var("OTEL_EXPORTER_OTLP_ENDPOINT", "http://127.0.0.1:14317");
+        }
+
+        let guard = init_telemetry("abc123").expect("init_telemetry must not fail");
+
+        assert!(
+            matches!(guard, TelemetryGuard::Otlp { .. }),
+            "expected Otlp guard when endpoint is set"
+        );
+
+        guard.shutdown().await;
+    }
+}
+
 /// Cycle 7: [`TelemetryGuard`] shutdown ordering tests.
 ///
 /// Uses custom [`SpanProcessor`], [`MetricReader`], and [`LogProcessor`] implementations

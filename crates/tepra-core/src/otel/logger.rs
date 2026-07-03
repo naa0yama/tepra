@@ -1,7 +1,11 @@
 //! OTLP log exporter and [`SdkLoggerProvider`] builder.
 
 use anyhow::Context as _;
-use opentelemetry_sdk::{Resource, logs::SdkLoggerProvider};
+use opentelemetry_sdk::{
+    Resource,
+    logs::{SdkLoggerProvider, log_processor_with_async_runtime::BatchLogProcessor},
+    runtime,
+};
 
 /// Build a production [`SdkLoggerProvider`] with an OTLP HTTP/protobuf log exporter.
 ///
@@ -18,7 +22,7 @@ pub fn build(resource: Resource) -> anyhow::Result<SdkLoggerProvider> {
         .build()
         .context("failed to build OTLP HTTP log exporter")?;
     Ok(SdkLoggerProvider::builder()
-        .with_batch_exporter(exporter)
+        .with_log_processor(BatchLogProcessor::builder(exporter, runtime::Tokio).build())
         .with_resource(resource)
         .build())
 }

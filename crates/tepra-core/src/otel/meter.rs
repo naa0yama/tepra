@@ -1,7 +1,11 @@
 //! OTLP metric exporter and [`SdkMeterProvider`] builder.
 
 use anyhow::Context as _;
-use opentelemetry_sdk::{Resource, metrics::SdkMeterProvider};
+use opentelemetry_sdk::{
+    Resource,
+    metrics::{SdkMeterProvider, periodic_reader_with_async_runtime::PeriodicReader},
+    runtime,
+};
 
 /// Build a production [`SdkMeterProvider`] with an OTLP HTTP/protobuf metric exporter.
 ///
@@ -17,7 +21,7 @@ pub fn build(resource: Resource) -> anyhow::Result<SdkMeterProvider> {
         .with_http()
         .build()
         .context("failed to build OTLP HTTP metric exporter")?;
-    let reader = opentelemetry_sdk::metrics::PeriodicReader::builder(exporter).build();
+    let reader = PeriodicReader::builder(exporter, runtime::Tokio).build();
     Ok(SdkMeterProvider::builder()
         .with_reader(reader)
         .with_resource(resource)

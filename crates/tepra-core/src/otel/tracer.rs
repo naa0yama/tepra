@@ -1,7 +1,10 @@
 //! OTLP span exporter and [`SdkTracerProvider`] builder.
 
 use anyhow::Context as _;
-use opentelemetry_sdk::{Resource, trace::SdkTracerProvider};
+use opentelemetry_sdk::{
+    Resource, runtime,
+    trace::{SdkTracerProvider, span_processor_with_async_runtime::BatchSpanProcessor},
+};
 
 /// Build a production [`SdkTracerProvider`] with an OTLP HTTP/protobuf span exporter.
 ///
@@ -18,7 +21,7 @@ pub fn build(resource: Resource) -> anyhow::Result<SdkTracerProvider> {
         .build()
         .context("failed to build OTLP HTTP span exporter")?;
     Ok(SdkTracerProvider::builder()
-        .with_batch_exporter(exporter)
+        .with_span_processor(BatchSpanProcessor::builder(exporter, runtime::Tokio).build())
         .with_resource(resource)
         .build())
 }
