@@ -17,6 +17,8 @@ use tracing_subscriber::{layer::SubscriberExt as _, util::SubscriberInitExt as _
 
 #[cfg(feature = "otel")]
 use {
+    opentelemetry::trace::TracerProvider as _,
+    opentelemetry_appender_tracing::layer::OpenTelemetryTracingBridge,
     opentelemetry_sdk::{
         logs::SdkLoggerProvider, metrics::SdkMeterProvider, trace::SdkTracerProvider,
     },
@@ -114,17 +116,23 @@ impl Drop for TelemetryGuard {
 /// Initialize telemetry for the current process.
 ///
 /// When `OTEL_EXPORTER_OTLP_ENDPOINT` is set and non-empty, installs OpenTelemetry
-/// providers with OTLP exporters (Cycles 4-7). When absent, registers only a
-/// stderr fmt subscriber and returns [`TelemetryGuard::Disabled`].
+/// providers with OTLP exporters. When absent, registers only a stderr fmt subscriber
+/// and returns [`TelemetryGuard::Disabled`].
 ///
 /// The W3C Trace Context propagator is registered unconditionally so that
 /// incoming `traceparent` headers are extracted even without OTLP export.
 ///
+/// `git_hash` is injected by the calling binary (e.g. `env!("GIT_HASH")`) and
+/// stored in the `vcs.repository.ref.revision` resource attribute. Pass `""`
+/// when no hash is available (tests, library use).
+///
 /// # Errors
 ///
-/// Returns an error if the `OTEL_EXPORTER_OTLP_ENDPOINT` variable is set but
-/// OTLP provider initialisation fails (implemented from Cycle 4 onwards).
-pub fn init_telemetry() -> anyhow::Result<TelemetryGuard> {
+/// Returns an error if `OTEL_EXPORTER_OTLP_ENDPOINT` is set but OTLP provider
+/// initialisation fails.
+pub fn init_telemetry(git_hash: &'static str) -> anyhow::Result<TelemetryGuard> {
+    use anyhow::Context as _;
+
     let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
         .ok()
         .filter(|s| !s.is_empty());
@@ -138,8 +146,41 @@ pub fn init_telemetry() -> anyhow::Result<TelemetryGuard> {
         .with_writer(std::io::stderr);
 
     if endpoint.is_some() {
-        // Cycle 4+: build providers and install OTLP exporters
-        anyhow::bail!("OTLP telemetry path not yet implemented")
+        #[cfg(feature = "otel")]
+        {
+            let resource = resource::build(git_hash);
+            let tracer_provider =
+                tracer::build(resource.clone()).context("failed to build OTLP tracer provider")?;
+            let meter_provider =
+                meter::build(resource.clone()).context("failed to build OTLP meter provider")?;
+            let logger_provider =
+                logger::build(resource).context("failed to build OTLP logger provider")?;
+
+            opentelemetry::global::set_tracer_provider(tracer_provider.clone());
+            opentelemetry::global::set_meter_provider(meter_provider.clone());
+
+            let tracer = tracer_provider.tracer("tepra");
+            let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+            let bridge = OpenTelemetryTracingBridge::new(&logger_provider);
+
+            // Ignore "already set" — nextest isolates per-process; safe to ignore.
+            let _ = tracing_subscriber::registry()
+                .with(env_filter)
+                .with(fmt_layer)
+                .with(otel_layer)
+                .with(bridge)
+                .try_init();
+
+            return Ok(TelemetryGuard::Otlp {
+                tracer_provider,
+                meter_provider,
+                logger_provider,
+                shutdown_called: AtomicBool::new(false),
+            });
+        }
+        // otel feature disabled: fall through to Disabled path
+        #[cfg(not(feature = "otel"))]
+        let _ = git_hash;
     }
 
     // eprintln! is intentional: tracing::warn! is unreliable before subscriber
@@ -196,7 +237,8 @@ mod tests {
     fn disabled_when_endpoint_unset() {
         // Safety: nextest runs each test in an isolated process; no concurrent env mutation.
         unsafe { std::env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT") };
-        let guard = init_telemetry().expect("init_telemetry must not fail when endpoint is absent");
+        let guard =
+            init_telemetry("").expect("init_telemetry must not fail when endpoint is absent");
         assert!(matches!(guard, TelemetryGuard::Disabled));
     }
 
@@ -205,7 +247,7 @@ mod tests {
         // Safety: nextest runs each test in an isolated process; no concurrent env mutation.
         unsafe { std::env::remove_var("OTEL_EXPORTER_OTLP_ENDPOINT") };
         let _guard =
-            init_telemetry().expect("init_telemetry must not fail when endpoint is absent");
+            init_telemetry("").expect("init_telemetry must not fail when endpoint is absent");
         // Must not panic regardless of whether a subscriber was already registered.
         tracing::info!("smoke test: telemetry disabled path");
     }
