@@ -81,13 +81,23 @@ impl ReqwestTepraClient {
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn get_json<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, TepraError> {
         let url = format!("{}{}", self.base_url, path);
         Span::current().record("url.full", url.as_str());
+
+        let req = self
+            .client
+            .get(&url)
+            .build()
+            .map_err(|e| TepraError::Transport {
+                source: anyhow::Error::new(e).context(format!("building GET {url}")),
+            })?;
+
         let start = Instant::now();
-        let resp = match self.client.get(&url).send().await {
+        let resp = match self.client.execute(req).await {
             Ok(r) => r,
             Err(e) => {
                 self.record_transport_error(start.elapsed().as_secs_f64(), "GET");
@@ -98,13 +108,19 @@ impl ReqwestTepraClient {
         };
         let status = resp.status();
         self.record_response_span(status, start.elapsed().as_secs_f64(), "GET");
-        match resp.json::<T>().await {
-            Ok(v) => Ok(v),
-            Err(e) => Err(TepraError::Parse {
-                source: anyhow::Error::new(e)
-                    .context(format!("deserializing response from GET {url}")),
-            }),
-        }
+
+        let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
+            source: anyhow::Error::new(e).context(format!("reading response body from GET {url}")),
+        })?;
+        Span::current().record(
+            "http.response.body.size",
+            i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
+        );
+        tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+
+        serde_json::from_slice::<T>(&resp_bytes).map_err(|e| TepraError::Parse {
+            source: anyhow::Error::new(e).context(format!("deserializing response from GET {url}")),
+        })
     }
 
     #[instrument(
@@ -117,6 +133,7 @@ impl ReqwestTepraClient {
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn get_query_json<T: serde::de::DeserializeOwned>(
@@ -126,8 +143,17 @@ impl ReqwestTepraClient {
     ) -> Result<T, TepraError> {
         let url = format!("{}{}?{}", self.base_url, path, query);
         Span::current().record("url.full", url.as_str());
+
+        let req = self
+            .client
+            .get(&url)
+            .build()
+            .map_err(|e| TepraError::Transport {
+                source: anyhow::Error::new(e).context(format!("building GET {url}")),
+            })?;
+
         let start = Instant::now();
-        let resp = match self.client.get(&url).send().await {
+        let resp = match self.client.execute(req).await {
             Ok(r) => r,
             Err(e) => {
                 self.record_transport_error(start.elapsed().as_secs_f64(), "GET");
@@ -138,13 +164,19 @@ impl ReqwestTepraClient {
         };
         let status = resp.status();
         self.record_response_span(status, start.elapsed().as_secs_f64(), "GET");
-        match resp.json::<T>().await {
-            Ok(v) => Ok(v),
-            Err(e) => Err(TepraError::Parse {
-                source: anyhow::Error::new(e)
-                    .context(format!("deserializing response from GET {url}")),
-            }),
-        }
+
+        let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
+            source: anyhow::Error::new(e).context(format!("reading response body from GET {url}")),
+        })?;
+        Span::current().record(
+            "http.response.body.size",
+            i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
+        );
+        tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+
+        serde_json::from_slice::<T>(&resp_bytes).map_err(|e| TepraError::Parse {
+            source: anyhow::Error::new(e).context(format!("deserializing response from GET {url}")),
+        })
     }
 
     #[instrument(
@@ -157,25 +189,44 @@ impl ReqwestTepraClient {
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn get_query_empty(&self, path: &str, query: &str) -> Result<(), TepraError> {
         let url = format!("{}{}?{}", self.base_url, path, query);
         Span::current().record("url.full", url.as_str());
+
+        let req = self
+            .client
+            .get(&url)
+            .build()
+            .map_err(|e| TepraError::Transport {
+                source: anyhow::Error::new(e).context(format!("building GET {url}")),
+            })?;
+
         let start = Instant::now();
-        match self.client.get(&url).send().await {
-            Ok(resp) => {
-                let status = resp.status();
-                self.record_response_span(status, start.elapsed().as_secs_f64(), "GET");
-                Ok(())
-            }
+        let resp = match self.client.execute(req).await {
+            Ok(r) => r,
             Err(e) => {
                 self.record_transport_error(start.elapsed().as_secs_f64(), "GET");
-                Err(TepraError::Transport {
+                return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("GET {url}")),
-                })
+                });
             }
-        }
+        };
+        let status = resp.status();
+        self.record_response_span(status, start.elapsed().as_secs_f64(), "GET");
+
+        let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
+            source: anyhow::Error::new(e).context(format!("reading response body from GET {url}")),
+        })?;
+        Span::current().record(
+            "http.response.body.size",
+            i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
+        );
+        tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+
+        Ok(())
     }
 
     #[instrument(
@@ -189,6 +240,7 @@ impl ReqwestTepraClient {
             url.full = tracing::field::Empty,
             http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn post_json<B: serde::Serialize + Sync, T: serde::de::DeserializeOwned>(
@@ -230,13 +282,20 @@ impl ReqwestTepraClient {
         };
         let status = resp.status();
         self.record_response_span(status, start.elapsed().as_secs_f64(), "POST");
-        match resp.json::<T>().await {
-            Ok(v) => Ok(v),
-            Err(e) => Err(TepraError::Parse {
-                source: anyhow::Error::new(e)
-                    .context(format!("deserializing response from POST {url}")),
-            }),
-        }
+
+        let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
+            source: anyhow::Error::new(e).context(format!("reading response body from POST {url}")),
+        })?;
+        Span::current().record(
+            "http.response.body.size",
+            i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
+        );
+        tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+
+        serde_json::from_slice::<T>(&resp_bytes).map_err(|e| TepraError::Parse {
+            source: anyhow::Error::new(e)
+                .context(format!("deserializing response from POST {url}")),
+        })
     }
 
     #[instrument(
@@ -250,6 +309,7 @@ impl ReqwestTepraClient {
             url.full = tracing::field::Empty,
             http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn post_empty<B: serde::Serialize + Sync>(
@@ -280,19 +340,28 @@ impl ReqwestTepraClient {
             })?;
 
         let start = Instant::now();
-        match self.client.execute(req).await {
-            Ok(resp) => {
-                let status = resp.status();
-                self.record_response_span(status, start.elapsed().as_secs_f64(), "POST");
-                Ok(())
-            }
+        let resp = match self.client.execute(req).await {
+            Ok(r) => r,
             Err(e) => {
                 self.record_transport_error(start.elapsed().as_secs_f64(), "POST");
-                Err(TepraError::Transport {
+                return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("POST {url}")),
-                })
+                });
             }
-        }
+        };
+        let status = resp.status();
+        self.record_response_span(status, start.elapsed().as_secs_f64(), "POST");
+
+        let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
+            source: anyhow::Error::new(e).context(format!("reading response body from POST {url}")),
+        })?;
+        Span::current().record(
+            "http.response.body.size",
+            i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
+        );
+        tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+
+        Ok(())
     }
 
     /// Record the response status code on the current span and the duration in metrics.
