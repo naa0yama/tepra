@@ -1,0 +1,51 @@
+//! TDD cycle tests for `OTel` HTTP client semantic conventions (Cycle 19–26).
+// wiremock spawns a TCP listener; not suitable for miri isolation.
+#![cfg(not(miri))]
+#![cfg(feature = "otel")]
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+
+use opentelemetry::trace::SpanKind;
+use opentelemetry_sdk::trace::InMemorySpanExporterBuilder;
+use tepra_core::{client::ReqwestTepraClient, client::TepraClient, otel::TelemetryGuard};
+use wiremock::{
+    Mock, MockServer, ResponseTemplate,
+    matchers::{method, path},
+};
+
+// ── Cycle 19: SpanKind::Client ────────────────────────────────────────────────
+
+#[tokio::test]
+async fn http_client_spans_have_span_kind_client() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let body = include_str!("fixtures/dto/version_res.json");
+    Mock::given(method("GET"))
+        .and(path("/api/printer/version"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(body, "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client.version().await.expect("version() must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let http_span = spans
+        .iter()
+        .find(|s| s.name.starts_with("HTTP"))
+        .expect("expected an HTTP client span");
+
+    assert_eq!(
+        http_span.span_kind,
+        SpanKind::Client,
+        "HTTP client span must have SpanKind::Client"
+    );
+}

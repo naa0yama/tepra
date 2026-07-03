@@ -75,6 +75,7 @@ impl ReqwestTepraClient {
         name = "HTTP GET",
         skip_all,
         fields(
+            otel.kind = "CLIENT",
             http.request.method = "GET",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
@@ -108,6 +109,7 @@ impl ReqwestTepraClient {
         name = "HTTP GET",
         skip_all,
         fields(
+            otel.kind = "CLIENT",
             http.request.method = "GET",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
@@ -145,6 +147,7 @@ impl ReqwestTepraClient {
         name = "HTTP GET",
         skip_all,
         fields(
+            otel.kind = "CLIENT",
             http.request.method = "GET",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
@@ -173,6 +176,7 @@ impl ReqwestTepraClient {
         name = "HTTP POST",
         skip_all,
         fields(
+            otel.kind = "CLIENT",
             http.request.method = "POST",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
@@ -210,6 +214,7 @@ impl ReqwestTepraClient {
         name = "HTTP POST",
         skip_all,
         fields(
+            otel.kind = "CLIENT",
             http.request.method = "POST",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
