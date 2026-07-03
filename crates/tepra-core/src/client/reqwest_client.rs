@@ -79,11 +79,13 @@ impl ReqwestTepraClient {
             http.request.method = "GET",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
         )
     )]
     async fn get_json<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, TepraError> {
         let url = format!("{}{}", self.base_url, path);
+        Span::current().record("url.full", url.as_str());
         let start = Instant::now();
         let resp = match self.client.get(&url).send().await {
             Ok(r) => r,
@@ -113,6 +115,7 @@ impl ReqwestTepraClient {
             http.request.method = "GET",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
         )
     )]
@@ -122,6 +125,7 @@ impl ReqwestTepraClient {
         query: &str,
     ) -> Result<T, TepraError> {
         let url = format!("{}{}?{}", self.base_url, path, query);
+        Span::current().record("url.full", url.as_str());
         let start = Instant::now();
         let resp = match self.client.get(&url).send().await {
             Ok(r) => r,
@@ -151,11 +155,13 @@ impl ReqwestTepraClient {
             http.request.method = "GET",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
         )
     )]
     async fn get_query_empty(&self, path: &str, query: &str) -> Result<(), TepraError> {
         let url = format!("{}{}?{}", self.base_url, path, query);
+        Span::current().record("url.full", url.as_str());
         let start = Instant::now();
         match self.client.get(&url).send().await {
             Ok(resp) => {
@@ -180,6 +186,7 @@ impl ReqwestTepraClient {
             http.request.method = "POST",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
         )
     )]
@@ -189,6 +196,7 @@ impl ReqwestTepraClient {
         body: &B,
     ) -> Result<T, TepraError> {
         let url = format!("{}{}", self.base_url, path);
+        Span::current().record("url.full", url.as_str());
         let start = Instant::now();
         let resp = match self.client.post(&url).json(body).send().await {
             Ok(r) => r,
@@ -218,6 +226,7 @@ impl ReqwestTepraClient {
             http.request.method = "POST",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
         )
     )]
@@ -227,6 +236,7 @@ impl ReqwestTepraClient {
         body: &B,
     ) -> Result<(), TepraError> {
         let url = format!("{}{}", self.base_url, path);
+        Span::current().record("url.full", url.as_str());
         let start = Instant::now();
         match self.client.post(&url).json(body).send().await {
             Ok(resp) => {
