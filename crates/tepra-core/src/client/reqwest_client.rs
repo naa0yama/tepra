@@ -87,6 +87,7 @@ impl ReqwestTepraClient {
         let resp = match self.client.get(&url).send().await {
             Ok(r) => r,
             Err(e) => {
+                self.record_transport_error(start.elapsed().as_secs_f64(), "GET");
                 return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("GET {url}")),
                 });
@@ -123,6 +124,7 @@ impl ReqwestTepraClient {
         let resp = match self.client.get(&url).send().await {
             Ok(r) => r,
             Err(e) => {
+                self.record_transport_error(start.elapsed().as_secs_f64(), "GET");
                 return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("GET {url}")),
                 });
@@ -158,9 +160,12 @@ impl ReqwestTepraClient {
                 self.record_response_span(status, start.elapsed().as_secs_f64(), "GET");
                 Ok(())
             }
-            Err(e) => Err(TepraError::Transport {
-                source: anyhow::Error::new(e).context(format!("GET {url}")),
-            }),
+            Err(e) => {
+                self.record_transport_error(start.elapsed().as_secs_f64(), "GET");
+                Err(TepraError::Transport {
+                    source: anyhow::Error::new(e).context(format!("GET {url}")),
+                })
+            }
         }
     }
 
@@ -184,6 +189,7 @@ impl ReqwestTepraClient {
         let resp = match self.client.post(&url).json(body).send().await {
             Ok(r) => r,
             Err(e) => {
+                self.record_transport_error(start.elapsed().as_secs_f64(), "POST");
                 return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("POST {url}")),
                 });
@@ -223,9 +229,12 @@ impl ReqwestTepraClient {
                 self.record_response_span(status, start.elapsed().as_secs_f64(), "POST");
                 Ok(())
             }
-            Err(e) => Err(TepraError::Transport {
-                source: anyhow::Error::new(e).context(format!("POST {url}")),
-            }),
+            Err(e) => {
+                self.record_transport_error(start.elapsed().as_secs_f64(), "POST");
+                Err(TepraError::Transport {
+                    source: anyhow::Error::new(e).context(format!("POST {url}")),
+                })
+            }
         }
     }
 
@@ -242,7 +251,18 @@ impl ReqwestTepraClient {
         self.meters.record_http_request(
             duration_s,
             method,
-            status.as_u16(),
+            Some(status.as_u16()),
+            &self.server_address,
+            &self.url_scheme,
+        );
+    }
+
+    /// Record a transport-level error (no HTTP response received) in metrics.
+    fn record_transport_error(&self, duration_s: f64, method: &str) {
+        self.meters.record_http_request(
+            duration_s,
+            method,
+            None,
             &self.server_address,
             &self.url_scheme,
         );

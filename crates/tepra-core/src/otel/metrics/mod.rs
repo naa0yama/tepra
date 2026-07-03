@@ -70,27 +70,31 @@ impl Meters {
         }
     }
 
-    /// Record an HTTP client request with `OTel` HTTP semantic convention attributes.
+    /// Record an HTTP client request duration with `OTel` HTTP semantic convention attributes.
     ///
-    /// - `method`: HTTP verb (`"GET"`, `"POST"`, …)
-    /// - `status`: HTTP response status code
-    /// - `host`: target host name
-    /// - `scheme`: URL scheme (`"http"` or `"https"`)
+    /// `status` is `None` for transport errors (connection refused, timeout, etc.)
+    /// where no HTTP response was received; the `http.response.status_code` attribute
+    /// is omitted in that case per `OTel` HTTP semconv.
     pub fn record_http_request(
         &self,
         duration_s: f64,
         method: &str,
-        status: u16,
+        status: Option<u16>,
         host: &str,
         scheme: &str,
     ) {
         use opentelemetry::KeyValue;
-        let attrs = [
+        let mut attrs = vec![
             KeyValue::new(attribute::HTTP_REQUEST_METHOD, method.to_owned()),
-            KeyValue::new(attribute::HTTP_RESPONSE_STATUS_CODE, i64::from(status)),
             KeyValue::new(attribute::SERVER_ADDRESS, host.to_owned()),
             KeyValue::new(attribute::URL_SCHEME, scheme.to_owned()),
         ];
+        if let Some(s) = status {
+            attrs.push(KeyValue::new(
+                attribute::HTTP_RESPONSE_STATUS_CODE,
+                i64::from(s),
+            ));
+        }
         self.http_request_duration.record(duration_s, &attrs);
     }
 }
@@ -111,7 +115,7 @@ impl Meters {
         &self,
         _duration_s: f64,
         _method: &str,
-        _status: u16,
+        _status: Option<u16>,
         _host: &str,
         _scheme: &str,
     ) {
@@ -202,7 +206,7 @@ mod tests {
         opentelemetry::global::set_meter_provider(provider.clone());
 
         let meters = super::Meters::new();
-        meters.record_http_request(0.042, "POST", 201, "example.com", "https");
+        meters.record_http_request(0.042, "POST", Some(201), "example.com", "https");
 
         provider.force_flush().expect("flush failed");
 

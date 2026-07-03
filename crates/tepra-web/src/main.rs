@@ -18,7 +18,7 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Serve(args) => {
-            let _telemetry =
+            let telemetry =
                 tepra_core::otel::init_telemetry(env!("CARGO_PKG_NAME"), env!("GIT_HASH"))
                     .context("failed to initialise telemetry")?;
 
@@ -39,8 +39,13 @@ async fn main() -> anyhow::Result<()> {
                 .await
                 .with_context(|| format!("failed to bind to {}", args.bind))?;
             axum::serve(listener, router)
+                .with_graceful_shutdown(async {
+                    tokio::signal::ctrl_c().await.ok();
+                })
                 .await
                 .context("server error")?;
+
+            telemetry.shutdown().await;
         }
     }
     Ok(())
