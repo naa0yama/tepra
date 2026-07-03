@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use clap::Parser as _;
 use tepra_web::cli::{Cli, Commands};
+use tepra_web::trace::{OtelHttpServerMakeSpan, OtelOnResponse};
 use tower_http::trace::TraceLayer;
 
 #[tokio::main]
@@ -33,7 +34,11 @@ async fn main() -> anyhow::Result<()> {
                 .merge(tepra::router::build_templates_router(state.clone()))
                 .merge(tepra::router::build_ui_router(state))
                 .merge(tepra_web::assets::router())
-                .layer(TraceLayer::new_for_http());
+                .layer(
+                    TraceLayer::new_for_http()
+                        .make_span_with(OtelHttpServerMakeSpan)
+                        .on_response(OtelOnResponse),
+                );
 
             let listener = tokio::net::TcpListener::bind(&args.bind)
                 .await

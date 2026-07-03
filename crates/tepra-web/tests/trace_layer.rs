@@ -14,11 +14,12 @@ use tepra::router::build_router;
 use tepra_core::{
     client::mock::MockTepraClient, dto::printer::PrinterListItem, otel::TelemetryGuard,
 };
+use tepra_web::trace::{OtelHttpServerMakeSpan, OtelOnResponse};
 use tower::ServiceExt as _;
 use tower_http::trace::TraceLayer;
 
 #[tokio::test]
-async fn traceable_request_emits_span_with_http_method() {
+async fn server_span_has_otel_http_semconv_attrs() {
     let exporter = InMemorySpanExporterBuilder::new().build();
     let _guard = TelemetryGuard::build_for_test(exporter.clone());
 
@@ -27,7 +28,11 @@ async fn traceable_request_emits_span_with_http_method() {
         printer_name: "test-printer".into(),
     }]));
 
-    let app = build_router(mock).layer(TraceLayer::new_for_http());
+    let app = build_router(mock).layer(
+        TraceLayer::new_for_http()
+            .make_span_with(OtelHttpServerMakeSpan)
+            .on_response(OtelOnResponse),
+    );
 
     let req = Request::builder()
         .uri("/api/printer")
@@ -47,14 +52,38 @@ async fn traceable_request_emits_span_with_http_method() {
         "TraceLayer must emit at least one span per request"
     );
 
-    let has_get = spans.iter().any(|s| {
-        s.attributes.iter().any(|kv| {
-            kv.key.as_str() == "method"
-                && matches!(&kv.value, Value::String(v) if v.as_str() == "GET")
+    // Find server span by checking for http.request.method (OTel semconv name).
+    let server_span = spans
+        .iter()
+        .find(|s| {
+            s.attributes
+                .iter()
+                .any(|kv| kv.key.as_str() == "http.request.method")
         })
-    });
+        .expect("server span with http.request.method attribute must exist");
+
+    let method_attr = server_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == "http.request.method")
+        .expect("http.request.method must be present");
+    assert_eq!(
+        method_attr.value.as_str().as_ref(),
+        "GET",
+        "http.request.method must be GET"
+    );
+
+    let status_attr = server_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == "http.response.status_code");
     assert!(
-        has_get,
-        "expected method=GET attribute on request span, got spans: {spans:#?}"
+        status_attr.is_some(),
+        "http.response.status_code must be present on server span, got: {server_span:#?}"
+    );
+    assert_eq!(
+        status_attr.unwrap().value,
+        Value::I64(200),
+        "http.response.status_code must be 200"
     );
 }
