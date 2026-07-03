@@ -2264,12 +2264,16 @@ dependencies = [
  "axum",
  "dashmap",
  "insta",
+ "opentelemetry_sdk",
  "serde",
  "serde_json",
  "tempfile",
  "tepra-core",
  "tokio",
  "tower",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -2304,11 +2308,14 @@ dependencies = [
  "assert_cmd",
  "axum",
  "clap",
+ "opentelemetry",
+ "opentelemetry_sdk",
  "predicates",
  "rust-embed",
  "tepra",
  "tepra-core",
  "tokio",
+ "tower",
  "tower-http 0.7.0",
  "walkdir",
 ]

@@ -11,6 +11,7 @@ use tepra_core::{
     error::TepraError,
 };
 use tokio::sync::{mpsc, oneshot};
+use tracing::{Instrument as _, instrument};
 
 use super::job::{JobId, JobState, JobStatus};
 
@@ -148,6 +149,7 @@ fn handle_idle_msg(msg: Msg, state: &mut WorkerState) -> bool {
     false
 }
 
+#[instrument(name = "actor.worker.run", skip_all, fields(printer = %printer_name))]
 async fn run_worker(
     client: Arc<dyn TepraClient>,
     printer_name: String,
@@ -354,7 +356,7 @@ impl PrinterActor {
     /// Spawn a worker task for `printer_name` backed by `client`, returning a [`PrinterHandle`].
     pub fn spawn(client: Arc<dyn TepraClient>, printer_name: String) -> PrinterHandle {
         let (tx, rx) = mpsc::channel(64);
-        let task = tokio::spawn(run_worker(client, printer_name, rx));
+        let task = tokio::spawn(run_worker(client, printer_name, rx).in_current_span());
         PrinterHandle { tx, task }
     }
 }

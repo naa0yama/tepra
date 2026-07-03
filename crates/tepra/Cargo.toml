@@ -17,14 +17,18 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tepra-core = { path = "../tepra-core" }
 tokio = { workspace = true }
+tracing = { workspace = true }
 
 [dev-dependencies]
 async-trait.workspace = true
 insta = { workspace = true }
+opentelemetry_sdk = { workspace = true, features = ["testing"] }
 serde_json = { workspace = true }
 tempfile = { workspace = true }
 tokio = { workspace = true }
 tower = { workspace = true }
+tracing-opentelemetry = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 [lints]
 workspace = true
