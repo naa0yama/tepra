@@ -287,3 +287,87 @@ async fn get_json_logs_response_body() {
         "debug log must contain http.response.body field"
     );
 }
+
+// ── Cycle 24: header allowlist + BLOCK regression ─────────────────────────────
+
+#[tokio::test]
+async fn response_header_content_type_is_recorded_in_span() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let body = include_str!("fixtures/dto/version_res.json");
+    Mock::given(method("GET"))
+        .and(path("/api/printer/version"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(body, "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client.version().await.expect("version() must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let get_span = spans
+        .iter()
+        .find(|s| s.name == "GET")
+        .expect("expected a GET span");
+
+    let content_type = get_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == "http.response.header.content-type")
+        .expect("http.response.header.content-type must be present in span attributes");
+
+    assert_eq!(
+        content_type.value.as_str().as_ref(),
+        "application/json",
+        "http.response.header.content-type must equal 'application/json'"
+    );
+}
+
+#[tokio::test]
+async fn authorization_header_is_not_recorded_in_span() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let body = include_str!("fixtures/dto/version_res.json");
+    Mock::given(method("GET"))
+        .and(path("/api/printer/version"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(body, "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client.version().await.expect("version() must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let get_span = spans
+        .iter()
+        .find(|s| s.name == "GET")
+        .expect("expected a GET span");
+
+    let auth_attr = get_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == "http.request.header.authorization");
+
+    assert!(
+        auth_attr.is_none(),
+        "http.request.header.authorization must NOT be recorded in span (BLOCK list)"
+    );
+}

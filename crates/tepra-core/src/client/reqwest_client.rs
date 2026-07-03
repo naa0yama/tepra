@@ -8,6 +8,63 @@ use tracing::{Span, instrument};
 #[cfg(feature = "otel")]
 use opentelemetry_semantic_conventions::attribute;
 
+/// Request headers recorded as span attributes (allowlist).
+const REQUEST_HEADER_ALLOW: &[&str] = &[
+    "content-type",
+    "content-length",
+    "accept",
+    "x-request-id",
+    "idempotency-key",
+];
+
+/// Response headers recorded as span attributes (allowlist).
+const RESPONSE_HEADER_ALLOW: &[&str] = &["content-type", "content-length", "x-request-id"];
+
+/// Returns `true` if `name` is in the given `allow` list.
+fn header_allowed(name: &str, allow: &[&str]) -> bool {
+    allow.contains(&name)
+}
+
+/// Record allowed request headers as span attributes on the current span.
+fn record_request_headers(headers: &reqwest::header::HeaderMap) {
+    #[cfg(feature = "otel")]
+    {
+        use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+        let span = Span::current();
+        for (name, value) in headers {
+            let name_str = name.as_str();
+            if !header_allowed(name_str, REQUEST_HEADER_ALLOW) {
+                continue;
+            }
+            if let Ok(v) = value.to_str() {
+                span.set_attribute(format!("http.request.header.{name_str}"), v.to_owned());
+            }
+        }
+    }
+    #[cfg(not(feature = "otel"))]
+    let _ = headers;
+}
+
+/// Record allowed response headers as span attributes on the current span.
+fn record_response_headers(headers: &reqwest::header::HeaderMap) {
+    #[cfg(feature = "otel")]
+    {
+        use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+        let span = Span::current();
+        for (name, value) in headers {
+            let name_str = name.as_str();
+            if !header_allowed(name_str, RESPONSE_HEADER_ALLOW) {
+                continue;
+            }
+            if let Ok(v) = value.to_str() {
+                span.set_attribute(format!("http.response.header.{name_str}"), v.to_owned());
+            }
+        }
+    }
+    #[cfg(not(feature = "otel"))]
+    let _ = headers;
+}
+
 use crate::{
     client::traits::TepraClient,
     dto::{
@@ -95,6 +152,7 @@ impl ReqwestTepraClient {
             .map_err(|e| TepraError::Transport {
                 source: anyhow::Error::new(e).context(format!("building GET {url}")),
             })?;
+        record_request_headers(req.headers());
 
         let start = Instant::now();
         let resp = match self.client.execute(req).await {
@@ -108,6 +166,7 @@ impl ReqwestTepraClient {
         };
         let status = resp.status();
         self.record_response_span(status, start.elapsed().as_secs_f64(), "GET");
+        record_response_headers(resp.headers());
 
         let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
             source: anyhow::Error::new(e).context(format!("reading response body from GET {url}")),
@@ -151,6 +210,7 @@ impl ReqwestTepraClient {
             .map_err(|e| TepraError::Transport {
                 source: anyhow::Error::new(e).context(format!("building GET {url}")),
             })?;
+        record_request_headers(req.headers());
 
         let start = Instant::now();
         let resp = match self.client.execute(req).await {
@@ -164,6 +224,7 @@ impl ReqwestTepraClient {
         };
         let status = resp.status();
         self.record_response_span(status, start.elapsed().as_secs_f64(), "GET");
+        record_response_headers(resp.headers());
 
         let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
             source: anyhow::Error::new(e).context(format!("reading response body from GET {url}")),
@@ -203,6 +264,7 @@ impl ReqwestTepraClient {
             .map_err(|e| TepraError::Transport {
                 source: anyhow::Error::new(e).context(format!("building GET {url}")),
             })?;
+        record_request_headers(req.headers());
 
         let start = Instant::now();
         let resp = match self.client.execute(req).await {
@@ -216,6 +278,7 @@ impl ReqwestTepraClient {
         };
         let status = resp.status();
         self.record_response_span(status, start.elapsed().as_secs_f64(), "GET");
+        record_response_headers(resp.headers());
 
         let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
             source: anyhow::Error::new(e).context(format!("reading response body from GET {url}")),
@@ -269,6 +332,7 @@ impl ReqwestTepraClient {
             .map_err(|e| TepraError::Transport {
                 source: anyhow::Error::new(e).context(format!("building POST {url}")),
             })?;
+        record_request_headers(req.headers());
 
         let start = Instant::now();
         let resp = match self.client.execute(req).await {
@@ -282,6 +346,7 @@ impl ReqwestTepraClient {
         };
         let status = resp.status();
         self.record_response_span(status, start.elapsed().as_secs_f64(), "POST");
+        record_response_headers(resp.headers());
 
         let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
             source: anyhow::Error::new(e).context(format!("reading response body from POST {url}")),
@@ -338,6 +403,7 @@ impl ReqwestTepraClient {
             .map_err(|e| TepraError::Transport {
                 source: anyhow::Error::new(e).context(format!("building POST {url}")),
             })?;
+        record_request_headers(req.headers());
 
         let start = Instant::now();
         let resp = match self.client.execute(req).await {
@@ -351,6 +417,7 @@ impl ReqwestTepraClient {
         };
         let status = resp.status();
         self.record_response_span(status, start.elapsed().as_secs_f64(), "POST");
+        record_response_headers(resp.headers());
 
         let resp_bytes = resp.bytes().await.map_err(|e| TepraError::Transport {
             source: anyhow::Error::new(e).context(format!("reading response body from POST {url}")),
