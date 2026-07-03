@@ -59,6 +59,7 @@ sysinfo = { workspace = true, optional = true }
 [dev-dependencies]
 opentelemetry_sdk = { workspace = true, features = ["testing", "experimental_metrics_custom_reader"] }
 tokio = { workspace = true }
+tracing-test.workspace = true
 wiremock.workspace = true
 
 # - -------------------------------------------------------------------------------------------------

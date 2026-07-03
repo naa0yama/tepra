@@ -187,6 +187,7 @@ impl ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
         )
     )]
@@ -197,8 +198,28 @@ impl ReqwestTepraClient {
     ) -> Result<T, TepraError> {
         let url = format!("{}{}", self.base_url, path);
         Span::current().record("url.full", url.as_str());
+
+        let body_bytes = serde_json::to_vec(body).map_err(|e| TepraError::Parse {
+            source: anyhow::Error::new(e).context(format!("serializing body for POST {url}")),
+        })?;
+        Span::current().record(
+            "http.request.body.size",
+            i64::try_from(body_bytes.len()).unwrap_or(i64::MAX),
+        );
+        tracing::debug!(http.request.body = %String::from_utf8_lossy(&body_bytes));
+
+        let req = self
+            .client
+            .post(&url)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body(body_bytes)
+            .build()
+            .map_err(|e| TepraError::Transport {
+                source: anyhow::Error::new(e).context(format!("building POST {url}")),
+            })?;
+
         let start = Instant::now();
-        let resp = match self.client.post(&url).json(body).send().await {
+        let resp = match self.client.execute(req).await {
             Ok(r) => r,
             Err(e) => {
                 self.record_transport_error(start.elapsed().as_secs_f64(), "POST");
@@ -227,6 +248,7 @@ impl ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
         )
     )]
@@ -237,8 +259,28 @@ impl ReqwestTepraClient {
     ) -> Result<(), TepraError> {
         let url = format!("{}{}", self.base_url, path);
         Span::current().record("url.full", url.as_str());
+
+        let body_bytes = serde_json::to_vec(body).map_err(|e| TepraError::Parse {
+            source: anyhow::Error::new(e).context(format!("serializing body for POST {url}")),
+        })?;
+        Span::current().record(
+            "http.request.body.size",
+            i64::try_from(body_bytes.len()).unwrap_or(i64::MAX),
+        );
+        tracing::debug!(http.request.body = %String::from_utf8_lossy(&body_bytes));
+
+        let req = self
+            .client
+            .post(&url)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body(body_bytes)
+            .build()
+            .map_err(|e| TepraError::Transport {
+                source: anyhow::Error::new(e).context(format!("building POST {url}")),
+            })?;
+
         let start = Instant::now();
-        match self.client.post(&url).json(body).send().await {
+        match self.client.execute(req).await {
             Ok(resp) => {
                 let status = resp.status();
                 self.record_response_span(status, start.elapsed().as_secs_f64(), "POST");

@@ -6,7 +6,7 @@ OPENOBSERVE_VERSION = "v0.90.3"
 # graft:keep-start
 # Project-specific dependencies are listed here.
 
-RUST_LOG = "warn,tepra_core=trace,tepra=trace,tepra_web=trace,tower_http=info"
+RUST_LOG = "warn,tepra=trace,tepra_core=debug,tower_http=info"
 # graft:keep-end
 
 [tools]

@@ -7,6 +7,7 @@
 use opentelemetry::trace::SpanKind;
 use opentelemetry_sdk::trace::InMemorySpanExporterBuilder;
 use tepra_core::{client::ReqwestTepraClient, client::TepraClient, otel::TelemetryGuard};
+use tracing_test::traced_test;
 use wiremock::{
     Mock, MockServer, ResponseTemplate,
     matchers::{method, path},
@@ -128,5 +129,92 @@ async fn http_client_span_records_url_full() {
         url_full.value.as_str().as_ref(),
         expected_url.as_str(),
         "url.full must be the full request URL"
+    );
+}
+
+// ── Cycle 22: http.request.body.size span attribute ───────────────────────────
+
+#[tokio::test]
+async fn post_json_records_request_body_size() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let res_body = include_str!("fixtures/dto/import_frame_res.json");
+    Mock::given(method("POST"))
+        .and(path("/api/printer/template/importframe"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(res_body, "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    let req = tepra_core::dto::template::ImportFrameRequest {
+        template_file: tepra_core::dto::job::FilePayload {
+            file_name: "frame.lbx".into(),
+            base64_str: "dGVzdA==".into(),
+        },
+    };
+    client
+        .import_frame(req)
+        .await
+        .expect("import_frame() must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let post_span = spans
+        .iter()
+        .find(|s| s.name == "POST")
+        .expect("expected a POST span");
+
+    let body_size = post_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == "http.request.body.size")
+        .expect("http.request.body.size attribute must be present");
+
+    assert!(
+        matches!(body_size.value, opentelemetry::Value::I64(n) if n > 0),
+        "http.request.body.size must be a positive integer"
+    );
+}
+
+// ── Cycle 22: debug log contains http.request.body field ──────────────────────
+
+#[tokio::test]
+#[traced_test]
+async fn post_json_logs_request_body() {
+    let server = MockServer::start().await;
+    let res_body = include_str!("fixtures/dto/import_frame_res.json");
+    Mock::given(method("POST"))
+        .and(path("/api/printer/template/importframe"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(res_body, "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    let req = tepra_core::dto::template::ImportFrameRequest {
+        template_file: tepra_core::dto::job::FilePayload {
+            file_name: "frame.lbx".into(),
+            base64_str: "dGVzdA==".into(),
+        },
+    };
+    client
+        .import_frame(req)
+        .await
+        .expect("import_frame() must succeed");
+
+    assert!(
+        logs_contain("http.request.body"),
+        "debug log must contain http.request.body field"
     );
 }
