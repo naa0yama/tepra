@@ -175,6 +175,12 @@ impl ReqwestTepraClient {
             "http.response.body.size",
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
+        if !status.is_success() {
+            tracing::warn!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+            return Err(TepraError::Http {
+                status: status.as_u16(),
+            });
+        }
         tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
 
         serde_json::from_slice::<T>(&resp_bytes).map_err(|e| TepraError::Parse {
@@ -233,6 +239,12 @@ impl ReqwestTepraClient {
             "http.response.body.size",
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
+        if !status.is_success() {
+            tracing::warn!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+            return Err(TepraError::Http {
+                status: status.as_u16(),
+            });
+        }
         tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
 
         serde_json::from_slice::<T>(&resp_bytes).map_err(|e| TepraError::Parse {
@@ -287,6 +299,12 @@ impl ReqwestTepraClient {
             "http.response.body.size",
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
+        if !status.is_success() {
+            tracing::warn!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+            return Err(TepraError::Http {
+                status: status.as_u16(),
+            });
+        }
         tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
 
         Ok(())
@@ -355,6 +373,12 @@ impl ReqwestTepraClient {
             "http.response.body.size",
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
+        if !status.is_success() {
+            tracing::warn!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+            return Err(TepraError::Http {
+                status: status.as_u16(),
+            });
+        }
         tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
 
         serde_json::from_slice::<T>(&resp_bytes).map_err(|e| TepraError::Parse {
@@ -426,6 +450,12 @@ impl ReqwestTepraClient {
             "http.response.body.size",
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
+        if !status.is_success() {
+            tracing::warn!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
+            return Err(TepraError::Http {
+                status: status.as_u16(),
+            });
+        }
         tracing::debug!(http.response.body = %String::from_utf8_lossy(&resp_bytes));
 
         Ok(())
@@ -434,10 +464,22 @@ impl ReqwestTepraClient {
     /// Record the response status code on the current span and the duration in metrics.
     fn record_response_span(&self, status: reqwest::StatusCode, duration_s: f64, method: &str) {
         #[cfg(feature = "otel")]
-        Span::current().record(
-            attribute::HTTP_RESPONSE_STATUS_CODE,
-            i64::from(status.as_u16()),
-        );
+        {
+            use opentelemetry::trace::Status;
+            use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+            let span = Span::current();
+            span.record(
+                attribute::HTTP_RESPONSE_STATUS_CODE,
+                i64::from(status.as_u16()),
+            );
+            if status.is_client_error() || status.is_server_error() {
+                let code_str = status.as_u16().to_string();
+                span.set_attribute("error.type", code_str.clone());
+                span.set_status(Status::Error {
+                    description: std::borrow::Cow::Owned(code_str),
+                });
+            }
+        }
         #[cfg(not(feature = "otel"))]
         Span::current().record("http.response.status_code", i64::from(status.as_u16()));
 
@@ -450,8 +492,18 @@ impl ReqwestTepraClient {
         );
     }
 
-    /// Record a transport-level error (no HTTP response received) in metrics.
+    /// Record a transport-level error (no HTTP response received) in span + metrics.
     fn record_transport_error(&self, duration_s: f64, method: &str) {
+        #[cfg(feature = "otel")]
+        {
+            use opentelemetry::trace::Status;
+            use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+            let span = Span::current();
+            span.set_attribute("error.type", "reqwest::Error");
+            span.set_status(Status::Error {
+                description: std::borrow::Cow::Borrowed("reqwest::Error"),
+            });
+        }
         self.meters.record_http_request(
             duration_s,
             method,

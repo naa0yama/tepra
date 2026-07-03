@@ -288,6 +288,94 @@ async fn get_json_logs_response_body() {
     );
 }
 
+// ── Cycle 25: 4xx/5xx error path ─────────────────────────────────────────────
+
+#[tokio::test]
+async fn get_404_sets_error_type_span_attr() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/printer/version"))
+        .respond_with(ResponseTemplate::new(404).set_body_string("{\"error\":\"not found\"}"))
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    let _ = client.version().await;
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let get_span = spans
+        .iter()
+        .find(|s| s.name == "GET")
+        .expect("expected a GET span");
+
+    let error_type = get_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == "error.type")
+        .expect("error.type attribute must be present for 404");
+
+    assert_eq!(
+        error_type.value.as_str().as_ref(),
+        "404",
+        "error.type must be the HTTP status code string"
+    );
+}
+
+#[tokio::test]
+async fn get_500_sets_span_status_error() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/printer/version"))
+        .respond_with(ResponseTemplate::new(500).set_body_string("{\"error\":\"internal\"}"))
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    let _ = client.version().await;
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let get_span = spans
+        .iter()
+        .find(|s| s.name == "GET")
+        .expect("expected a GET span");
+
+    assert!(
+        matches!(get_span.status, opentelemetry::trace::Status::Error { .. }),
+        "span status must be Error for 5xx response"
+    );
+}
+
+#[tokio::test]
+#[traced_test]
+async fn get_error_response_body_logged_as_warn() {
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/printer/version"))
+        .respond_with(ResponseTemplate::new(404).set_body_string("{\"error\":\"not found\"}"))
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    let _ = client.version().await;
+
+    assert!(
+        logs_contain("http.response.body"),
+        "warn log must contain http.response.body field for error responses"
+    );
+}
+
 // ── Cycle 24: header allowlist + BLOCK regression ─────────────────────────────
 
 #[tokio::test]
@@ -369,5 +457,62 @@ async fn authorization_header_is_not_recorded_in_span() {
     assert!(
         auth_attr.is_none(),
         "http.request.header.authorization must NOT be recorded in span (BLOCK list)"
+    );
+}
+
+// ── Cycle 26: transport error path ───────────────────────────────────────────
+
+#[tokio::test]
+async fn transport_error_sets_error_type_reqwest_error() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    // Port 1 is reserved and not listening → guaranteed connection refused.
+    let client = ReqwestTepraClient::new("http://127.0.0.1:1");
+    let _ = client.version().await;
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let get_span = spans
+        .iter()
+        .find(|s| s.name == "GET")
+        .expect("expected a GET span after transport error");
+
+    let error_type = get_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == "error.type")
+        .expect("error.type attribute must be present for transport error");
+
+    assert_eq!(
+        error_type.value.as_str().as_ref(),
+        "reqwest::Error",
+        "error.type must be 'reqwest::Error' for transport failures"
+    );
+}
+
+#[tokio::test]
+async fn transport_error_sets_span_status_error() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    // Port 1 is reserved and not listening → guaranteed connection refused.
+    let client = ReqwestTepraClient::new("http://127.0.0.1:1");
+    let _ = client.version().await;
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let get_span = spans
+        .iter()
+        .find(|s| s.name == "GET")
+        .expect("expected a GET span after transport error");
+
+    assert!(
+        matches!(get_span.status, opentelemetry::trace::Status::Error { .. }),
+        "span status must be Error for transport failure"
     );
 }
