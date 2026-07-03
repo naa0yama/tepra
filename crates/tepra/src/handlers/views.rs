@@ -1,11 +1,16 @@
 //! View handlers — HTML page responses for the web UI (HTMX/DaisyUI).
-#![allow(clippy::module_name_repetitions)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::literal_string_with_formatting_args
+)]
 
 use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::IntoResponse,
 };
+use opentelemetry_semantic_conventions::attribute as semconv;
+use tracing::{Span, instrument};
 
 use crate::{
     state::AppState,
@@ -15,16 +20,37 @@ use crate::{
 const CREATOR_API_ERROR: &str = "TEPRA Creator WebAPI に接続できません";
 
 /// `GET /ui/` — printer list index page.
+#[instrument(
+    name = "handler.index",
+    skip_all,
+    fields(
+        http.request.method = "GET",
+        http.route = "/ui/",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+    )
+)]
 pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
     let result = state.client.list_printers().await;
     let (printers, error) = result.map_or_else(
         |_| (vec![], Some(CREATOR_API_ERROR.to_owned())),
         |items| (items.into_iter().map(|p| p.printer_name).collect(), None),
     );
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
     HtmlTemplate(IndexTemplate { printers, error })
 }
 
 /// `GET /ui/printers/{name}` — per-printer detail page.
+#[instrument(
+    name = "handler.printer_detail",
+    skip_all,
+    fields(
+        http.request.method = "GET",
+        http.route = "/ui/printers/{name}",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+    )
+)]
 pub async fn printer_detail(
     Path(name): Path<String>,
     State(state): State<AppState>,
@@ -34,6 +60,7 @@ pub async fn printer_detail(
         |_| (false, Some(CREATOR_API_ERROR.to_owned())),
         |resp| (resp.online, None),
     );
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
     HtmlTemplate(PrinterDetailTemplate {
         printer_name: name,
         online,
@@ -46,6 +73,16 @@ pub async fn printer_detail(
 /// # Errors
 ///
 /// Returns `502 Bad Gateway` when the Creator API client fails.
+#[instrument(
+    name = "handler.job_card",
+    skip_all,
+    fields(
+        http.request.method = "GET",
+        http.route = "/ui/jobs/{printer}/{job_id}",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+    )
+)]
 pub async fn job_card(
     Path((printer_name, job_id)): Path<(String, u64)>,
     State(state): State<AppState>,
@@ -62,6 +99,7 @@ pub async fn job_card(
         Some(resp.data_progress)
     };
 
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
     Ok(HtmlTemplate(JobCardTemplate {
         printer_name,
         job_id,
