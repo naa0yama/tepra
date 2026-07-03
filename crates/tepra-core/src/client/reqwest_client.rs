@@ -72,7 +72,7 @@ impl ReqwestTepraClient {
     }
 
     #[instrument(
-        name = "HTTP GET",
+        name = "GET",
         skip_all,
         fields(
             otel.kind = "CLIENT",
@@ -106,7 +106,7 @@ impl ReqwestTepraClient {
     }
 
     #[instrument(
-        name = "HTTP GET",
+        name = "GET",
         skip_all,
         fields(
             otel.kind = "CLIENT",
@@ -144,7 +144,7 @@ impl ReqwestTepraClient {
     }
 
     #[instrument(
-        name = "HTTP GET",
+        name = "GET",
         skip_all,
         fields(
             otel.kind = "CLIENT",
@@ -173,7 +173,7 @@ impl ReqwestTepraClient {
     }
 
     #[instrument(
-        name = "HTTP POST",
+        name = "POST",
         skip_all,
         fields(
             otel.kind = "CLIENT",
@@ -211,7 +211,7 @@ impl ReqwestTepraClient {
     }
 
     #[instrument(
-        name = "HTTP POST",
+        name = "POST",
         skip_all,
         fields(
             otel.kind = "CLIENT",

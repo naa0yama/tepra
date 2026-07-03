@@ -40,7 +40,7 @@ async fn http_client_spans_have_span_kind_client() {
 
     let http_span = spans
         .iter()
-        .find(|s| s.name.starts_with("HTTP"))
+        .find(|s| matches!(s.name.as_ref(), "GET" | "POST"))
         .expect("expected an HTTP client span");
 
     assert_eq!(
@@ -48,4 +48,38 @@ async fn http_client_spans_have_span_kind_client() {
         SpanKind::Client,
         "HTTP client span must have SpanKind::Client"
     );
+}
+
+// ── Cycle 20: span name = method only ────────────────────────────────────────
+
+#[tokio::test]
+async fn http_client_span_name_is_method_only() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let body = include_str!("fixtures/dto/version_res.json");
+    Mock::given(method("GET"))
+        .and(path("/api/printer/version"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(body, "application/json"),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client.version().await.expect("version() must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let http_span = spans
+        .iter()
+        .find(|s| s.name == "GET")
+        .expect("expected a span named exactly 'GET'");
+
+    assert_eq!(http_span.name.as_ref(), "GET", "span name must be 'GET'");
 }
