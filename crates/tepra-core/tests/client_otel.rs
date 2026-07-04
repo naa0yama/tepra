@@ -70,7 +70,7 @@ async fn get_request_emits_http_client_span_and_metric() {
 
     let http_span = spans
         .iter()
-        .find(|s| matches!(s.name.as_ref(), "GET" | "POST"))
+        .find(|s| s.name.starts_with("GET") || s.name.starts_with("POST"))
         .expect("expected an HTTP client span");
 
     let attrs: std::collections::HashMap<&str, &Value> = http_span

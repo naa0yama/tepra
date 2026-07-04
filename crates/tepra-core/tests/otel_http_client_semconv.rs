@@ -45,7 +45,7 @@ async fn http_client_spans_have_span_kind_client() {
 
     let http_span = spans
         .iter()
-        .find(|s| matches!(s.name.as_ref(), "GET" | "POST"))
+        .find(|s| s.name.starts_with("GET") || s.name.starts_with("POST"))
         .expect("expected an HTTP client span");
 
     assert_eq!(
@@ -55,10 +55,10 @@ async fn http_client_spans_have_span_kind_client() {
     );
 }
 
-// ── Cycle 20: span name = method only ────────────────────────────────────────
+// ── Cycle 20 (updated for Cycle 46-4b): span name = "METHOD /url/template" ──
 
 #[tokio::test]
-async fn http_client_span_name_is_method_only() {
+async fn http_client_span_name_is_method_and_template() {
     let span_exporter = InMemorySpanExporterBuilder::new().build();
     let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
 
@@ -83,10 +83,14 @@ async fn http_client_span_name_is_method_only() {
 
     let http_span = spans
         .iter()
-        .find(|s| s.name == "GET")
-        .expect("expected a span named exactly 'GET'");
+        .find(|s| s.name == "GET /api/printer/version")
+        .expect("expected a span named 'GET /api/printer/version'");
 
-    assert_eq!(http_span.name.as_ref(), "GET", "span name must be 'GET'");
+    assert_eq!(
+        http_span.name.as_ref(),
+        "GET /api/printer/version",
+        "span name must include method and url template"
+    );
 }
 
 // ── Cycle 21: url.full attribute ──────────────────────────────────────────────
@@ -120,7 +124,7 @@ async fn http_client_span_records_url_full() {
 
     let http_span = spans
         .iter()
-        .find(|s| s.name == "GET")
+        .find(|s| s.name.starts_with("GET"))
         .expect("expected a span named 'GET'");
 
     let url_full = http_span
@@ -173,7 +177,7 @@ async fn post_json_records_request_body_size() {
 
     let post_span = spans
         .iter()
-        .find(|s| s.name == "POST")
+        .find(|s| s.name.starts_with("POST"))
         .expect("expected a POST span");
 
     let body_size = post_span
@@ -251,7 +255,7 @@ async fn get_json_records_response_body_size() {
 
     let get_span = spans
         .iter()
-        .find(|s| s.name == "GET")
+        .find(|s| s.name.starts_with("GET"))
         .expect("expected a GET span");
 
     let body_size = get_span
@@ -315,7 +319,7 @@ async fn get_404_sets_error_type_span_attr() {
 
     let get_span = spans
         .iter()
-        .find(|s| s.name == "GET")
+        .find(|s| s.name.starts_with("GET"))
         .expect("expected a GET span");
 
     let error_type = get_span
@@ -352,7 +356,7 @@ async fn get_500_sets_span_status_error() {
 
     let get_span = spans
         .iter()
-        .find(|s| s.name == "GET")
+        .find(|s| s.name.starts_with("GET"))
         .expect("expected a GET span");
 
     assert!(
@@ -408,7 +412,7 @@ async fn response_header_content_type_is_recorded_in_span() {
 
     let get_span = spans
         .iter()
-        .find(|s| s.name == "GET")
+        .find(|s| s.name.starts_with("GET"))
         .expect("expected a GET span");
 
     let content_type = get_span
@@ -450,7 +454,7 @@ async fn authorization_header_is_not_recorded_in_span() {
 
     let get_span = spans
         .iter()
-        .find(|s| s.name == "GET")
+        .find(|s| s.name.starts_with("GET"))
         .expect("expected a GET span");
 
     let auth_attr = get_span
@@ -481,7 +485,7 @@ async fn transport_connect_error_sets_error_type_connection() {
 
     let get_span = spans
         .iter()
-        .find(|s| s.name == "GET")
+        .find(|s| s.name.starts_with("GET"))
         .expect("expected a GET span after transport error");
 
     let error_type = get_span
@@ -512,7 +516,7 @@ async fn transport_error_sets_span_status_error() {
 
     let get_span = spans
         .iter()
-        .find(|s| s.name == "GET")
+        .find(|s| s.name.starts_with("GET"))
         .expect("expected a GET span after transport error");
 
     assert!(
@@ -547,7 +551,7 @@ async fn transport_timeout_error_sets_error_type_timeout() {
 
     let get_span = spans
         .iter()
-        .find(|s| s.name == "GET")
+        .find(|s| s.name.starts_with("GET"))
         .expect("expected a GET span after timeout error");
 
     let error_type = get_span

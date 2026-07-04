@@ -154,19 +154,6 @@ impl ReqwestTepraClient {
         }
     }
 
-    #[instrument(
-        name = "GET",
-        skip_all,
-        fields(
-            otel.kind = "CLIENT",
-            http.request.method = "GET",
-            server.address = %self.server_address,
-            url.scheme = %self.url_scheme,
-            url.full = tracing::field::Empty,
-            http.response.status_code = tracing::field::Empty,
-            http.response.body.size = tracing::field::Empty,
-        )
-    )]
     async fn get_json<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, TepraError> {
         let url = format!("{}{}", self.base_url, path);
         Span::current().record(attribute::URL_FULL, url.as_str());
@@ -214,19 +201,6 @@ impl ReqwestTepraClient {
         })
     }
 
-    #[instrument(
-        name = "GET",
-        skip_all,
-        fields(
-            otel.kind = "CLIENT",
-            http.request.method = "GET",
-            server.address = %self.server_address,
-            url.scheme = %self.url_scheme,
-            url.full = tracing::field::Empty,
-            http.response.status_code = tracing::field::Empty,
-            http.response.body.size = tracing::field::Empty,
-        )
-    )]
     async fn get_query_json<T: serde::de::DeserializeOwned>(
         &self,
         path: &str,
@@ -278,19 +252,6 @@ impl ReqwestTepraClient {
         })
     }
 
-    #[instrument(
-        name = "GET",
-        skip_all,
-        fields(
-            otel.kind = "CLIENT",
-            http.request.method = "GET",
-            server.address = %self.server_address,
-            url.scheme = %self.url_scheme,
-            url.full = tracing::field::Empty,
-            http.response.status_code = tracing::field::Empty,
-            http.response.body.size = tracing::field::Empty,
-        )
-    )]
     async fn get_query_empty(&self, path: &str, query: &str) -> Result<(), TepraError> {
         let url = format!("{}{}?{}", self.base_url, path, query);
         Span::current().record(attribute::URL_FULL, url.as_str());
@@ -336,20 +297,6 @@ impl ReqwestTepraClient {
         Ok(())
     }
 
-    #[instrument(
-        name = "POST",
-        skip_all,
-        fields(
-            otel.kind = "CLIENT",
-            http.request.method = "POST",
-            server.address = %self.server_address,
-            url.scheme = %self.url_scheme,
-            url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
-            http.response.status_code = tracing::field::Empty,
-            http.response.body.size = tracing::field::Empty,
-        )
-    )]
     async fn post_json<B: serde::Serialize + Sync, T: serde::de::DeserializeOwned>(
         &self,
         path: &str,
@@ -413,20 +360,6 @@ impl ReqwestTepraClient {
         })
     }
 
-    #[instrument(
-        name = "POST",
-        skip_all,
-        fields(
-            otel.kind = "CLIENT",
-            http.request.method = "POST",
-            server.address = %self.server_address,
-            url.scheme = %self.url_scheme,
-            url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
-            http.response.status_code = tracing::field::Empty,
-            http.response.body.size = tracing::field::Empty,
-        )
-    )]
     async fn post_empty<B: serde::Serialize + Sync>(
         &self,
         path: &str,
@@ -601,6 +534,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = "/api/printer",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn list_printers(&self) -> Result<Vec<PrinterListItem>, TepraError> {
@@ -616,6 +553,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = "/api/printer/version",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn version(&self) -> Result<VersionResponse, TepraError> {
@@ -631,6 +572,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = "/api/printer/autoselect",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn autoselect(&self) -> Result<AutoselectResponse, TepraError> {
@@ -646,6 +591,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = concat!("/api/printer/info/", "{name}"),
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn printer_info(&self, name: &str) -> Result<PrinterInfoResponse, TepraError> {
@@ -661,6 +610,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = concat!("/api/printer/onlinestatus/", "{name}"),
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn online_status(&self, name: &str) -> Result<OnlineStatusResponse, TepraError> {
@@ -677,6 +630,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = concat!("/api/printer/lwstatus/", "{name}"),
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn lw_status(&self, name: &str) -> Result<LwStatusResponse, TepraError> {
@@ -693,6 +650,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = concat!("/api/printer/print/", "{name}"),
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn print(&self, name: &str, req: PrintRequest) -> Result<PrintResponse, TepraError> {
@@ -709,6 +670,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = concat!("/api/printer/tapefeed/", "{name}"),
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn tapefeed(&self, name: &str, cutflag: bool) -> Result<(), TepraError> {
@@ -728,6 +693,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = concat!("/api/printer/job/progress/", "{name}"),
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn job_progress(
@@ -751,6 +720,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = concat!("/api/printer/job/info/", "{name}"),
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn job_info(&self, name: &str, jobid: u64) -> Result<JobInfoResponse, TepraError> {
@@ -770,6 +743,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = concat!("/api/printer/job/control/", "{name}"),
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn job_control(&self, name: &str, req: JobControlRequest) -> Result<(), TepraError> {
@@ -786,6 +763,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = "/api/printer/template/importframe",
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn import_frame(
@@ -805,6 +786,10 @@ impl TepraClient for ReqwestTepraClient {
             url.template = concat!("/api/printer/getmargin/", "{name}"),
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
+            url.full = tracing::field::Empty,
+            http.request.body.size = tracing::field::Empty,
+            http.response.status_code = tracing::field::Empty,
+            http.response.body.size = tracing::field::Empty,
         )
     )]
     async fn get_margin(
