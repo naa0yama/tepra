@@ -30,7 +30,7 @@ async fn client_address_is_set_when_connect_info_present() {
     let app = build_router(mock).layer(
         TraceLayer::new_for_http()
             .make_span_with(OtelHttpServerMakeSpan)
-            .on_response(OtelOnResponse::default()),
+            .on_response(OtelOnResponse),
     );
 
     let peer: SocketAddr = "192.0.2.1:54321".parse().unwrap();
@@ -87,7 +87,7 @@ async fn client_address_is_empty_when_connect_info_absent() {
     let app = build_router(mock).layer(
         TraceLayer::new_for_http()
             .make_span_with(OtelHttpServerMakeSpan)
-            .on_response(OtelOnResponse::default()),
+            .on_response(OtelOnResponse),
     );
 
     // No ConnectInfo extension — simulates missing into_make_service_with_connect_info.

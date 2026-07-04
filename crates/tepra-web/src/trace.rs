@@ -5,10 +5,11 @@
 
 use std::net::SocketAddr;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use axum::extract::{ConnectInfo, MatchedPath};
+use axum::extract::{ConnectInfo, MatchedPath, State};
 use axum::http::{Request, Response};
+use axum::middleware::Next;
 use opentelemetry::global;
 use opentelemetry::trace::Status;
 use opentelemetry_http::HeaderExtractor;
@@ -95,52 +96,56 @@ impl<B> tower_http::trace::MakeSpan<B> for OtelHttpServerMakeSpan {
     }
 }
 
-/// [`OnResponse`][tower_http::trace::OnResponse] that records the HTTP response
-/// status code onto the active server span and emits `http.server.request.duration`.
+/// [`OnResponse`][tower_http::trace::OnResponse] that records `http.response.status_code`,
+/// span status (`Error` for 5xx), and `error.type` on the active server span.
 ///
-/// Method and route are not carried through because `tower_http::trace::OnResponse`
-/// only receives the `Response`, not the originating `Request`. These attributes are
-/// left empty; a future refactor with shared-state `MakeSpan` can improve fidelity.
-#[derive(Clone, Debug)]
-pub struct OtelOnResponse {
-    meters: Arc<Meters>,
-}
-
-impl OtelOnResponse {
-    /// Create a new [`OtelOnResponse`] backed by the given [`Meters`].
-    #[must_use]
-    pub const fn new(meters: Arc<Meters>) -> Self {
-        Self { meters }
-    }
-}
-
-impl Default for OtelOnResponse {
-    fn default() -> Self {
-        Self::new(Arc::new(Meters::new()))
-    }
-}
+/// Metric recording (`http.server.request.duration`) is handled separately by
+/// [`server_metrics_mw`], which has access to the originating `Request` and can
+/// populate `http.request.method` and `http.route` correctly.
+#[derive(Clone, Debug, Default)]
+pub struct OtelOnResponse;
 
 impl<B> tower_http::trace::OnResponse<B> for OtelOnResponse {
-    fn on_response(self, response: &Response<B>, latency: Duration, span: &Span) {
+    fn on_response(self, response: &Response<B>, _latency: Duration, span: &Span) {
         let status = response.status().as_u16();
         span.record(attribute::HTTP_RESPONSE_STATUS_CODE, i64::from(status));
 
-        let error_type = if status >= 500 {
+        if status >= 500 {
             let code_str = status.to_string();
             span.set_status(Status::Error {
                 description: std::borrow::Cow::Owned(code_str.clone()),
             });
             span.record(attribute::ERROR_TYPE, code_str.as_str());
-            Some(code_str)
-        } else {
-            None
-        };
-        self.meters.record_http_server_request(
-            latency.as_secs_f64(),
-            "",
-            status,
-            "",
-            error_type.as_deref(),
-        );
+        }
     }
+}
+
+/// Axum middleware that records `http.server.request.duration` with `http.request.method`
+/// and `http.route` populated from the live request.
+///
+/// Mount this via `router.layer(axum::middleware::from_fn_with_state(meters, server_metrics_mw))`
+/// *before* `TraceLayer` so it wraps the fully-routed request.
+pub async fn server_metrics_mw(
+    State(meters): State<Arc<Meters>>,
+    request: Request<axum::body::Body>,
+    next: Next,
+) -> axum::response::Response {
+    let method = request.method().as_str().to_owned();
+    let route = request.extensions().get::<MatchedPath>().map_or_else(
+        || request.uri().path().to_owned(),
+        |p| p.as_str().to_owned(),
+    );
+
+    let start = Instant::now();
+    let response = next.run(request).await;
+    let elapsed = start.elapsed().as_secs_f64();
+    let status = response.status().as_u16();
+    let error_type = if status >= 500 {
+        Some(status.to_string())
+    } else {
+        None
+    };
+
+    meters.record_http_server_request(elapsed, &method, status, &route, error_type.as_deref());
+    response
 }

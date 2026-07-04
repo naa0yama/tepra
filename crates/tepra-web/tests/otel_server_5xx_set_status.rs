@@ -5,8 +5,6 @@
     clippy::significant_drop_tightening
 )]
 
-use std::sync::Arc;
-
 use axum::{body::Body, http::Request, http::StatusCode, response::IntoResponse, routing::get};
 use opentelemetry_sdk::trace::InMemorySpanExporterBuilder;
 use opentelemetry_semantic_conventions::attribute;
@@ -30,9 +28,7 @@ fn build_test_app() -> axum::Router {
     router.layer(
         TraceLayer::new_for_http()
             .make_span_with(OtelHttpServerMakeSpan)
-            .on_response(OtelOnResponse::new(Arc::new(
-                tepra_core::otel::metrics::Meters::new(),
-            ))),
+            .on_response(OtelOnResponse),
     )
 }
 

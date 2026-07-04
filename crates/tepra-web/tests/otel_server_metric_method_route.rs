@@ -1,4 +1,4 @@
-//! Integration test: http.server.request.duration Histogram is emitted on every request.
+//! Cycle 40: `http.server.request.duration` attributes include `http.request.method` and `http.route`.
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -28,7 +28,7 @@ fn metric_provider() -> (SdkMeterProvider, InMemoryMetricExporter) {
 }
 
 #[tokio::test]
-async fn server_request_duration_histogram_recorded() {
+async fn server_metric_includes_method_and_route() {
     let (provider, exporter) = metric_provider();
     opentelemetry::global::set_meter_provider(provider.clone());
 
@@ -69,13 +69,32 @@ async fn server_request_duration_histogram_recorded() {
         .find(|m| m.name() == semconv::HTTP_SERVER_REQUEST_DURATION)
         .expect("http.server.request.duration histogram must be emitted");
 
-    let count = match metric.data() {
+    let data_point = match metric.data() {
         AggregatedMetrics::F64(MetricData::Histogram(hist)) => {
-            hist.data_points().next().expect("no data points").count()
+            hist.data_points().next().expect("no data points").clone()
         }
         other => panic!("unexpected metric type: {other:?}"),
     };
-    assert_eq!(count, 1, "one data point per request");
+
+    let attrs: std::collections::HashMap<String, opentelemetry::Value> = data_point
+        .attributes()
+        .map(|kv| (kv.key.to_string(), kv.value.clone()))
+        .collect();
+
+    let method = attrs
+        .get("http.request.method")
+        .expect("http.request.method must be present");
+    assert_eq!(
+        method.as_str().as_ref(),
+        "GET",
+        "http.request.method must be GET"
+    );
+
+    let route = attrs.get("http.route").expect("http.route must be present");
+    assert!(
+        !route.as_str().is_empty(),
+        "http.route must not be empty, got: {route}"
+    );
 
     provider.shutdown().unwrap();
 }

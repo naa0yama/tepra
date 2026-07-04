@@ -35,7 +35,7 @@ async fn traceparent_propagation() {
         let app = build_router(mock).layer(
             TraceLayer::new_for_http()
                 .make_span_with(OtelHttpServerMakeSpan)
-                .on_response(OtelOnResponse::default()),
+                .on_response(OtelOnResponse),
         );
         let req = Request::builder()
             .uri("/api/printer")
@@ -78,7 +78,7 @@ async fn traceparent_propagation() {
         let app = build_router(mock).layer(
             TraceLayer::new_for_http()
                 .make_span_with(OtelHttpServerMakeSpan)
-                .on_response(OtelOnResponse::default()),
+                .on_response(OtelOnResponse),
         );
         let req = Request::builder()
             .uri("/api/printer")

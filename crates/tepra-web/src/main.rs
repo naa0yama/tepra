@@ -7,7 +7,7 @@ use anyhow::Context as _;
 use clap::Parser as _;
 use tepra_core::otel::metrics::Meters;
 use tepra_web::cli::{Cli, Commands};
-use tepra_web::trace::{OtelHttpServerMakeSpan, OtelOnResponse};
+use tepra_web::trace::{OtelHttpServerMakeSpan, OtelOnResponse, server_metrics_mw};
 use tower_http::trace::TraceLayer;
 
 #[tokio::main]
@@ -40,10 +40,14 @@ async fn main() -> anyhow::Result<()> {
                 .merge(tepra::router::build_templates_router(state.clone()))
                 .merge(tepra::router::build_ui_router(state))
                 .merge(tepra_web::assets::router())
+                .layer(axum::middleware::from_fn_with_state(
+                    Arc::clone(&meters),
+                    server_metrics_mw,
+                ))
                 .layer(
                     TraceLayer::new_for_http()
                         .make_span_with(OtelHttpServerMakeSpan)
-                        .on_response(OtelOnResponse::new(meters)),
+                        .on_response(OtelOnResponse),
                 );
 
             let listener = tokio::net::TcpListener::bind(&args.bind)
