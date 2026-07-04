@@ -19,7 +19,7 @@ clap = { workspace = true }
 opentelemetry-semantic-conventions = { workspace = true }
 rust-embed = { workspace = true }
 tepra = { workspace = true }
-tepra-core = { workspace = true }
+tepra-core = { workspace = true, features = ["process-metrics"] }
 tokio = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }
