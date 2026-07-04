@@ -1,5 +1,5 @@
 #![allow(deprecated)]
-//! TDD Cycle 46-1a/2a Red: span name and url.template assertion for static and dynamic-path GET callers.
+//! TDD Cycle 46-1a/2a/3a Red: span name and url.template assertion for GET and POST callers.
 // wiremock spawns a TCP listener; not suitable for miri isolation.
 #![cfg(not(miri))]
 #![cfg(feature = "otel")]
@@ -7,7 +7,15 @@
 
 use opentelemetry_sdk::trace::InMemorySpanExporterBuilder;
 use opentelemetry_semantic_conventions::attribute;
-use tepra_core::{client::ReqwestTepraClient, client::TepraClient, otel::TelemetryGuard};
+use tepra_core::{
+    client::ReqwestTepraClient,
+    client::TepraClient,
+    dto::{
+        job::{JobControlRequest, PrintRequest},
+        template::{GetMarginRequest, ImportFrameRequest},
+    },
+    otel::TelemetryGuard,
+};
 use wiremock::{
     Mock, MockServer, ResponseTemplate,
     matchers::{method, path},
@@ -510,5 +518,234 @@ async fn job_info_span_name_is_method_and_template() {
         url_template.unwrap().value.as_str().as_ref(),
         "/api/printer/job/info/{name}",
         "url.template must be '/api/printer/job/info/{{name}}'"
+    );
+}
+
+// ── Cycle 46-3a: POST — print ─────────────────────────────────────────────────
+
+#[tokio::test]
+async fn print_span_name_is_method_and_template() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let req: PrintRequest =
+        serde_json::from_str(include_str!("fixtures/dto/print_req.json")).unwrap();
+    Mock::given(method("POST"))
+        .and(path("/api/printer/print/dummy"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(
+                    include_str!("fixtures/dto/print_res.json"),
+                    "application/json",
+                ),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client
+        .print("dummy", req)
+        .await
+        .expect("print must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let http_span = spans
+        .iter()
+        .find(|s| s.name.starts_with("POST /"))
+        .expect("expected a POST span");
+
+    assert_eq!(
+        http_span.name.as_ref(),
+        "POST /api/printer/print/{name}",
+        "span name must be 'POST /api/printer/print/{{name}}'"
+    );
+
+    let url_template = http_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == attribute::URL_TEMPLATE);
+    assert!(
+        url_template.is_some(),
+        "url.template attribute must be present"
+    );
+    assert_eq!(
+        url_template.unwrap().value.as_str().as_ref(),
+        "/api/printer/print/{name}",
+        "url.template must be '/api/printer/print/{{name}}'"
+    );
+}
+
+// ── Cycle 46-3a: POST — job_control ──────────────────────────────────────────
+
+#[tokio::test]
+async fn job_control_span_name_is_method_and_template() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let req: JobControlRequest =
+        serde_json::from_str(include_str!("fixtures/dto/job_control_req.json")).unwrap();
+    Mock::given(method("POST"))
+        .and(path("/api/printer/job/control/dummy"))
+        .respond_with(ResponseTemplate::new(200))
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client
+        .job_control("dummy", req)
+        .await
+        .expect("job_control must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let http_span = spans
+        .iter()
+        .find(|s| s.name.starts_with("POST /"))
+        .expect("expected a POST span");
+
+    assert_eq!(
+        http_span.name.as_ref(),
+        "POST /api/printer/job/control/{name}",
+        "span name must be 'POST /api/printer/job/control/{{name}}'"
+    );
+
+    let url_template = http_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == attribute::URL_TEMPLATE);
+    assert!(
+        url_template.is_some(),
+        "url.template attribute must be present"
+    );
+    assert_eq!(
+        url_template.unwrap().value.as_str().as_ref(),
+        "/api/printer/job/control/{name}",
+        "url.template must be '/api/printer/job/control/{{name}}'"
+    );
+}
+
+// ── Cycle 46-3a: POST — import_frame ─────────────────────────────────────────
+
+#[tokio::test]
+async fn import_frame_span_name_is_method_and_template() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let req: ImportFrameRequest =
+        serde_json::from_str(include_str!("fixtures/dto/import_frame_req.json")).unwrap();
+    Mock::given(method("POST"))
+        .and(path("/api/printer/template/importframe"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(
+                    include_str!("fixtures/dto/import_frame_res.json"),
+                    "application/json",
+                ),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client
+        .import_frame(req)
+        .await
+        .expect("import_frame must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let http_span = spans
+        .iter()
+        .find(|s| s.name.starts_with("POST /"))
+        .expect("expected a POST span");
+
+    assert_eq!(
+        http_span.name.as_ref(),
+        "POST /api/printer/template/importframe",
+        "span name must be 'POST /api/printer/template/importframe'"
+    );
+
+    let url_template = http_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == attribute::URL_TEMPLATE);
+    assert!(
+        url_template.is_some(),
+        "url.template attribute must be present"
+    );
+    assert_eq!(
+        url_template.unwrap().value.as_str().as_ref(),
+        "/api/printer/template/importframe",
+        "url.template must be '/api/printer/template/importframe'"
+    );
+}
+
+// ── Cycle 46-3a: POST — get_margin ───────────────────────────────────────────
+
+#[tokio::test]
+async fn get_margin_span_name_is_method_and_template() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let req: GetMarginRequest =
+        serde_json::from_str(include_str!("fixtures/dto/get_margin_req.json")).unwrap();
+    Mock::given(method("POST"))
+        .and(path("/api/printer/getmargin/dummy"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(
+                    include_str!("fixtures/dto/get_margin_res.json"),
+                    "application/json",
+                ),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client
+        .get_margin("dummy", req)
+        .await
+        .expect("get_margin must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let http_span = spans
+        .iter()
+        .find(|s| s.name.starts_with("POST /"))
+        .expect("expected a POST span");
+
+    assert_eq!(
+        http_span.name.as_ref(),
+        "POST /api/printer/getmargin/{name}",
+        "span name must be 'POST /api/printer/getmargin/{{name}}'"
+    );
+
+    let url_template = http_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == attribute::URL_TEMPLATE);
+    assert!(
+        url_template.is_some(),
+        "url.template attribute must be present"
+    );
+    assert_eq!(
+        url_template.unwrap().value.as_str().as_ref(),
+        "/api/printer/getmargin/{name}",
+        "url.template must be '/api/printer/getmargin/{{name}}'"
     );
 }
