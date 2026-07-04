@@ -10,6 +10,7 @@ use std::time::Duration;
 use axum::extract::{ConnectInfo, MatchedPath};
 use axum::http::{Request, Response};
 use opentelemetry::global;
+use opentelemetry::trace::Status;
 use opentelemetry_http::HeaderExtractor;
 use opentelemetry_semantic_conventions::attribute;
 use tepra_core::otel::metrics::Meters;
@@ -86,6 +87,7 @@ impl<B> tower_http::trace::MakeSpan<B> for OtelHttpServerMakeSpan {
             server.address = server_address,
             client.address = client_address,
             http.response.status_code = tracing::field::Empty,
+            error.type = tracing::field::Empty,
         );
         // AlreadyStarted error is expected when no parent; ignore it.
         let _ = span.set_parent(parent_cx);
@@ -124,7 +126,12 @@ impl<B> tower_http::trace::OnResponse<B> for OtelOnResponse {
         span.record(attribute::HTTP_RESPONSE_STATUS_CODE, i64::from(status));
 
         let error_type = if status >= 500 {
-            Some(status.to_string())
+            let code_str = status.to_string();
+            span.set_status(Status::Error {
+                description: std::borrow::Cow::Owned(code_str.clone()),
+            });
+            span.record(attribute::ERROR_TYPE, code_str.as_str());
+            Some(code_str)
         } else {
             None
         };
