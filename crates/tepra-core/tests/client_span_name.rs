@@ -691,6 +691,90 @@ async fn import_frame_span_name_is_method_and_template() {
     );
 }
 
+// ── Cycle 46-4a: helper span name pollution — no bare "GET"/"POST" spans ──────
+
+/// Assert that the helper's bare `name = "GET"` span is NOT emitted when a
+/// caller with a full `#[instrument(name = "GET /api/...")]` span is active.
+/// Currently FAILS because helpers still carry `#[instrument(name = "GET")]`.
+#[tokio::test]
+async fn no_bare_get_span_from_helper() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/printer"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(
+                    include_str!("fixtures/dto/printer_list_res.json"),
+                    "application/json",
+                ),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client
+        .list_printers()
+        .await
+        .expect("list_printers must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let bare_get = spans.iter().find(|s| s.name.as_ref() == "GET");
+    assert!(
+        bare_get.is_none(),
+        "helper must not emit a bare 'GET' span; found: {:?}",
+        bare_get.map(|s| s.name.as_ref())
+    );
+}
+
+/// Assert that the helper's bare `name = "POST"` span is NOT emitted when a
+/// caller with a full `#[instrument(name = "POST /api/...")]` span is active.
+/// Currently FAILS because helpers still carry `#[instrument(name = "POST")]`.
+#[tokio::test]
+async fn no_bare_post_span_from_helper() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    let server = MockServer::start().await;
+    let req: ImportFrameRequest =
+        serde_json::from_str(include_str!("fixtures/dto/import_frame_req.json")).unwrap();
+    Mock::given(method("POST"))
+        .and(path("/api/printer/template/importframe"))
+        .respond_with(
+            ResponseTemplate::new(200)
+                .insert_header("content-type", "application/json")
+                .set_body_raw(
+                    include_str!("fixtures/dto/import_frame_res.json"),
+                    "application/json",
+                ),
+        )
+        .mount(&server)
+        .await;
+
+    let client = ReqwestTepraClient::new(server.uri());
+    client
+        .import_frame(req)
+        .await
+        .expect("import_frame must succeed");
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let bare_post = spans.iter().find(|s| s.name.as_ref() == "POST");
+    assert!(
+        bare_post.is_none(),
+        "helper must not emit a bare 'POST' span; found: {:?}",
+        bare_post.map(|s| s.name.as_ref())
+    );
+}
+
 // ── Cycle 46-3a: POST — get_margin ───────────────────────────────────────────
 
 #[tokio::test]
