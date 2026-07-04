@@ -5,6 +5,8 @@
 #![cfg(feature = "otel")]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
+use std::time::Duration;
+
 use opentelemetry::trace::SpanKind;
 use opentelemetry_sdk::trace::InMemorySpanExporterBuilder;
 use opentelemetry_semantic_conventions::attribute;
@@ -465,7 +467,7 @@ async fn authorization_header_is_not_recorded_in_span() {
 // ── Cycle 26: transport error path ───────────────────────────────────────────
 
 #[tokio::test]
-async fn transport_error_sets_error_type_reqwest_error() {
+async fn transport_connect_error_sets_error_type_connection() {
     let span_exporter = InMemorySpanExporterBuilder::new().build();
     let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
 
@@ -490,8 +492,8 @@ async fn transport_error_sets_error_type_reqwest_error() {
 
     assert_eq!(
         error_type.value.as_str().as_ref(),
-        "reqwest::Error",
-        "error.type must be 'reqwest::Error' for transport failures"
+        "connection",
+        "error.type must be 'connection' for connection-refused transport errors"
     );
 }
 
@@ -516,5 +518,47 @@ async fn transport_error_sets_span_status_error() {
     assert!(
         matches!(get_span.status, opentelemetry::trace::Status::Error { .. }),
         "span status must be Error for transport failure"
+    );
+}
+
+// ── Cycle 37: error.type kind 分岐 ────────────────────────────────────────────
+
+#[tokio::test]
+async fn transport_timeout_error_sets_error_type_timeout() {
+    let span_exporter = InMemorySpanExporterBuilder::new().build();
+    let _guard = TelemetryGuard::build_for_test(span_exporter.clone());
+
+    // Delayed response longer than the client timeout → reqwest timeout error.
+    let server = MockServer::start().await;
+    Mock::given(method("GET"))
+        .and(path("/api/printer/version"))
+        .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(10)))
+        .mount(&server)
+        .await;
+
+    // 500 ms: enough for localhost TCP connect, shorter than 10 s mock delay.
+    let client =
+        ReqwestTepraClient::new_with_timeout_for_test(server.uri(), Duration::from_millis(500));
+    let _ = client.version().await;
+
+    let spans = span_exporter
+        .get_finished_spans()
+        .expect("spans must be accessible");
+
+    let get_span = spans
+        .iter()
+        .find(|s| s.name == "GET")
+        .expect("expected a GET span after timeout error");
+
+    let error_type = get_span
+        .attributes
+        .iter()
+        .find(|kv| kv.key.as_str() == attribute::ERROR_TYPE)
+        .expect("error.type attribute must be present for timeout error");
+
+    assert_eq!(
+        error_type.value.as_str().as_ref(),
+        "timeout",
+        "error.type must be 'timeout' for reqwest timeout errors"
     );
 }

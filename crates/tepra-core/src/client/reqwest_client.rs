@@ -183,7 +183,7 @@ impl ReqwestTepraClient {
         let resp = match self.client.execute(req).await {
             Ok(r) => r,
             Err(e) => {
-                self.record_transport_error(start.elapsed().as_secs_f64(), "GET");
+                self.record_transport_error(start.elapsed().as_secs_f64(), "GET", &e);
                 return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("GET {url}")),
                 });
@@ -247,7 +247,7 @@ impl ReqwestTepraClient {
         let resp = match self.client.execute(req).await {
             Ok(r) => r,
             Err(e) => {
-                self.record_transport_error(start.elapsed().as_secs_f64(), "GET");
+                self.record_transport_error(start.elapsed().as_secs_f64(), "GET", &e);
                 return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("GET {url}")),
                 });
@@ -307,7 +307,7 @@ impl ReqwestTepraClient {
         let resp = match self.client.execute(req).await {
             Ok(r) => r,
             Err(e) => {
-                self.record_transport_error(start.elapsed().as_secs_f64(), "GET");
+                self.record_transport_error(start.elapsed().as_secs_f64(), "GET", &e);
                 return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("GET {url}")),
                 });
@@ -381,7 +381,7 @@ impl ReqwestTepraClient {
         let resp = match self.client.execute(req).await {
             Ok(r) => r,
             Err(e) => {
-                self.record_transport_error(start.elapsed().as_secs_f64(), "POST");
+                self.record_transport_error(start.elapsed().as_secs_f64(), "POST", &e);
                 return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("POST {url}")),
                 });
@@ -458,7 +458,7 @@ impl ReqwestTepraClient {
         let resp = match self.client.execute(req).await {
             Ok(r) => r,
             Err(e) => {
-                self.record_transport_error(start.elapsed().as_secs_f64(), "POST");
+                self.record_transport_error(start.elapsed().as_secs_f64(), "POST", &e);
                 return Err(TepraError::Transport {
                     source: anyhow::Error::new(e).context(format!("POST {url}")),
                 });
@@ -518,17 +518,20 @@ impl ReqwestTepraClient {
     }
 
     /// Record a transport-level error (no HTTP response received) in span + metrics.
-    fn record_transport_error(&self, duration_s: f64, method: &str) {
+    fn record_transport_error(&self, duration_s: f64, method: &str, err: &reqwest::Error) {
         #[cfg(feature = "otel")]
         {
             use opentelemetry::trace::Status;
             use tracing_opentelemetry::OpenTelemetrySpanExt as _;
+            let kind = classify_transport_error(err);
             let span = Span::current();
-            span.set_attribute(attribute::ERROR_TYPE, "reqwest::Error");
+            span.set_attribute(attribute::ERROR_TYPE, kind);
             span.set_status(Status::Error {
-                description: std::borrow::Cow::Borrowed("reqwest::Error"),
+                description: std::borrow::Cow::Borrowed(kind),
             });
         }
+        #[cfg(not(feature = "otel"))]
+        let _ = err;
         self.meters.record_http_request(
             duration_s,
             method,
@@ -536,6 +539,46 @@ impl ReqwestTepraClient {
             &self.server_address,
             &self.url_scheme,
         );
+    }
+}
+
+/// Classify a `reqwest::Error` into an `error.type` semconv named value.
+///
+/// Priority: semconv named > `"_OTHER"` fallback.
+#[cfg(feature = "otel")]
+fn classify_transport_error(err: &reqwest::Error) -> &'static str {
+    if err.is_timeout() {
+        "timeout"
+    } else if err.is_connect() {
+        "connection"
+    } else if err.is_request() {
+        "request_build"
+    } else {
+        "_OTHER"
+    }
+}
+
+#[cfg(any(test, feature = "test-utils"))]
+impl ReqwestTepraClient {
+    /// Test-only constructor that injects a custom `reqwest::Client` (e.g. with a short timeout).
+    #[doc(hidden)]
+    #[allow(clippy::expect_used)] // infallible: Client::builder() with only timeout() always succeeds
+    pub fn new_with_timeout_for_test(
+        base_url: impl Into<String>,
+        timeout: std::time::Duration,
+    ) -> Self {
+        let base_url = base_url.into();
+        let (url_scheme, server_address) = parse_base_url(&base_url);
+        Self {
+            base_url,
+            client: reqwest::Client::builder()
+                .timeout(timeout)
+                .build()
+                .expect("reqwest::Client build must succeed"),
+            url_scheme,
+            server_address,
+            meters: std::sync::Arc::new(crate::otel::metrics::Meters::new()),
+        }
     }
 }
 

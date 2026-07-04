@@ -23,6 +23,8 @@ otel = [
 ]
 # Process-level OTel semconv metrics via sysinfo. Default-on in tepra-web.
 process-metrics = ["otel", "dep:sysinfo"]
+# Exposes test-only constructors for integration tests.
+test-utils = []
 
 # - -------------------------------------------------------------------------------------------------
 # - Dependencies
