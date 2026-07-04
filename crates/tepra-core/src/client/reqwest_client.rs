@@ -637,15 +637,48 @@ impl TepraClient for ReqwestTepraClient {
         self.get_json("/api/printer/autoselect").await
     }
 
+    #[instrument(
+        name = "GET /api/printer/info/{name}",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "GET",
+            url.template = concat!("/api/printer/info/", "{name}"),
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn printer_info(&self, name: &str) -> Result<PrinterInfoResponse, TepraError> {
         self.get_json(&format!("/api/printer/info/{name}")).await
     }
 
+    #[instrument(
+        name = "GET /api/printer/onlinestatus/{name}",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "GET",
+            url.template = concat!("/api/printer/onlinestatus/", "{name}"),
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn online_status(&self, name: &str) -> Result<OnlineStatusResponse, TepraError> {
         self.get_json(&format!("/api/printer/onlinestatus/{name}"))
             .await
     }
 
+    #[instrument(
+        name = "GET /api/printer/lwstatus/{name}",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "GET",
+            url.template = concat!("/api/printer/lwstatus/", "{name}"),
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn lw_status(&self, name: &str) -> Result<LwStatusResponse, TepraError> {
         self.get_json(&format!("/api/printer/lwstatus/{name}"))
             .await
@@ -656,6 +689,17 @@ impl TepraClient for ReqwestTepraClient {
             .await
     }
 
+    #[instrument(
+        name = "GET /api/printer/tapefeed/{name}",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "GET",
+            url.template = concat!("/api/printer/tapefeed/", "{name}"),
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn tapefeed(&self, name: &str, cutflag: bool) -> Result<(), TepraError> {
         self.get_query_empty(
             &format!("/api/printer/tapefeed/{name}"),
@@ -664,6 +708,17 @@ impl TepraClient for ReqwestTepraClient {
         .await
     }
 
+    #[instrument(
+        name = "GET /api/printer/job/progress/{name}",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "GET",
+            url.template = concat!("/api/printer/job/progress/", "{name}"),
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn job_progress(
         &self,
         name: &str,
@@ -676,6 +731,17 @@ impl TepraClient for ReqwestTepraClient {
         .await
     }
 
+    #[instrument(
+        name = "GET /api/printer/job/info/{name}",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "GET",
+            url.template = concat!("/api/printer/job/info/", "{name}"),
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn job_info(&self, name: &str, jobid: u64) -> Result<JobInfoResponse, TepraError> {
         self.get_query_json(
             &format!("/api/printer/job/info/{name}"),
