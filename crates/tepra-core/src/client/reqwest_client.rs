@@ -684,6 +684,17 @@ impl TepraClient for ReqwestTepraClient {
             .await
     }
 
+    #[instrument(
+        name = "POST /api/printer/print/{name}",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "POST",
+            url.template = concat!("/api/printer/print/", "{name}"),
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn print(&self, name: &str, req: PrintRequest) -> Result<PrintResponse, TepraError> {
         self.post_json(&format!("/api/printer/print/{name}"), &req)
             .await
@@ -750,11 +761,33 @@ impl TepraClient for ReqwestTepraClient {
         .await
     }
 
+    #[instrument(
+        name = "POST /api/printer/job/control/{name}",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "POST",
+            url.template = concat!("/api/printer/job/control/", "{name}"),
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn job_control(&self, name: &str, req: JobControlRequest) -> Result<(), TepraError> {
         self.post_empty(&format!("/api/printer/job/control/{name}"), &req)
             .await
     }
 
+    #[instrument(
+        name = "POST /api/printer/template/importframe",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "POST",
+            url.template = "/api/printer/template/importframe",
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn import_frame(
         &self,
         req: ImportFrameRequest,
@@ -763,6 +796,17 @@ impl TepraClient for ReqwestTepraClient {
             .await
     }
 
+    #[instrument(
+        name = "POST /api/printer/getmargin/{name}",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "POST",
+            url.template = concat!("/api/printer/getmargin/", "{name}"),
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn get_margin(
         &self,
         name: &str,
