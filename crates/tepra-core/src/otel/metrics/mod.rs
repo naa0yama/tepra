@@ -104,13 +104,19 @@ impl Meters {
     /// `status` is `None` for transport errors (connection refused, timeout, etc.)
     /// where no HTTP response was received; the `http.response.status_code` attribute
     /// is omitted in that case per `OTel` HTTP semconv.
+    /// `port` is `None` when the URL has no explicit port.
+    /// `error_type` is `Some` for transport errors or 4xx/5xx responses.
+    // Each argument maps 1:1 to a semconv attribute; a struct would add indirection with no gain.
+    #[allow(clippy::too_many_arguments)]
     pub fn record_http_request(
         &self,
         duration_s: f64,
         method: &str,
         status: Option<u16>,
         host: &str,
+        port: Option<u16>,
         scheme: &str,
+        error_type: Option<&str>,
     ) {
         use opentelemetry::KeyValue;
         let mut attrs = vec![
@@ -123,6 +129,12 @@ impl Meters {
                 attribute::HTTP_RESPONSE_STATUS_CODE,
                 i64::from(s),
             ));
+        }
+        if let Some(p) = port {
+            attrs.push(KeyValue::new(attribute::SERVER_PORT, i64::from(p)));
+        }
+        if let Some(et) = error_type {
+            attrs.push(KeyValue::new(attribute::ERROR_TYPE, et.to_owned()));
         }
         self.http_request_duration.record(duration_s, &attrs);
     }
@@ -150,6 +162,8 @@ impl Meters {
     ) {
     }
 
+    // Each argument maps 1:1 to a semconv attribute; a struct would add indirection with no gain.
+    #[allow(clippy::too_many_arguments)]
     /// Record an HTTP client request (no-op).
     pub fn record_http_request(
         &self,
@@ -157,7 +171,9 @@ impl Meters {
         _method: &str,
         _status: Option<u16>,
         _host: &str,
+        _port: Option<u16>,
         _scheme: &str,
+        _error_type: Option<&str>,
     ) {
     }
 }
@@ -246,7 +262,7 @@ mod tests {
         opentelemetry::global::set_meter_provider(provider.clone());
 
         let meters = super::Meters::new();
-        meters.record_http_request(0.042, "POST", Some(201), "example.com", "https");
+        meters.record_http_request(0.042, "POST", Some(201), "example.com", None, "https", None);
 
         provider.force_flush().expect("flush failed");
 
@@ -271,6 +287,76 @@ mod tests {
         opentelemetry::global::set_meter_provider(provider.clone());
         let meters = super::Meters::default();
         let _ = format!("{meters:?}");
+        provider.shutdown().unwrap();
+    }
+
+    #[test]
+    fn record_http_request_populates_server_port() {
+        use opentelemetry_semantic_conventions::metric as semconv;
+
+        let (provider, exporter) = test_provider();
+        opentelemetry::global::set_meter_provider(provider.clone());
+
+        let meters = super::Meters::new();
+        meters.record_http_request(
+            0.01,
+            "GET",
+            Some(200),
+            "example.com",
+            Some(8080),
+            "http",
+            None,
+        );
+
+        provider.force_flush().expect("flush failed");
+
+        let metrics = exporter.get_finished_metrics().expect("no data");
+        let metric = find_metric(&metrics, semconv::HTTP_CLIENT_REQUEST_DURATION)
+            .expect("http.client.request.duration not found");
+
+        let count = match metric.data() {
+            AggregatedMetrics::F64(MetricData::Histogram(hist)) => {
+                hist.data_points().next().expect("no data points").count()
+            }
+            other => panic!("unexpected metric type: {other:?}"),
+        };
+        assert_eq!(count, 1);
+
+        provider.shutdown().unwrap();
+    }
+
+    #[test]
+    fn record_http_request_populates_error_type_on_transport_error() {
+        use opentelemetry_semantic_conventions::metric as semconv;
+
+        let (provider, exporter) = test_provider();
+        opentelemetry::global::set_meter_provider(provider.clone());
+
+        let meters = super::Meters::new();
+        meters.record_http_request(
+            0.01,
+            "GET",
+            None,
+            "example.com",
+            Some(1),
+            "http",
+            Some("timeout"),
+        );
+
+        provider.force_flush().expect("flush failed");
+
+        let metrics = exporter.get_finished_metrics().expect("no data");
+        let metric = find_metric(&metrics, semconv::HTTP_CLIENT_REQUEST_DURATION)
+            .expect("http.client.request.duration not found");
+
+        let count = match metric.data() {
+            AggregatedMetrics::F64(MetricData::Histogram(hist)) => {
+                hist.data_points().next().expect("no data points").count()
+            }
+            other => panic!("unexpected metric type: {other:?}"),
+        };
+        assert_eq!(count, 1);
+
         provider.shutdown().unwrap();
     }
 }

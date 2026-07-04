@@ -97,7 +97,7 @@ mod tests {
 
         opentelemetry::global::set_meter_provider(provider.clone());
         let meters = Meters::new();
-        meters.record_http_request(0.1, "GET", Some(200), "example.com", "https");
+        meters.record_http_request(0.1, "GET", Some(200), "example.com", None, "https", None);
 
         provider.force_flush().expect("flush failed");
 
@@ -128,7 +128,7 @@ mod tests {
 
         opentelemetry::global::set_meter_provider(provider.clone());
         let meters = Meters::new();
-        meters.record_http_request(0.1, "GET", Some(200), "example.com", "https");
+        meters.record_http_request(0.1, "GET", Some(200), "example.com", None, "https", None);
 
         provider.force_flush().expect("flush failed");
 

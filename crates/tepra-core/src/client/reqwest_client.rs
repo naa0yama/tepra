@@ -92,24 +92,23 @@ pub struct ReqwestTepraClient {
     client: reqwest::Client,
     /// Parsed scheme (`"http"` or `"https"`) from `base_url`.
     url_scheme: String,
-    /// Parsed `host` or `host:port` from `base_url`.
+    /// Parsed host (without port) from `base_url`.
     server_address: String,
+    /// Parsed port from `base_url`, if explicit.
+    server_port: Option<u16>,
     /// `OTel` metric instruments (no-op when `otel` feature is disabled).
     meters: Arc<Meters>,
 }
 
-/// Parse scheme and `host[:port]` from a URL string.
-fn parse_base_url(base_url: &str) -> (String, String) {
+/// Parse scheme, host, and optional port from a URL string.
+fn parse_base_url(base_url: &str) -> (String, String, Option<u16>) {
     reqwest::Url::parse(base_url).map_or_else(
-        |_| ("http".to_owned(), base_url.to_owned()),
+        |_| ("http".to_owned(), base_url.to_owned(), None),
         |parsed| {
             let scheme = parsed.scheme().to_owned();
             let host = parsed.host_str().unwrap_or("localhost").to_owned();
-            let address = match parsed.port() {
-                Some(p) => format!("{host}:{p}"),
-                None => host,
-            };
-            (scheme, address)
+            let port = parsed.port();
+            (scheme, host, port)
         },
     )
 }
@@ -121,12 +120,13 @@ impl ReqwestTepraClient {
     /// passed to the HTTP server middleware so all instruments share one provider.
     pub fn with_meters(base_url: impl Into<String>, meters: Arc<Meters>) -> Self {
         let base_url = base_url.into();
-        let (url_scheme, server_address) = parse_base_url(&base_url);
+        let (url_scheme, server_address, server_port) = parse_base_url(&base_url);
         Self {
             base_url,
             client: reqwest::Client::new(),
             url_scheme,
             server_address,
+            server_port,
             meters,
         }
     }
@@ -143,12 +143,13 @@ impl ReqwestTepraClient {
     )]
     pub fn new(base_url: impl Into<String>) -> Self {
         let base_url = base_url.into();
-        let (url_scheme, server_address) = parse_base_url(&base_url);
+        let (url_scheme, server_address, server_port) = parse_base_url(&base_url);
         Self {
             base_url,
             client: reqwest::Client::new(),
             url_scheme,
             server_address,
+            server_port,
             meters: Arc::new(Meters::new()),
         }
     }
@@ -488,56 +489,63 @@ impl ReqwestTepraClient {
 
     /// Record the response status code on the current span and the duration in metrics.
     fn record_response_span(&self, status: reqwest::StatusCode, duration_s: f64, method: &str) {
+        let status_u16 = status.as_u16();
+        let error_type_owned = if status.is_client_error() || status.is_server_error() {
+            Some(status_u16.to_string())
+        } else {
+            None
+        };
+
         #[cfg(feature = "otel")]
         {
             use opentelemetry::trace::Status;
             use tracing_opentelemetry::OpenTelemetrySpanExt as _;
             let span = Span::current();
-            span.record(
-                attribute::HTTP_RESPONSE_STATUS_CODE,
-                i64::from(status.as_u16()),
-            );
-            if status.is_client_error() || status.is_server_error() {
-                let code_str = status.as_u16().to_string();
+            span.record(attribute::HTTP_RESPONSE_STATUS_CODE, i64::from(status_u16));
+            if let Some(ref code_str) = error_type_owned {
                 span.set_attribute(attribute::ERROR_TYPE, code_str.clone());
                 span.set_status(Status::Error {
-                    description: std::borrow::Cow::Owned(code_str),
+                    description: std::borrow::Cow::Owned(code_str.clone()),
                 });
             }
         }
         #[cfg(not(feature = "otel"))]
-        Span::current().record("http.response.status_code", i64::from(status.as_u16()));
+        Span::current().record("http.response.status_code", i64::from(status_u16));
 
         self.meters.record_http_request(
             duration_s,
             method,
-            Some(status.as_u16()),
+            Some(status_u16),
             &self.server_address,
+            self.server_port,
             &self.url_scheme,
+            error_type_owned.as_deref(),
         );
     }
 
     /// Record a transport-level error (no HTTP response received) in span + metrics.
     fn record_transport_error(&self, duration_s: f64, method: &str, err: &reqwest::Error) {
+        let kind = classify_transport_error(err);
+
         #[cfg(feature = "otel")]
         {
             use opentelemetry::trace::Status;
             use tracing_opentelemetry::OpenTelemetrySpanExt as _;
-            let kind = classify_transport_error(err);
             let span = Span::current();
             span.set_attribute(attribute::ERROR_TYPE, kind);
             span.set_status(Status::Error {
                 description: std::borrow::Cow::Borrowed(kind),
             });
         }
-        #[cfg(not(feature = "otel"))]
-        let _ = err;
+
         self.meters.record_http_request(
             duration_s,
             method,
             None,
             &self.server_address,
+            self.server_port,
             &self.url_scheme,
+            Some(kind),
         );
     }
 }
@@ -545,7 +553,6 @@ impl ReqwestTepraClient {
 /// Classify a `reqwest::Error` into an `error.type` semconv named value.
 ///
 /// Priority: semconv named > `"_OTHER"` fallback.
-#[cfg(feature = "otel")]
 fn classify_transport_error(err: &reqwest::Error) -> &'static str {
     if err.is_timeout() {
         "timeout"
@@ -568,7 +575,7 @@ impl ReqwestTepraClient {
         timeout: std::time::Duration,
     ) -> Self {
         let base_url = base_url.into();
-        let (url_scheme, server_address) = parse_base_url(&base_url);
+        let (url_scheme, server_address, server_port) = parse_base_url(&base_url);
         Self {
             base_url,
             client: reqwest::Client::builder()
@@ -577,6 +584,7 @@ impl ReqwestTepraClient {
                 .expect("reqwest::Client build must succeed"),
             url_scheme,
             server_address,
+            server_port,
             meters: std::sync::Arc::new(crate::otel::metrics::Meters::new()),
         }
     }
