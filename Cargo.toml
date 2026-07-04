@@ -84,6 +84,7 @@ tracing-subscriber = { version = "0.3.23", default-features = false, features = 
 gethostname = "1.1.0"
 opentelemetry = { version = "0.32.0", default-features = false, features = ["logs", "metrics", "trace"] }
 opentelemetry-appender-tracing = { version = "0.32.0", default-features = false }
+opentelemetry-http = { version = "0.32.0", default-features = false, features = ["reqwest"] }
 opentelemetry-otlp = { version = "0.32.0", default-features = false, features = ["http-proto", "logs", "metrics", "reqwest-client", "trace"] }
 opentelemetry-semantic-conventions = { version = "0.32.1", default-features = false, features = ["semconv_experimental"] }
 opentelemetry_sdk = { version = "0.32.1", default-features = false, features = ["logs", "metrics", "rt-tokio", "trace", "experimental_logs_batch_log_processor_with_async_runtime", "experimental_trace_batch_span_processor_with_async_runtime", "experimental_metrics_periodicreader_with_async_runtime"] }

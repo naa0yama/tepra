@@ -16,6 +16,8 @@ path = "src/main.rs"
 anyhow = { workspace = true }
 axum = { workspace = true }
 clap = { workspace = true }
+opentelemetry = { workspace = true }
+opentelemetry-http = { workspace = true }
 opentelemetry-semantic-conventions = { workspace = true }
 rust-embed = { workspace = true }
 tepra = { workspace = true }
@@ -23,6 +25,7 @@ tepra-core = { workspace = true, features = ["process-metrics"] }
 tokio = { workspace = true }
 tower-http = { workspace = true }
 tracing = { workspace = true }
+tracing-opentelemetry = { workspace = true }
 
 [build-dependencies]
 anyhow = { workspace = true }

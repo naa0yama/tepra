@@ -7,8 +7,11 @@ use std::time::Duration;
 
 use axum::extract::MatchedPath;
 use axum::http::{Request, Response};
+use opentelemetry::global;
+use opentelemetry_http::HeaderExtractor;
 use opentelemetry_semantic_conventions::attribute;
 use tracing::{Level, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
 /// [`MakeSpan`][tower_http::trace::MakeSpan] that creates HTTP server spans at INFO
 /// level with `OTel` HTTP semantic-convention attribute names.
@@ -30,7 +33,10 @@ impl<B> tower_http::trace::MakeSpan<B> for OtelHttpServerMakeSpan {
             format!("{method} {route}")
         };
 
-        tracing::span!(
+        let parent_cx =
+            global::get_text_map_propagator(|p| p.extract(&HeaderExtractor(request.headers())));
+
+        let span = tracing::span!(
             Level::INFO,
             "http.server.request",
             otel.name = span_name,
@@ -39,7 +45,10 @@ impl<B> tower_http::trace::MakeSpan<B> for OtelHttpServerMakeSpan {
             url.scheme = scheme,
             http.route = route,
             http.response.status_code = tracing::field::Empty,
-        )
+        );
+        // AlreadyStarted error is expected when no parent; ignore it.
+        let _ = span.set_parent(parent_cx);
+        span
     }
 }
 

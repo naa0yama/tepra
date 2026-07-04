@@ -2311,6 +2311,7 @@ dependencies = [
  "axum",
  "clap",
  "opentelemetry",
+ "opentelemetry-http",
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "predicates",
@@ -2321,6 +2322,7 @@ dependencies = [
  "tower",
  "tower-http 0.7.0",
  "tracing",
+ "tracing-opentelemetry",
  "walkdir",
 ]
 
