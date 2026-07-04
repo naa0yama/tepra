@@ -592,14 +592,47 @@ impl ReqwestTepraClient {
 
 #[async_trait]
 impl TepraClient for ReqwestTepraClient {
+    #[instrument(
+        name = "GET /api/printer",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "GET",
+            url.template = "/api/printer",
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn list_printers(&self) -> Result<Vec<PrinterListItem>, TepraError> {
         self.get_json("/api/printer").await
     }
 
+    #[instrument(
+        name = "GET /api/printer/version",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "GET",
+            url.template = "/api/printer/version",
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn version(&self) -> Result<VersionResponse, TepraError> {
         self.get_json("/api/printer/version").await
     }
 
+    #[instrument(
+        name = "GET /api/printer/autoselect",
+        skip_all,
+        fields(
+            otel.kind = "CLIENT",
+            http.request.method = "GET",
+            url.template = "/api/printer/autoselect",
+            server.address = %self.server_address,
+            url.scheme = %self.url_scheme,
+        )
+    )]
     async fn autoselect(&self) -> Result<AutoselectResponse, TepraError> {
         self.get_json("/api/printer/autoselect").await
     }

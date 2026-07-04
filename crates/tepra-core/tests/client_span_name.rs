@@ -35,7 +35,10 @@ async fn list_printers_span_name_is_method_and_template() {
         .await;
 
     let client = ReqwestTepraClient::new(server.uri());
-    client.list_printers().await.expect("list_printers must succeed");
+    client
+        .list_printers()
+        .await
+        .expect("list_printers must succeed");
 
     let spans = span_exporter
         .get_finished_spans()
@@ -43,7 +46,7 @@ async fn list_printers_span_name_is_method_and_template() {
 
     let http_span = spans
         .iter()
-        .find(|s| s.name.starts_with("GET"))
+        .find(|s| s.name.starts_with("GET /"))
         .expect("expected a GET span");
 
     assert_eq!(
@@ -97,7 +100,7 @@ async fn version_span_name_is_method_and_template() {
 
     let http_span = spans
         .iter()
-        .find(|s| s.name.starts_with("GET"))
+        .find(|s| s.name.starts_with("GET /"))
         .expect("expected a GET span");
 
     assert_eq!(
@@ -151,7 +154,7 @@ async fn autoselect_span_name_is_method_and_template() {
 
     let http_span = spans
         .iter()
-        .find(|s| s.name.starts_with("GET"))
+        .find(|s| s.name.starts_with("GET /"))
         .expect("expected a GET span");
 
     assert_eq!(
