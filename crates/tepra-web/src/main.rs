@@ -1,5 +1,6 @@
 //! tepra binary entry point.
 
+use std::net::SocketAddr;
 use std::sync::Arc;
 
 use anyhow::Context as _;
@@ -48,12 +49,15 @@ async fn main() -> anyhow::Result<()> {
             let listener = tokio::net::TcpListener::bind(&args.bind)
                 .await
                 .with_context(|| format!("failed to bind to {}", args.bind))?;
-            axum::serve(listener, router)
-                .with_graceful_shutdown(async {
-                    tokio::signal::ctrl_c().await.ok();
-                })
-                .await
-                .context("server error")?;
+            axum::serve(
+                listener,
+                router.into_make_service_with_connect_info::<SocketAddr>(),
+            )
+            .with_graceful_shutdown(async {
+                tokio::signal::ctrl_c().await.ok();
+            })
+            .await
+            .context("server error")?;
 
             telemetry.shutdown().await;
         }
