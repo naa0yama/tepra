@@ -25,6 +25,7 @@ use opentelemetry_semantic_conventions::{attribute, metric as semconv};
 pub struct Meters {
     // --- Sync instruments ---
     http_request_duration: Histogram<f64>,
+    server_request_duration: Histogram<f64>,
     // --- Observable process metrics (feature = "process-metrics") ---
     // Disabled under Miri: sysinfo calls sysconf(_SC_CLK_TCK) which Miri does not stub.
     #[cfg(all(feature = "process-metrics", not(miri)))]
@@ -65,9 +66,37 @@ impl Meters {
                      (`OTel` HTTP semconv)",
                 )
                 .build(),
+            server_request_duration: meter
+                .f64_histogram(semconv::HTTP_SERVER_REQUEST_DURATION)
+                .with_unit("s")
+                .with_description("HTTP server request duration (`OTel` HTTP semconv)")
+                .build(),
             #[cfg(all(feature = "process-metrics", not(miri)))]
             _process: process::ProcessMetricHandles::register(&meter),
         }
+    }
+
+    /// Record an HTTP server request duration with `OTel` HTTP semantic convention attributes.
+    ///
+    /// `error_type` is `Some` only for 5xx responses (per semconv recommendation).
+    pub fn record_http_server_request(
+        &self,
+        duration_s: f64,
+        method: &str,
+        status: u16,
+        route: &str,
+        error_type: Option<&str>,
+    ) {
+        use opentelemetry::KeyValue;
+        let mut attrs = vec![
+            KeyValue::new(attribute::HTTP_REQUEST_METHOD, method.to_owned()),
+            KeyValue::new(attribute::HTTP_RESPONSE_STATUS_CODE, i64::from(status)),
+            KeyValue::new(attribute::HTTP_ROUTE, route.to_owned()),
+        ];
+        if let Some(et) = error_type {
+            attrs.push(KeyValue::new(attribute::ERROR_TYPE, et.to_owned()));
+        }
+        self.server_request_duration.record(duration_s, &attrs);
     }
 
     /// Record an HTTP client request duration with `OTel` HTTP semantic convention attributes.
@@ -110,6 +139,17 @@ pub struct Meters;
 
 #[cfg(not(feature = "otel"))]
 impl Meters {
+    /// Record an HTTP server request (no-op).
+    pub fn record_http_server_request(
+        &self,
+        _duration_s: f64,
+        _method: &str,
+        _status: u16,
+        _route: &str,
+        _error_type: Option<&str>,
+    ) {
+    }
+
     /// Record an HTTP client request (no-op).
     pub fn record_http_request(
         &self,

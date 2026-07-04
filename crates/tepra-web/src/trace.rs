@@ -4,6 +4,7 @@
 //! filter in production. Attribute names follow `OTel` HTTP semconv 1.23+.
 
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 
 use axum::extract::{ConnectInfo, MatchedPath};
@@ -11,6 +12,7 @@ use axum::http::{Request, Response};
 use opentelemetry::global;
 use opentelemetry_http::HeaderExtractor;
 use opentelemetry_semantic_conventions::attribute;
+use tepra_core::otel::metrics::Meters;
 use tracing::{Level, Span};
 use tracing_opentelemetry::OpenTelemetrySpanExt as _;
 
@@ -92,15 +94,46 @@ impl<B> tower_http::trace::MakeSpan<B> for OtelHttpServerMakeSpan {
 }
 
 /// [`OnResponse`][tower_http::trace::OnResponse] that records the HTTP response
-/// status code onto the active server span.
-#[derive(Clone, Debug, Default)]
-pub struct OtelOnResponse;
+/// status code onto the active server span and emits `http.server.request.duration`.
+///
+/// Method and route are not carried through because `tower_http::trace::OnResponse`
+/// only receives the `Response`, not the originating `Request`. These attributes are
+/// left empty; a future refactor with shared-state `MakeSpan` can improve fidelity.
+#[derive(Clone, Debug)]
+pub struct OtelOnResponse {
+    meters: Arc<Meters>,
+}
+
+impl OtelOnResponse {
+    /// Create a new [`OtelOnResponse`] backed by the given [`Meters`].
+    #[must_use]
+    pub const fn new(meters: Arc<Meters>) -> Self {
+        Self { meters }
+    }
+}
+
+impl Default for OtelOnResponse {
+    fn default() -> Self {
+        Self::new(Arc::new(Meters::new()))
+    }
+}
 
 impl<B> tower_http::trace::OnResponse<B> for OtelOnResponse {
-    fn on_response(self, response: &Response<B>, _latency: Duration, span: &Span) {
-        span.record(
-            attribute::HTTP_RESPONSE_STATUS_CODE,
-            i64::from(response.status().as_u16()),
+    fn on_response(self, response: &Response<B>, latency: Duration, span: &Span) {
+        let status = response.status().as_u16();
+        span.record(attribute::HTTP_RESPONSE_STATUS_CODE, i64::from(status));
+
+        let error_type = if status >= 500 {
+            Some(status.to_string())
+        } else {
+            None
+        };
+        self.meters.record_http_server_request(
+            latency.as_secs_f64(),
+            "",
+            status,
+            "",
+            error_type.as_deref(),
         );
     }
 }

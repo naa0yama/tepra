@@ -37,7 +37,7 @@ async fn main() -> anyhow::Result<()> {
                 .layer(
                     TraceLayer::new_for_http()
                         .make_span_with(OtelHttpServerMakeSpan)
-                        .on_response(OtelOnResponse),
+                        .on_response(OtelOnResponse::default()),
                 );
 
             let listener = tokio::net::TcpListener::bind(&args.bind)

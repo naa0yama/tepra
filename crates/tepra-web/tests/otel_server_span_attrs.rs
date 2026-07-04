@@ -27,7 +27,7 @@ async fn server_span_records_extended_http_attrs() {
     let app = build_router(mock).layer(
         TraceLayer::new_for_http()
             .make_span_with(OtelHttpServerMakeSpan)
-            .on_response(OtelOnResponse),
+            .on_response(OtelOnResponse::default()),
     );
 
     let req = Request::builder()
