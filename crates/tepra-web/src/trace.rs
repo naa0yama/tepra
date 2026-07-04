@@ -7,6 +7,7 @@ use std::time::Duration;
 
 use axum::extract::MatchedPath;
 use axum::http::{Request, Response};
+use opentelemetry_semantic_conventions::attribute;
 use tracing::{Level, Span};
 
 /// [`MakeSpan`][tower_http::trace::MakeSpan] that creates HTTP server spans at INFO
@@ -50,7 +51,7 @@ pub struct OtelOnResponse;
 impl<B> tower_http::trace::OnResponse<B> for OtelOnResponse {
     fn on_response(self, response: &Response<B>, _latency: Duration, span: &Span) {
         span.record(
-            "http.response.status_code",
+            attribute::HTTP_RESPONSE_STATUS_CODE,
             i64::from(response.status().as_u16()),
         );
     }

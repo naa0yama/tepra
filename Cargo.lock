@@ -2311,6 +2311,7 @@ dependencies = [
  "axum",
  "clap",
  "opentelemetry",
+ "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
  "predicates",
  "rust-embed",

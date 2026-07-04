@@ -143,7 +143,7 @@ impl ReqwestTepraClient {
     )]
     async fn get_json<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, TepraError> {
         let url = format!("{}{}", self.base_url, path);
-        Span::current().record("url.full", url.as_str());
+        Span::current().record(attribute::URL_FULL, url.as_str());
 
         let req = self
             .client
@@ -172,7 +172,7 @@ impl ReqwestTepraClient {
             source: anyhow::Error::new(e).context(format!("reading response body from GET {url}")),
         })?;
         Span::current().record(
-            "http.response.body.size",
+            attribute::HTTP_RESPONSE_BODY_SIZE,
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
         if !status.is_success() {
@@ -207,7 +207,7 @@ impl ReqwestTepraClient {
         query: &str,
     ) -> Result<T, TepraError> {
         let url = format!("{}{}?{}", self.base_url, path, query);
-        Span::current().record("url.full", url.as_str());
+        Span::current().record(attribute::URL_FULL, url.as_str());
 
         let req = self
             .client
@@ -236,7 +236,7 @@ impl ReqwestTepraClient {
             source: anyhow::Error::new(e).context(format!("reading response body from GET {url}")),
         })?;
         Span::current().record(
-            "http.response.body.size",
+            attribute::HTTP_RESPONSE_BODY_SIZE,
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
         if !status.is_success() {
@@ -267,7 +267,7 @@ impl ReqwestTepraClient {
     )]
     async fn get_query_empty(&self, path: &str, query: &str) -> Result<(), TepraError> {
         let url = format!("{}{}?{}", self.base_url, path, query);
-        Span::current().record("url.full", url.as_str());
+        Span::current().record(attribute::URL_FULL, url.as_str());
 
         let req = self
             .client
@@ -296,7 +296,7 @@ impl ReqwestTepraClient {
             source: anyhow::Error::new(e).context(format!("reading response body from GET {url}")),
         })?;
         Span::current().record(
-            "http.response.body.size",
+            attribute::HTTP_RESPONSE_BODY_SIZE,
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
         if !status.is_success() {
@@ -336,7 +336,7 @@ impl ReqwestTepraClient {
             source: anyhow::Error::new(e).context(format!("serializing body for POST {url}")),
         })?;
         Span::current().record(
-            "http.request.body.size",
+            attribute::HTTP_REQUEST_BODY_SIZE,
             i64::try_from(body_bytes.len()).unwrap_or(i64::MAX),
         );
         tracing::debug!(http.request.body = %String::from_utf8_lossy(&body_bytes));
@@ -370,7 +370,7 @@ impl ReqwestTepraClient {
             source: anyhow::Error::new(e).context(format!("reading response body from POST {url}")),
         })?;
         Span::current().record(
-            "http.response.body.size",
+            attribute::HTTP_RESPONSE_BODY_SIZE,
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
         if !status.is_success() {
@@ -413,7 +413,7 @@ impl ReqwestTepraClient {
             source: anyhow::Error::new(e).context(format!("serializing body for POST {url}")),
         })?;
         Span::current().record(
-            "http.request.body.size",
+            attribute::HTTP_REQUEST_BODY_SIZE,
             i64::try_from(body_bytes.len()).unwrap_or(i64::MAX),
         );
         tracing::debug!(http.request.body = %String::from_utf8_lossy(&body_bytes));
@@ -447,7 +447,7 @@ impl ReqwestTepraClient {
             source: anyhow::Error::new(e).context(format!("reading response body from POST {url}")),
         })?;
         Span::current().record(
-            "http.response.body.size",
+            attribute::HTTP_RESPONSE_BODY_SIZE,
             i64::try_from(resp_bytes.len()).unwrap_or(i64::MAX),
         );
         if !status.is_success() {
@@ -474,7 +474,7 @@ impl ReqwestTepraClient {
             );
             if status.is_client_error() || status.is_server_error() {
                 let code_str = status.as_u16().to_string();
-                span.set_attribute("error.type", code_str.clone());
+                span.set_attribute(attribute::ERROR_TYPE, code_str.clone());
                 span.set_status(Status::Error {
                     description: std::borrow::Cow::Owned(code_str),
                 });
@@ -499,7 +499,7 @@ impl ReqwestTepraClient {
             use opentelemetry::trace::Status;
             use tracing_opentelemetry::OpenTelemetrySpanExt as _;
             let span = Span::current();
-            span.set_attribute("error.type", "reqwest::Error");
+            span.set_attribute(attribute::ERROR_TYPE, "reqwest::Error");
             span.set_status(Status::Error {
                 description: std::borrow::Cow::Borrowed("reqwest::Error"),
             });

@@ -6,6 +6,7 @@
 
 use opentelemetry::trace::SpanKind;
 use opentelemetry_sdk::trace::InMemorySpanExporterBuilder;
+use opentelemetry_semantic_conventions::attribute;
 use tepra_core::{client::ReqwestTepraClient, client::TepraClient, otel::TelemetryGuard};
 use tracing_test::traced_test;
 use wiremock::{
@@ -122,7 +123,7 @@ async fn http_client_span_records_url_full() {
     let url_full = http_span
         .attributes
         .iter()
-        .find(|kv| kv.key.as_str() == "url.full")
+        .find(|kv| kv.key.as_str() == attribute::URL_FULL)
         .expect("url.full attribute must be present");
 
     assert_eq!(
@@ -175,7 +176,7 @@ async fn post_json_records_request_body_size() {
     let body_size = post_span
         .attributes
         .iter()
-        .find(|kv| kv.key.as_str() == "http.request.body.size")
+        .find(|kv| kv.key.as_str() == attribute::HTTP_REQUEST_BODY_SIZE)
         .expect("http.request.body.size attribute must be present");
 
     assert!(
@@ -253,7 +254,7 @@ async fn get_json_records_response_body_size() {
     let body_size = get_span
         .attributes
         .iter()
-        .find(|kv| kv.key.as_str() == "http.response.body.size")
+        .find(|kv| kv.key.as_str() == attribute::HTTP_RESPONSE_BODY_SIZE)
         .expect("http.response.body.size attribute must be present");
 
     assert!(
@@ -317,7 +318,7 @@ async fn get_404_sets_error_type_span_attr() {
     let error_type = get_span
         .attributes
         .iter()
-        .find(|kv| kv.key.as_str() == "error.type")
+        .find(|kv| kv.key.as_str() == attribute::ERROR_TYPE)
         .expect("error.type attribute must be present for 404");
 
     assert_eq!(
@@ -483,7 +484,7 @@ async fn transport_error_sets_error_type_reqwest_error() {
     let error_type = get_span
         .attributes
         .iter()
-        .find(|kv| kv.key.as_str() == "error.type")
+        .find(|kv| kv.key.as_str() == attribute::ERROR_TYPE)
         .expect("error.type attribute must be present for transport error");
 
     assert_eq!(

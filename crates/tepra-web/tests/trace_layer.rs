@@ -10,6 +10,7 @@ use std::sync::Arc;
 use axum::{body::Body, http::Request};
 use opentelemetry::Value;
 use opentelemetry_sdk::trace::InMemorySpanExporterBuilder;
+use opentelemetry_semantic_conventions::attribute;
 use tepra::router::build_router;
 use tepra_core::{
     client::mock::MockTepraClient, dto::printer::PrinterListItem, otel::TelemetryGuard,
@@ -58,14 +59,14 @@ async fn server_span_has_otel_http_semconv_attrs() {
         .find(|s| {
             s.attributes
                 .iter()
-                .any(|kv| kv.key.as_str() == "http.request.method")
+                .any(|kv| kv.key.as_str() == attribute::HTTP_REQUEST_METHOD)
         })
         .expect("server span with http.request.method attribute must exist");
 
     let method_attr = server_span
         .attributes
         .iter()
-        .find(|kv| kv.key.as_str() == "http.request.method")
+        .find(|kv| kv.key.as_str() == attribute::HTTP_REQUEST_METHOD)
         .expect("http.request.method must be present");
     assert_eq!(
         method_attr.value.as_str().as_ref(),
@@ -76,7 +77,7 @@ async fn server_span_has_otel_http_semconv_attrs() {
     let status_attr = server_span
         .attributes
         .iter()
-        .find(|kv| kv.key.as_str() == "http.response.status_code");
+        .find(|kv| kv.key.as_str() == attribute::HTTP_RESPONSE_STATUS_CODE);
     assert!(
         status_attr.is_some(),
         "http.response.status_code must be present on server span, got: {server_span:#?}"

@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use axum::{body::Body, http::Request};
 use opentelemetry_sdk::trace::InMemorySpanExporterBuilder;
+use opentelemetry_semantic_conventions::attribute;
 use tepra::router::build_router;
 use tepra_core::{
     client::mock::MockTepraClient, dto::printer::PrinterListItem, otel::TelemetryGuard,
@@ -59,7 +60,7 @@ async fn handler_emits_child_span_with_http_semconv_attrs() {
     let method_attr = handler_span
         .attributes
         .iter()
-        .find(|kv| kv.key.as_str() == "http.request.method");
+        .find(|kv| kv.key.as_str() == attribute::HTTP_REQUEST_METHOD);
     assert!(
         method_attr.is_some(),
         "handler span must have http.request.method attribute, got: {handler_span:#?}"

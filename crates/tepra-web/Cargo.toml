@@ -16,6 +16,7 @@ path = "src/main.rs"
 anyhow = { workspace = true }
 axum = { workspace = true }
 clap = { workspace = true }
+opentelemetry-semantic-conventions = { workspace = true }
 rust-embed = { workspace = true }
 tepra = { workspace = true }
 tepra-core = { workspace = true }
