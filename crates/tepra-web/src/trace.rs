@@ -3,9 +3,10 @@
 //! Emits the server span at `INFO` level so it survives the default `RUST_LOG=warn`
 //! filter in production. Attribute names follow `OTel` HTTP semconv 1.23+.
 
+use std::net::SocketAddr;
 use std::time::Duration;
 
-use axum::extract::MatchedPath;
+use axum::extract::{ConnectInfo, MatchedPath};
 use axum::http::{Request, Response};
 use opentelemetry::global;
 use opentelemetry_http::HeaderExtractor;
@@ -22,10 +23,41 @@ impl<B> tower_http::trace::MakeSpan<B> for OtelHttpServerMakeSpan {
     fn make_span(&mut self, request: &Request<B>) -> Span {
         let method = request.method().as_str();
         let scheme = request.uri().scheme_str().unwrap_or("http");
+        let path = request.uri().path();
+        let query = request.uri().query().unwrap_or("");
+
         let route = request
             .extensions()
             .get::<MatchedPath>()
             .map_or("", MatchedPath::as_str);
+
+        // Host header: strip optional port for server.address
+        let host = request
+            .headers()
+            .get("host")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+        let server_address = host.split(':').next().unwrap_or(host);
+
+        let url_full = if query.is_empty() {
+            format!("{scheme}://{host}{path}")
+        } else {
+            format!("{scheme}://{host}{path}?{query}")
+        };
+
+        let user_agent = request
+            .headers()
+            .get("user-agent")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("");
+
+        let protocol_version = format!("{:?}", request.version());
+
+        let client_address = request
+            .extensions()
+            .get::<ConnectInfo<SocketAddr>>()
+            .map(|ci| ci.0.ip().to_string())
+            .unwrap_or_default();
 
         let span_name = if route.is_empty() {
             method.to_owned()
@@ -43,7 +75,14 @@ impl<B> tower_http::trace::MakeSpan<B> for OtelHttpServerMakeSpan {
             otel.kind = "SERVER",
             http.request.method = method,
             url.scheme = scheme,
+            url.path = path,
+            url.query = query,
+            url.full = url_full,
             http.route = route,
+            user_agent.original = user_agent,
+            network.protocol.version = protocol_version,
+            server.address = server_address,
+            client.address = client_address,
             http.response.status_code = tracing::field::Empty,
         );
         // AlreadyStarted error is expected when no parent; ignore it.
