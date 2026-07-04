@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! TDD cycle tests for `OTel` HTTP client semantic conventions (Cycle 19–26).
 // wiremock spawns a TCP listener; not suitable for miri isolation.
 #![cfg(not(miri))]

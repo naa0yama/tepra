@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Real-env OTLP export smoke test.
 //! Run with: `cargo test --test otel_http_client_smoke -- --ignored --nocapture`
 #![cfg(not(miri))]

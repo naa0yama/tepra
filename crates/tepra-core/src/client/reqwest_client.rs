@@ -115,7 +115,32 @@ fn parse_base_url(base_url: &str) -> (String, String) {
 }
 
 impl ReqwestTepraClient {
+    /// Create a new client targeting `base_url` with a shared [`Meters`] instance.
+    ///
+    /// Prefer this over [`Self::new`]: inject the same `Arc<Meters>` that is
+    /// passed to the HTTP server middleware so all instruments share one provider.
+    pub fn with_meters(base_url: impl Into<String>, meters: Arc<Meters>) -> Self {
+        let base_url = base_url.into();
+        let (url_scheme, server_address) = parse_base_url(&base_url);
+        Self {
+            base_url,
+            client: reqwest::Client::new(),
+            url_scheme,
+            server_address,
+            meters,
+        }
+    }
+
     /// Create a new client targeting `base_url` (e.g. `"http://localhost:29108"`).
+    ///
+    /// # Deprecation
+    ///
+    /// Creates an isolated [`Meters`] instance. Use [`Self::with_meters`] and
+    /// share a single `Arc<Meters>` across client and server middleware instead.
+    #[deprecated(
+        since = "0.1.0",
+        note = "use `ReqwestTepraClient::with_meters` instead"
+    )]
     pub fn new(base_url: impl Into<String>) -> Self {
         let base_url = base_url.into();
         let (url_scheme, server_address) = parse_base_url(&base_url);

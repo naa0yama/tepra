@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Integration test: process metrics arrive via the global `MeterProvider` path.
 //!
 //! Verifies that `Meters::new()` (which calls `global::meter()`) registers

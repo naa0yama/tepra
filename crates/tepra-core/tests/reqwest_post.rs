@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! `WireMock` integration tests for `ReqwestTepraClient` — POST + remaining GET endpoints (RED state).
 //!
 //! These tests **fail** until T10b implements the HTTP calls in `reqwest_client.rs`.
