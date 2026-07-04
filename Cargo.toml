@@ -69,6 +69,7 @@ tepra-core = { path = "crates/tepra-core" }
 ## Dev
 axum-test = "20"
 insta = { version = "1.48.0", features = ["redactions", "yaml"] }
+serial_test = "3"
 wiremock = "0.6.5"
 
 # graft:keep-end

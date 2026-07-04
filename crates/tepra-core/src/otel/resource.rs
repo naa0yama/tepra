@@ -14,13 +14,15 @@ use opentelemetry_semantic_conventions::attribute::{
 /// duplicating `build.rs` across crates.
 #[must_use]
 pub fn build(service_name: &'static str, git_hash: &'static str) -> Resource {
+    let resolved_name =
+        std::env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| String::from(service_name));
     let hostname = gethostname::gethostname().to_string_lossy().into_owned();
     let pid = i64::from(std::process::id());
     let instance_id = format!("{hostname}-{pid}");
 
     Resource::builder()
         .with_attributes([
-            KeyValue::new(SERVICE_NAME, service_name),
+            KeyValue::new(SERVICE_NAME, resolved_name),
             KeyValue::new(SERVICE_VERSION, env!("CARGO_PKG_VERSION")),
             KeyValue::new(VCS_REF_HEAD_REVISION, git_hash),
             KeyValue::new(SERVICE_INSTANCE_ID, instance_id),
@@ -39,6 +41,7 @@ pub fn build(service_name: &'static str, git_hash: &'static str) -> Resource {
 mod tests {
     use super::*;
     use opentelemetry::Value;
+    use serial_test::serial;
 
     fn get_attr(resource: &Resource, key: &str) -> Option<Value> {
         resource
@@ -48,7 +51,36 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn build_has_service_name() {
+        // SAFETY: single-threaded via #[serial]; no concurrent env access
+        unsafe { std::env::remove_var("OTEL_SERVICE_NAME") };
+        let r = build("tepra-web", "testhash1234");
+        assert_eq!(
+            get_attr(&r, SERVICE_NAME),
+            Some(Value::String("tepra-web".into())),
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn build_uses_otel_service_name_env_when_set() {
+        // SAFETY: single-threaded via #[serial]; no concurrent env access
+        unsafe { std::env::set_var("OTEL_SERVICE_NAME", "custom-svc") };
+        let r = build("tepra-web", "testhash1234");
+        // SAFETY: single-threaded via #[serial]; no concurrent env access
+        unsafe { std::env::remove_var("OTEL_SERVICE_NAME") };
+        assert_eq!(
+            get_attr(&r, SERVICE_NAME),
+            Some(Value::String("custom-svc".into())),
+        );
+    }
+
+    #[test]
+    #[serial]
+    fn build_falls_back_to_default_when_env_unset() {
+        // SAFETY: single-threaded via #[serial]; no concurrent env access
+        unsafe { std::env::remove_var("OTEL_SERVICE_NAME") };
         let r = build("tepra-web", "testhash1234");
         assert_eq!(
             get_attr(&r, SERVICE_NAME),
