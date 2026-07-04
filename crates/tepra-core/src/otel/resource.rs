@@ -18,7 +18,7 @@ pub fn build(service_name: &'static str, git_hash: &'static str) -> Resource {
     let pid = i64::from(std::process::id());
     let instance_id = format!("{hostname}-{pid}");
 
-    Resource::builder_empty()
+    Resource::builder()
         .with_attributes([
             KeyValue::new(SERVICE_NAME, service_name),
             KeyValue::new(SERVICE_VERSION, env!("CARGO_PKG_VERSION")),
