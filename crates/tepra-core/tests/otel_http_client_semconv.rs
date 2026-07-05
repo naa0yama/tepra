@@ -3,6 +3,8 @@
 // wiremock spawns a TCP listener; not suitable for miri isolation.
 #![cfg(not(miri))]
 #![cfg(feature = "otel")]
+// Uses ReqwestTepraClient::new_with_timeout_for_test (gated by test-utils feature).
+#![cfg(feature = "test-utils")]
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 use std::time::Duration;

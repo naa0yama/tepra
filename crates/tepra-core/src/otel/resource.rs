@@ -37,7 +37,9 @@ pub fn build(service_name: &'static str, git_hash: &'static str) -> Resource {
         .build()
 }
 
-#[cfg(test)]
+// Resource::builder() enables OTel SDK OS detectors that call libc::uname(),
+// which Miri flags as uninit-memory UB in libc::utsname; skip under miri.
+#[cfg(all(test, not(miri)))]
 mod tests {
     use super::*;
     use opentelemetry::Value;
