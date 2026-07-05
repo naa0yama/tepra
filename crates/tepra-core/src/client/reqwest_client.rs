@@ -535,7 +535,6 @@ impl TepraClient for ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
             http.response.body.size = tracing::field::Empty,
         )
@@ -554,7 +553,6 @@ impl TepraClient for ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
             http.response.body.size = tracing::field::Empty,
         )
@@ -573,7 +571,6 @@ impl TepraClient for ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
             http.response.body.size = tracing::field::Empty,
         )
@@ -592,7 +589,6 @@ impl TepraClient for ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
             http.response.body.size = tracing::field::Empty,
         )
@@ -611,7 +607,6 @@ impl TepraClient for ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
             http.response.body.size = tracing::field::Empty,
         )
@@ -631,7 +626,6 @@ impl TepraClient for ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
             http.response.body.size = tracing::field::Empty,
         )
@@ -671,7 +665,6 @@ impl TepraClient for ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
             http.response.body.size = tracing::field::Empty,
         )
@@ -694,7 +687,6 @@ impl TepraClient for ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
             http.response.body.size = tracing::field::Empty,
         )
@@ -721,7 +713,6 @@ impl TepraClient for ReqwestTepraClient {
             server.address = %self.server_address,
             url.scheme = %self.url_scheme,
             url.full = tracing::field::Empty,
-            http.request.body.size = tracing::field::Empty,
             http.response.status_code = tracing::field::Empty,
             http.response.body.size = tracing::field::Empty,
         )

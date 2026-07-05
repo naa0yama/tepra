@@ -51,7 +51,53 @@
 - `Parse { source }` — JSON deserialize 失敗
 - Creator API の errcode は今後 `dto::error` で扱う方針
 
+## Observability ( OTel client span )
+
+`ReqwestTepraClient` の 13 caller は全て `#[instrument]` を付与し、
+OTel HTTP client semantic conventions 1.23+ 準拠の CLIENT span を emit する。
+
+- span name は静的リテラル `"{METHOD} {url.template}"` 形式で低カーディナリティ
+  ( trace UI 上で endpoint 別に集約可能 )
+- helper ( `get_json` / `get_json_query` / `get_query_empty` / `post_json` /
+  `post_empty` ) には `#[instrument]` を付与しない。 helper 側は
+  `Span::current().record(...)` で caller span に属性を追記する
+  ( bare `"GET"` / `"POST"` の inner span を emit させない )
+- caller span 属性:
+  - `otel.kind = "CLIENT"`
+  - `http.request.method` = 静的 `"GET"` / `"POST"`
+  - `url.template` = 静的 template ( 例: `/api/printer/info/{name}` )
+  - `server.address` / `url.scheme` = client 設定値
+  - `url.full` = 展開後の実 URL ( helper record )
+  - `http.response.status_code` / `http.response.body.size` = helper record
+
+span name 一覧 ( 13 caller ):
+
+- `GET /api/printer` — `list_printers`
+- `GET /api/printer/version` — `version`
+- `GET /api/printer/autoselect` — `autoselect`
+- `GET /api/printer/info/{name}` — `printer_info`
+- `GET /api/printer/onlinestatus/{name}` — `online_status`
+- `GET /api/printer/lwstatus/{name}` — `lw_status`
+- `GET /api/printer/tapefeed/{name}` — `tapefeed`
+- `GET /api/printer/job/progress/{name}` — `job_progress`
+- `GET /api/printer/job/info/{name}` — `job_info`
+- `POST /api/printer/print/{name}` — `print`
+- `POST /api/printer/job/control/{name}` — `job_control`
+- `POST /api/printer/template/importframe` — `import_frame`
+- `POST /api/printer/getmargin/{name}` — `get_margin`
+
+実装メモ:
+
+- 動的 path template ( `{name}` を含むリテラル ) は clippy
+  `literal_string_with_formatting_args` を誤発火するため、
+  `concat!("GET ", "/api/printer/info/{name}")` でリテラル分割する
+- caller span の record 期待は `tests/client_span_name.rs` で検証。
+  wiremock + tracing-subscriber の custom Layer で 13 endpoint の
+  span name / `url.template` / `otel.kind` / `http.request.method` を
+  assert し、bare `"GET"` / `"POST"` span が emit されないことも保証する
+
 ## 関連
 
+- `docs/specs/architecture/otel-instrumentation.md` — 全体計装方針
 - `docs/specs/external/tepra-creator-webapi.md` — Creator API の生仕様
 - `crates/tepra-core/src/dto/` — Request/Response DTO 定義
