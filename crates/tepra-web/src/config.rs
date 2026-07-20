@@ -105,6 +105,10 @@ pub fn load_config(args: &ServeArgs) -> Result<ServeConfig> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
+
+    use figment::Jail;
+
     use super::*;
 
     #[test]
@@ -113,5 +117,43 @@ mod tests {
         assert_eq!(cfg.template_dir, PathBuf::from("templates"));
         assert_eq!(cfg.bind, "0.0.0.0:3000");
         assert_eq!(cfg.creator_base, "http://localhost:29108");
+    }
+
+    #[test]
+    // WHY-NOT: box figment::Error — Jail::expect_with signature fixes the closure's
+    // return type to figment::error::Result<()>; boxing the error would require a
+    // wrapper type that doesn't implement figment's error trait.
+    #[allow(clippy::result_large_err)]
+    fn precedence_cli_over_env_over_file_over_default_when_all_provided() {
+        Jail::expect_with(|jail| {
+            jail.create_file(
+                "tepra.toml",
+                r#"
+bind = "198.51.100.1:2222"
+template_dir = "file-templates"
+creator_base = "http://198.51.100.1:9000"
+"#,
+            )
+            .expect("tepra.toml 作成失敗");
+            jail.set_env("TEPRA_BIND", "198.51.100.2:3333");
+            jail.set_env("TEPRA_TEMPLATE_DIR", "env-templates");
+            jail.set_env("TEPRA_CREATOR_BASE", "http://198.51.100.2:9000");
+
+            let cli = CliOverrides {
+                bind: Some("198.51.100.3:4444".to_owned()),
+                template_dir: Some(PathBuf::from("cli-templates")),
+                creator_base: Some("http://198.51.100.3:9000".to_owned()),
+            };
+
+            let cfg: ServeConfig = build_figment(Some(Path::new("tepra.toml")), &cli)
+                .extract()
+                .unwrap();
+
+            assert_eq!(cfg.bind, "198.51.100.3:4444");
+            assert_eq!(cfg.template_dir, PathBuf::from("cli-templates"));
+            assert_eq!(cfg.creator_base, "http://198.51.100.3:9000");
+
+            Ok(())
+        });
     }
 }
