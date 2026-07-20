@@ -43,6 +43,8 @@ fn version_subcommand_prints_version() {
 fn serve_without_template_dir_parses_ok() {
     let result = Cli::try_parse_from(["tepra", "serve"]);
     let cli = result.expect("parse must succeed without --template-dir");
+    // WHY-NOT: unwrap — Commands has multiple variants; panic gives a clearer message in tests.
+    #[allow(clippy::panic)]
     let Commands::Serve(args) = cli.command else {
         panic!("expected Serve subcommand");
     };
@@ -56,6 +58,8 @@ fn serve_without_template_dir_parses_ok() {
 fn serve_accepts_config_option() {
     let result = Cli::try_parse_from(["tepra", "serve", "--config", "./tepra.toml"]);
     let cli = result.expect("parse must accept --config");
+    // WHY-NOT: unwrap — Commands has multiple variants; panic gives a clearer message in tests.
+    #[allow(clippy::panic)]
     let Commands::Serve(args) = cli.command else {
         panic!("expected Serve subcommand");
     };

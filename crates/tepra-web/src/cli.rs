@@ -27,13 +27,17 @@ pub enum Commands {
 pub struct ServeArgs {
     /// Directory containing label template files.
     #[arg(long, value_name = "PATH")]
-    pub template_dir: PathBuf,
+    pub template_dir: Option<PathBuf>,
 
     /// Address to bind the HTTP server to.
-    #[arg(long, default_value = "0.0.0.0:3000", value_name = "ADDR")]
-    pub bind: String,
+    #[arg(long, value_name = "ADDR")]
+    pub bind: Option<String>,
 
     /// Base URL of the TEPRA Creator `WebAPI`.
-    #[arg(long, default_value = "http://localhost:29108", value_name = "URL")]
-    pub creator_base: String,
+    #[arg(long, value_name = "URL")]
+    pub creator_base: Option<String>,
+
+    /// Path to the config file (TOML). If omitted, `./tepra.toml` is probed silently.
+    #[arg(long, value_name = "PATH")]
+    pub config: Option<PathBuf>,
 }

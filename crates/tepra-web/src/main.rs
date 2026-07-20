@@ -21,6 +21,15 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Serve(args) => {
+            // TODO(Cycle 9): replace all unwrap_or_else defaults with load_config() cascade.
+            let template_dir = args
+                .template_dir
+                .unwrap_or_else(|| std::path::PathBuf::from("templates"));
+            let bind = args.bind.unwrap_or_else(|| "0.0.0.0:3000".to_owned());
+            let creator_base = args
+                .creator_base
+                .unwrap_or_else(|| "http://localhost:29108".to_owned());
+
             let telemetry =
                 tepra_core::otel::init_telemetry(env!("CARGO_PKG_NAME"), env!("GIT_HASH"))
                     .context("failed to initialise telemetry")?;
@@ -29,11 +38,10 @@ async fn main() -> anyhow::Result<()> {
             let meters = Arc::new(Meters::new());
 
             let client = Arc::new(tepra_core::client::ReqwestTepraClient::with_meters(
-                args.creator_base,
+                creator_base,
                 Arc::clone(&meters),
             ));
-            let state =
-                tepra::state::AppState::new_with_template_dir(client.clone(), args.template_dir);
+            let state = tepra::state::AppState::new_with_template_dir(client.clone(), template_dir);
 
             let router = tepra::router::build_router(client)
                 .merge(tepra::router::build_jobs_router(state.clone()))
@@ -50,9 +58,9 @@ async fn main() -> anyhow::Result<()> {
                         .on_response(OtelOnResponse),
                 );
 
-            let listener = tokio::net::TcpListener::bind(&args.bind)
+            let listener = tokio::net::TcpListener::bind(&bind)
                 .await
-                .with_context(|| format!("failed to bind to {}", args.bind))?;
+                .with_context(|| format!("failed to bind to {bind}"))?;
             axum::serve(
                 listener,
                 router.into_make_service_with_connect_info::<SocketAddr>(),
