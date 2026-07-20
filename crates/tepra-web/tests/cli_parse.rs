@@ -1,9 +1,3 @@
-//! RED: clap CLI parse tests for tepra binary.
-//!
-//! These tests verify the clap derive CLI structure compiles and parses
-//! subcommands / options correctly. They will fail until T18b implements the
-//! actual CLI types in `tepra_web::cli`.
-
 #![allow(missing_docs)]
 
 use assert_cmd::Command;

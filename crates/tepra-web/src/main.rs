@@ -27,12 +27,15 @@ async fn main() -> anyhow::Result<()> {
                 tepra_core::otel::init_telemetry(env!("CARGO_PKG_NAME"), env!("GIT_HASH"))
                     .context("failed to initialise telemetry")?;
 
+            let config_file_display = config_file_path
+                .as_ref()
+                .map_or_else(|| "none".to_owned(), |p| p.display().to_string());
             tracing::info!(
                 target: "tepra.config",
                 template_dir = %cfg.template_dir.display(),
                 bind = %cfg.bind,
                 creator_base = %cfg.creator_base,
-                config_file = ?config_file_path,
+                config_file = %config_file_display,
                 "loaded",
             );
 

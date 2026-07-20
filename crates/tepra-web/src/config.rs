@@ -46,8 +46,7 @@ fn resolve_config_path(explicit: Option<&Path>) -> Result<ConfigPathResolution> 
         if p.exists() {
             return Ok(ConfigPathResolution::Explicit(p.to_owned()));
         }
-        return Err(anyhow::anyhow!("config file not found: {}", p.display()))
-            .with_context(|| format!("--config {}", p.display()));
+        return Err(anyhow::anyhow!("config file not found: {}", p.display()));
     }
     let auto = PathBuf::from("tepra.toml");
     if auto.exists() {
@@ -110,6 +109,11 @@ pub fn load_config(args: &ServeArgs) -> Result<(ServeConfig, Option<PathBuf>)> {
 
 #[cfg(test)]
 mod tests {
+    // WHY-NOT: box figment::Error — Jail::expect_with fixes the closure's return type to
+    // figment::error::Result<()>; boxing would require a wrapper that doesn't implement
+    // figment's error trait.
+    #![allow(clippy::result_large_err)]
+
     use std::path::Path;
 
     use figment::Jail;
@@ -125,10 +129,6 @@ mod tests {
     }
 
     #[test]
-    // WHY-NOT: box figment::Error — Jail::expect_with signature fixes the closure's
-    // return type to figment::error::Result<()>; boxing the error would require a
-    // wrapper type that doesn't implement figment's error trait.
-    #[allow(clippy::result_large_err)]
     fn precedence_cli_over_env_over_file_over_default_when_all_provided() {
         Jail::expect_with(|jail| {
             jail.create_file(
@@ -139,7 +139,7 @@ template_dir = "file-templates"
 creator_base = "http://198.51.100.1:9000"
 "#,
             )
-            .expect("tepra.toml 作成失敗");
+            .expect("failed to create tepra.toml");
             jail.set_env("TEPRA_BIND", "198.51.100.2:3333");
             jail.set_env("TEPRA_TEMPLATE_DIR", "env-templates");
             jail.set_env("TEPRA_CREATOR_BASE", "http://198.51.100.2:9000");
@@ -163,7 +163,6 @@ creator_base = "http://198.51.100.1:9000"
     }
 
     #[test]
-    #[allow(clippy::result_large_err)]
     fn env_overrides_file_when_no_cli() {
         Jail::expect_with(|jail| {
             jail.create_file(
@@ -174,7 +173,7 @@ template_dir = "file-templates"
 creator_base = "http://198.51.100.1:9000"
 "#,
             )
-            .expect("tepra.toml 作成失敗");
+            .expect("failed to create tepra.toml");
             jail.set_env("TEPRA_BIND", "198.51.100.2:3333");
             jail.set_env("TEPRA_TEMPLATE_DIR", "env-templates");
             jail.set_env("TEPRA_CREATOR_BASE", "http://198.51.100.2:9000");
@@ -198,7 +197,6 @@ creator_base = "http://198.51.100.1:9000"
     }
 
     #[test]
-    #[allow(clippy::result_large_err)]
     fn file_overrides_default_when_no_env_no_cli() {
         Jail::expect_with(|jail| {
             jail.create_file(
@@ -209,7 +207,7 @@ template_dir = "file-templates"
 creator_base = "http://198.51.100.1:9000"
 "#,
             )
-            .expect("tepra.toml 作成失敗");
+            .expect("failed to create tepra.toml");
 
             let cli = CliOverrides {
                 bind: None,
@@ -230,7 +228,6 @@ creator_base = "http://198.51.100.1:9000"
     }
 
     #[test]
-    #[allow(clippy::result_large_err)]
     fn resolve_config_path_returns_none_when_no_file_and_no_explicit() {
         Jail::expect_with(|jail| {
             // empty jail directory — no tepra.toml present
@@ -248,11 +245,10 @@ creator_base = "http://198.51.100.1:9000"
     }
 
     #[test]
-    #[allow(clippy::result_large_err)]
     fn resolve_config_path_returns_auto_found_when_cwd_file_exists() {
         Jail::expect_with(|jail| {
             jail.create_file("tepra.toml", "")
-                .expect("tepra.toml 作成失敗");
+                .expect("failed to create tepra.toml");
             let result = resolve_config_path(None).unwrap();
             assert!(matches!(result, ConfigPathResolution::AutoFound(_)));
             Ok(())
