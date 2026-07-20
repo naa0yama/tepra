@@ -44,8 +44,8 @@ chromium_cached = glob.glob(str(pathlib.Path.home() / ".cache/ms-playwright/chro
 if hits and chromium_cached:
     pnpm_dir = str(pathlib.Path(hits[0]).parent.parent.parent.resolve())
     servers["playwright"] = {
-        "command": "pnpm",
-        "args": ["--dir", pnpm_dir, "exec", "playwright-mcp",
+        "command": "mise",
+        "args": ["exec", "--", "pnpm", "--dir", pnpm_dir, "exec", "playwright-mcp",
                  "--browser=chromium", "--headless"],
     }
     print(f"playwright: registered ({pnpm_dir})")

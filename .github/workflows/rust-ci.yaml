@@ -80,7 +80,7 @@ jobs:
       - name: Cache system packages
         if: needs.setup.outputs.apt_packages != ''
         id: apt-cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-cache
           key: apt-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/workflows/rust-ci.yaml') }}
@@ -108,7 +108,7 @@ jobs:
         run: sudo dpkg -i ~/apt-cache/*.deb
 
       - name: Cache mise tools
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.local/share/mise
           key: mise-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}
@@ -116,7 +116,7 @@ jobs:
             mise-v1-${{ runner.os }}-${{ runner.arch }}-
 
       - name: Cache dprint plugins
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/dprint
           key: dprint-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('dprint.jsonc') }}
@@ -127,7 +127,7 @@ jobs:
         with:
           cache: false
           # renovate: datasource=github-releases packageName=jdx/mise versioning=calver:YYYY.M.D automerge=true
-          version: 2026.6.12
+          version: 2026.7.0
 
       - name: Check formatting
         run: |
@@ -158,7 +158,7 @@ jobs:
       - name: Cache system packages
         if: matrix.os == 'ubuntu-latest' && matrix.apt_packages
         id: apt-cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-cache
           key: apt-v2-${{ runner.os }}-${{ runner.arch }}-${{ matrix.target }}-${{ hashFiles('.github/workflows/rust-ci.yaml') }}
@@ -232,7 +232,7 @@ jobs:
       - name: Cache system packages
         if: needs.setup.outputs.apt_packages != ''
         id: apt-cache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/apt-cache
           key: apt-v2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.github/workflows/rust-ci.yaml') }}
@@ -260,7 +260,7 @@ jobs:
         run: sudo dpkg -i ~/apt-cache/*.deb
 
       - name: Cache mise tools
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.local/share/mise
           key: mise-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('mise.toml') }}
@@ -271,7 +271,7 @@ jobs:
         with:
           cache: false
           # renovate: datasource=github-releases packageName=jdx/mise versioning=calver:YYYY.M.D automerge=true
-          version: 2026.6.12
+          version: 2026.7.0
 
       - name: Generate coverage report
         run: |
@@ -301,16 +301,8 @@ jobs:
             | jq -Rsc '{"encoding":"base64","content":.}' \
             | gh api "repos/${GITHUB_REPOSITORY}/git/blobs" --method POST --input - --jq '.sha')
 
-          # Get current badges branch state (auto-initialize if branch does not exist)
-          if ! head_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/refs/heads/badges" --jq '.object.sha' 2>/dev/null); then
-            empty_tree=$(printf '{"tree":[]}' \
-              | gh api "repos/${GITHUB_REPOSITORY}/git/trees" --method POST --input - --jq '.sha')
-            init_commit=$(printf '{"message":"Initialize badges branch","tree":"%s","parents":[]}' "$empty_tree" \
-              | gh api "repos/${GITHUB_REPOSITORY}/git/commits" --method POST --input - --jq '.sha')
-            printf '{"ref":"refs/heads/badges","sha":"%s"}' "$init_commit" \
-              | gh api "repos/${GITHUB_REPOSITORY}/git/refs" --method POST --input -
-            head_sha=$init_commit
-          fi
+          # Get current badges branch state
+          head_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/refs/heads/badges" --jq '.object.sha')
           tree_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/commits/${head_sha}" --jq '.tree.sha')
 
           # Skip if content unchanged (compare blob SHAs)

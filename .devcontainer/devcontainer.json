@@ -60,7 +60,12 @@
 	"portsAttributes": {
 		"3000": {
 			"onAutoForward": "notify",
-			"label": "tepra",
+			"label": "WebGUI",
+			"requireLocalPort": false
+		},
+		"3001": {
+			"onAutoForward": "notify",
+			"label": "wireframe tool",
 			"requireLocalPort": false
 		},
 		"5080": {
