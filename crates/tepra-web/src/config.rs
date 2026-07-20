@@ -156,4 +156,101 @@ creator_base = "http://198.51.100.1:9000"
             Ok(())
         });
     }
+
+    #[test]
+    #[allow(clippy::result_large_err)]
+    fn env_overrides_file_when_no_cli() {
+        Jail::expect_with(|jail| {
+            jail.create_file(
+                "tepra.toml",
+                r#"
+bind = "198.51.100.1:2222"
+template_dir = "file-templates"
+creator_base = "http://198.51.100.1:9000"
+"#,
+            )
+            .expect("tepra.toml 作成失敗");
+            jail.set_env("TEPRA_BIND", "198.51.100.2:3333");
+            jail.set_env("TEPRA_TEMPLATE_DIR", "env-templates");
+            jail.set_env("TEPRA_CREATOR_BASE", "http://198.51.100.2:9000");
+
+            let cli = CliOverrides {
+                bind: None,
+                template_dir: None,
+                creator_base: None,
+            };
+
+            let cfg: ServeConfig = build_figment(Some(Path::new("tepra.toml")), &cli)
+                .extract()
+                .unwrap();
+
+            assert_eq!(cfg.bind, "198.51.100.2:3333");
+            assert_eq!(cfg.template_dir, PathBuf::from("env-templates"));
+            assert_eq!(cfg.creator_base, "http://198.51.100.2:9000");
+
+            Ok(())
+        });
+    }
+
+    #[test]
+    #[allow(clippy::result_large_err)]
+    fn file_overrides_default_when_no_env_no_cli() {
+        Jail::expect_with(|jail| {
+            jail.create_file(
+                "tepra.toml",
+                r#"
+bind = "198.51.100.1:2222"
+template_dir = "file-templates"
+creator_base = "http://198.51.100.1:9000"
+"#,
+            )
+            .expect("tepra.toml 作成失敗");
+
+            let cli = CliOverrides {
+                bind: None,
+                template_dir: None,
+                creator_base: None,
+            };
+
+            let cfg: ServeConfig = build_figment(Some(Path::new("tepra.toml")), &cli)
+                .extract()
+                .unwrap();
+
+            assert_eq!(cfg.bind, "198.51.100.1:2222");
+            assert_eq!(cfg.template_dir, PathBuf::from("file-templates"));
+            assert_eq!(cfg.creator_base, "http://198.51.100.1:9000");
+
+            Ok(())
+        });
+    }
+
+    #[test]
+    #[allow(clippy::result_large_err)]
+    fn resolve_config_path_returns_none_when_no_file_and_no_explicit() {
+        Jail::expect_with(|jail| {
+            // empty jail directory — no tepra.toml present
+            let _ = jail;
+            let result = resolve_config_path(None).unwrap();
+            assert!(matches!(result, ConfigPathResolution::None));
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn resolve_config_path_returns_error_when_explicit_missing() {
+        let result = resolve_config_path(Some(Path::new("/nonexistent/tepra.toml")));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    #[allow(clippy::result_large_err)]
+    fn resolve_config_path_returns_auto_found_when_cwd_file_exists() {
+        Jail::expect_with(|jail| {
+            jail.create_file("tepra.toml", "")
+                .expect("tepra.toml 作成失敗");
+            let result = resolve_config_path(None).unwrap();
+            assert!(matches!(result, ConfigPathResolution::AutoFound(_)));
+            Ok(())
+        });
+    }
 }
