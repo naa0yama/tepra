@@ -21,14 +21,10 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Serve(args) => {
-            // TODO(Cycle 9): replace all unwrap_or_else defaults with load_config() cascade.
-            let template_dir = args
-                .template_dir
-                .unwrap_or_else(|| std::path::PathBuf::from("templates"));
-            let bind = args.bind.unwrap_or_else(|| "0.0.0.0:3000".to_owned());
-            let creator_base = args
-                .creator_base
-                .unwrap_or_else(|| "http://localhost:29108".to_owned());
+            let config = tepra_web::config::load_config(&args)?;
+            let template_dir = config.template_dir;
+            let bind = config.bind;
+            let creator_base = config.creator_base;
 
             let telemetry =
                 tepra_core::otel::init_telemetry(env!("CARGO_PKG_NAME"), env!("GIT_HASH"))
