@@ -169,5 +169,5 @@ Dev Container に含まれる拡張機能:
 ### Rust デバッグ
 
 ```bash
-RUST_LOG=trace RUST_BACKTRACE=1 cargo run -p tepra-web -- serve --template-dir ./data
+RUST_LOG=trace RUST_BACKTRACE=1 cargo run -p tepra-web -- serve
 ```
