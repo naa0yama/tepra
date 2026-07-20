@@ -42,7 +42,7 @@ fi
 # mise bootstrap: install or upgrade to pinned version
 export PATH="$HOME/.local/bin:$PATH"
 ## renovate: datasource=github-releases packageName=jdx/mise versioning=calver:YYYY.M.D automerge=true
-MISE_PINNED_VERSION="2026.7.0"
+MISE_PINNED_VERSION="2026.7.5"
 
 installed_version=""
 if command -v mise > /dev/null 2>&1; then
@@ -94,8 +94,5 @@ mise run o2
 
 # graft:keep-start
 # Project-specific dependencies are listed here.
-
-echo "Setting up Playwright MCP..."
-mise run setup:playwright
 
 # graft:keep-end
