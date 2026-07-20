@@ -21,6 +21,7 @@ opentelemetry = { workspace = true }
 opentelemetry-http = { workspace = true }
 opentelemetry-semantic-conventions = { workspace = true }
 rust-embed = { workspace = true }
+serde = { workspace = true }
 tepra = { workspace = true }
 tepra-core = { workspace = true, features = ["process-metrics"] }
 tokio = { workspace = true }
