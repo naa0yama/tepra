@@ -7,6 +7,8 @@
 #![allow(missing_docs)]
 
 use assert_cmd::Command;
+use clap::Parser as _;
+use tepra_web::cli::{Cli, Commands};
 
 // ---------------------------------------------------------------------------
 // version subcommand
@@ -38,14 +40,29 @@ fn version_subcommand_prints_version() {
 // ---------------------------------------------------------------------------
 
 #[test]
-#[cfg_attr(miri, ignore)]
-fn serve_requires_template_dir() {
-    // --template-dir is required; omitting it must fail.
-    Command::cargo_bin("tepra")
-        .unwrap()
-        .args(["serve"])
-        .assert()
-        .failure();
+fn serve_without_template_dir_parses_ok() {
+    let result = Cli::try_parse_from(["tepra", "serve"]);
+    let cli = result.expect("parse must succeed without --template-dir");
+    let Commands::Serve(args) = cli.command else {
+        panic!("expected Serve subcommand");
+    };
+    assert!(
+        args.template_dir.is_none(),
+        "template_dir must default to None"
+    );
+}
+
+#[test]
+fn serve_accepts_config_option() {
+    let result = Cli::try_parse_from(["tepra", "serve", "--config", "./tepra.toml"]);
+    let cli = result.expect("parse must accept --config");
+    let Commands::Serve(args) = cli.command else {
+        panic!("expected Serve subcommand");
+    };
+    assert!(
+        args.config.is_some(),
+        "--config must be captured in args.config"
+    );
 }
 
 #[test]
