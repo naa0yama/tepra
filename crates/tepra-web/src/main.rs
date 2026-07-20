@@ -21,14 +21,24 @@ async fn main() -> anyhow::Result<()> {
             }
         }
         Commands::Serve(args) => {
-            let config = tepra_web::config::load_config(&args)?;
-            let template_dir = config.template_dir;
-            let bind = config.bind;
-            let creator_base = config.creator_base;
+            let (cfg, config_file_path) = tepra_web::config::load_config(&args)?;
 
             let telemetry =
                 tepra_core::otel::init_telemetry(env!("CARGO_PKG_NAME"), env!("GIT_HASH"))
                     .context("failed to initialise telemetry")?;
+
+            tracing::info!(
+                target: "tepra.config",
+                template_dir = %cfg.template_dir.display(),
+                bind = %cfg.bind,
+                creator_base = %cfg.creator_base,
+                config_file = ?config_file_path,
+                "loaded",
+            );
+
+            let bind = cfg.bind;
+            let creator_base = cfg.creator_base;
+            let template_dir = cfg.template_dir;
 
             // Single shared Meters instance — client and server middleware share instruments.
             let meters = Arc::new(Meters::new());

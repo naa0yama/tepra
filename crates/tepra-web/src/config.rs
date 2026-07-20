@@ -77,7 +77,10 @@ fn build_figment(path: Option<&Path>, overrides: &CliOverrides) -> Figment {
 }
 
 /// Merge CLI args, env vars, config file, and built-in defaults into a
-/// [`ServeConfig`].
+/// [`ServeConfig`], and return the resolved config file path (if any).
+///
+/// The second element of the tuple is `Some(path)` when a config file was
+/// used (either `--config`-explicit or auto-discovered), `None` otherwise.
 ///
 /// # Errors
 ///
@@ -86,21 +89,23 @@ fn build_figment(path: Option<&Path>, overrides: &CliOverrides) -> Figment {
 // WHY-NOT: rename to `load` — `load` alone is ambiguous at call sites; spec uses
 // `load_config` as the public entry point name.
 #[allow(clippy::module_name_repetitions)]
-pub fn load_config(args: &ServeArgs) -> Result<ServeConfig> {
+pub fn load_config(args: &ServeArgs) -> Result<(ServeConfig, Option<PathBuf>)> {
     let resolution =
         resolve_config_path(args.config.as_deref()).context("resolving config path")?;
-    let path = match &resolution {
-        ConfigPathResolution::Explicit(p) | ConfigPathResolution::AutoFound(p) => Some(p.as_path()),
+    let config_file_path = match &resolution {
+        ConfigPathResolution::Explicit(p) | ConfigPathResolution::AutoFound(p) => Some(p.clone()),
         ConfigPathResolution::None => None,
     };
+    let path = config_file_path.as_deref();
     let overrides = CliOverrides {
         template_dir: args.template_dir.clone(),
         bind: args.bind.clone(),
         creator_base: args.creator_base.clone(),
     };
-    build_figment(path, &overrides)
+    let cfg = build_figment(path, &overrides)
         .extract::<ServeConfig>()
-        .context("extracting ServeConfig from figment")
+        .context("extracting ServeConfig from figment")?;
+    Ok((cfg, config_file_path))
 }
 
 #[cfg(test)]
