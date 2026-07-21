@@ -6,7 +6,7 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use clap::Parser as _;
 use tepra_core::otel::metrics::Meters;
-use tepra_web::cli::{Cli, Commands};
+use tepra_web::cli::{Cli, Commands, ConfigAction};
 use tepra_web::trace::{OtelHttpServerMakeSpan, OtelOnResponse, server_metrics_mw};
 use tower_http::trace::TraceLayer;
 
@@ -20,6 +20,15 @@ async fn main() -> anyhow::Result<()> {
                 println!("{}", tepra_web::app_version());
             }
         }
+        Commands::Config(args) => match args.action {
+            ConfigAction::Init(init) => {
+                tepra_web::config::write_default_toml(&init.path, init.force)?;
+                #[allow(clippy::print_stdout)]
+                {
+                    println!("wrote {}", init.path.display());
+                }
+            }
+        },
         Commands::Serve(args) => {
             let (cfg, config_file_path) = tepra_web::config::load_config(&args)?;
 

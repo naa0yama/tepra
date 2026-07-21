@@ -32,6 +32,9 @@ cargo run -p tepra-web -- serve \
   --bind 127.0.0.1:3000 \
   --creator-base http://198.51.100.1:29108
 
+# デフォルト値入りの tepra.toml を生成 (--path / --force で挙動制御)
+cargo run -p tepra-web -- config init
+
 # バージョン表示
 cargo run -p tepra-web -- version
 ```
@@ -39,6 +42,8 @@ cargo run -p tepra-web -- version
 ### tepra.toml (最小構成例)
 
 プロジェクトルートに `tepra.toml` を配置すると `tepra serve` 単独で起動できる。
+`tepra config init` でデフォルト値入りのテンプレートを生成できる (既存ファイルは
+`--force` 未指定時は上書きしない)。
 
 ```toml
 # tepra serve config file

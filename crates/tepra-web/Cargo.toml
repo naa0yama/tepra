@@ -39,6 +39,7 @@ figment = { workspace = true, features = ["test"] }
 opentelemetry = { workspace = true }
 opentelemetry_sdk = { workspace = true, features = ["testing"] }
 predicates = { workspace = true }
+tempfile = { workspace = true }
 tower = { workspace = true }
 
 [lints]

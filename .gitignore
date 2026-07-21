@@ -57,6 +57,9 @@ src-tauri/gen/
 
 # graft:keep-end
 
+# tepra
+tepra.toml
+
 # pnpm (brust-web asset pipeline)
 node_modules/
 .pnpm-store/

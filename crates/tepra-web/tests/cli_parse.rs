@@ -128,6 +128,60 @@ fn serve_accepts_creator_base_option() {
 }
 
 // ---------------------------------------------------------------------------
+// config init subcommand
+// ---------------------------------------------------------------------------
+
+#[test]
+fn config_init_parses_with_no_args() {
+    let result = Cli::try_parse_from(["tepra", "config", "init"]);
+    let cli = result.expect("parse must accept `config init`");
+    #[allow(clippy::panic)]
+    let Commands::Config(args) = cli.command else {
+        panic!("expected Config subcommand");
+    };
+    let tepra_web::cli::ConfigAction::Init(init) = args.action;
+    assert_eq!(init.path, std::path::PathBuf::from("tepra.toml"));
+    assert!(!init.force);
+}
+
+#[test]
+fn config_init_accepts_path_and_force() {
+    let result = Cli::try_parse_from([
+        "tepra",
+        "config",
+        "init",
+        "--path",
+        "/tmp/x.toml",
+        "--force",
+    ]);
+    let cli = result.expect("parse must accept --path and --force");
+    #[allow(clippy::panic)]
+    let Commands::Config(args) = cli.command else {
+        panic!("expected Config subcommand");
+    };
+    let tepra_web::cli::ConfigAction::Init(init) = args.action;
+    assert_eq!(init.path, std::path::PathBuf::from("/tmp/x.toml"));
+    assert!(init.force);
+}
+
+#[test]
+#[cfg_attr(miri, ignore)]
+fn config_init_writes_file_and_exits_success() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = tmp.path().join("tepra.toml");
+    Command::cargo_bin("tepra")
+        .unwrap()
+        .args(["config", "init", "--path"])
+        .arg(&path)
+        .assert()
+        .success();
+    let content = std::fs::read_to_string(&path).unwrap();
+    assert!(content.contains("template_dir"));
+    assert!(content.contains("bind"));
+    assert!(content.contains("creator_base"));
+}
+
+// ---------------------------------------------------------------------------
 // top-level --help
 // ---------------------------------------------------------------------------
 

@@ -18,8 +18,36 @@ pub struct Cli {
 pub enum Commands {
     /// Start the HTTP server.
     Serve(ServeArgs),
+    /// Manage the config file.
+    Config(ConfigArgs),
     /// Print the binary version and exit.
     Version,
+}
+
+/// Arguments for the `config` subcommand.
+#[derive(Debug, clap::Args)]
+pub struct ConfigArgs {
+    /// Action to perform.
+    #[command(subcommand)]
+    pub action: ConfigAction,
+}
+
+/// Actions under the `config` subcommand.
+#[derive(Debug, Subcommand)]
+pub enum ConfigAction {
+    /// Write a default `tepra.toml` with schema comments.
+    Init(ConfigInitArgs),
+}
+
+/// Arguments for `config init`.
+#[derive(Debug, clap::Args)]
+pub struct ConfigInitArgs {
+    /// Path to write the config file to.
+    #[arg(long, value_name = "PATH", default_value = "tepra.toml")]
+    pub path: PathBuf,
+    /// Overwrite the file if it already exists.
+    #[arg(long)]
+    pub force: bool,
 }
 
 /// Arguments for the `serve` subcommand.

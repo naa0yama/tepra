@@ -8,9 +8,10 @@ single binary 内に閉じ込める。
 
 ```
 tepra <SUBCOMMAND>
-  serve       全プラットフォーム / HTTP サーバ起動
-  version     全プラットフォーム / ビルドメタ表示
-  tray        Windows のみ ( ADR 0005 ) / トレイ常駐 + serve 内蔵
+  serve         全プラットフォーム / HTTP サーバ起動
+  config init   全プラットフォーム / デフォルト値入り tepra.toml を生成
+  version       全プラットフォーム / ビルドメタ表示
+  tray          Windows のみ ( ADR 0005 ) / トレイ常駐 + serve 内蔵
   install-service / uninstall-service  Windows のみ
 ```
 
@@ -88,6 +89,18 @@ creator_base = "http://localhost:29108"
 2. `--config` 未指定 — CWD 相対 `./tepra.toml` を自動探索。ファイルが
    存在しない場合は **silent fallback** (built-in default を適用、ログ出力なし)
 
+## `config init`
+
+```
+tepra config init
+  [--path <PATH>]   (default: tepra.toml)
+  [--force]
+```
+
+デフォルト値と per-field スキーマコメントを埋め込んだ `tepra.toml` を
+`--path` へ書き出す。`--force` 未指定で対象ファイルが既に存在する場合は
+上書きせずエラー終了する。生成内容は上記 `TOML schema` と一致する。
+
 ## `version`
 
 ビルド時の `CARGO_PKG_VERSION` を 1 行で stdout 出力して exit。
@@ -105,7 +118,10 @@ creator_base = "http://localhost:29108"
    - `AppState::new_with_template_dir(client, config.template_dir)` を構築
    - 4 つの router builder を `.merge()` し、 `.layer(TraceLayer::new_for_http())`
      を付加して `config.bind` に bind し、 `axum::serve` で起動
-3. `Commands::Version` の場合: バージョン文字列を 1 行出力
+3. `Commands::Config(ConfigArgs { action: ConfigAction::Init(args) })` の場合:
+   `config::write_default_toml(&args.path, args.force)` を呼び出し、成功時に
+   書き込み先パスを stdout 出力
+4. `Commands::Version` の場合: バージョン文字列を 1 行出力
 
 ## 関連 ADR
 

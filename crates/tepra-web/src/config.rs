@@ -107,6 +107,46 @@ pub fn load_config(args: &ServeArgs) -> Result<(ServeConfig, Option<PathBuf>)> {
     Ok((cfg, config_file_path))
 }
 
+/// Render a `tepra.toml` template populated with built-in defaults and
+/// per-field schema comments.
+fn render_default_toml() -> String {
+    let d = ServeConfig::default();
+    format!(
+        "# tepra.toml — configuration for `tepra serve`.
+# Precedence (highest → lowest): CLI flags > TEPRA_* env vars > this file > built-in defaults.
+
+# Directory containing label template files.
+template_dir = \"{template_dir}\"
+
+# Address to bind the HTTP server to (host:port).
+bind = \"{bind}\"
+
+# Base URL of the TEPRA Creator WebAPI.
+creator_base = \"{creator_base}\"
+",
+        template_dir = d.template_dir.display(),
+        bind = d.bind,
+        creator_base = d.creator_base,
+    )
+}
+
+/// Write a default `tepra.toml` to `path`. Refuses to overwrite unless `force`.
+///
+/// # Errors
+///
+/// Returns an error if the file exists and `force` is false, or if writing fails.
+pub fn write_default_toml(path: &Path, force: bool) -> Result<()> {
+    if path.exists() && !force {
+        return Err(anyhow::anyhow!(
+            "refusing to overwrite existing file: {} (pass --force to overwrite)",
+            path.display()
+        ));
+    }
+    std::fs::write(path, render_default_toml())
+        .with_context(|| format!("failed to write config to {}", path.display()))?;
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     // WHY-NOT: box figment::Error — Jail::expect_with fixes the closure's return type to
@@ -251,6 +291,76 @@ creator_base = "http://198.51.100.1:9000"
                 .expect("failed to create tepra.toml");
             let result = resolve_config_path(None).unwrap();
             assert!(matches!(result, ConfigPathResolution::AutoFound(_)));
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn render_default_toml_contains_all_fields_with_defaults() {
+        let rendered = render_default_toml();
+        let d = ServeConfig::default();
+        assert!(rendered.contains(&format!("template_dir = \"{}\"", d.template_dir.display())));
+        assert!(rendered.contains(&format!("bind = \"{}\"", d.bind)));
+        assert!(rendered.contains(&format!("creator_base = \"{}\"", d.creator_base)));
+    }
+
+    #[test]
+    fn render_default_toml_output_parses_back_to_default_config() {
+        Jail::expect_with(|jail| {
+            jail.create_file("tepra.toml", &render_default_toml())
+                .expect("failed to create tepra.toml");
+            let cli = CliOverrides {
+                bind: None,
+                template_dir: None,
+                creator_base: None,
+            };
+            let cfg: ServeConfig = build_figment(Some(Path::new("tepra.toml")), &cli)
+                .extract()
+                .unwrap();
+            let d = ServeConfig::default();
+            assert_eq!(cfg.template_dir, d.template_dir);
+            assert_eq!(cfg.bind, d.bind);
+            assert_eq!(cfg.creator_base, d.creator_base);
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn write_default_toml_writes_file_when_absent() {
+        Jail::expect_with(|jail| {
+            let path = jail.directory().join("tepra.toml");
+            write_default_toml(&path, false).expect("write must succeed");
+            assert!(path.exists());
+            let content = std::fs::read_to_string(&path).unwrap();
+            assert!(content.contains("template_dir"));
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn write_default_toml_refuses_to_overwrite_without_force() {
+        Jail::expect_with(|jail| {
+            jail.create_file("tepra.toml", "existing = true")
+                .expect("failed to create tepra.toml");
+            let path = jail.directory().join("tepra.toml");
+            let result = write_default_toml(&path, false);
+            assert!(result.is_err());
+            let content = std::fs::read_to_string(&path).unwrap();
+            assert_eq!(content, "existing = true");
+            Ok(())
+        });
+    }
+
+    #[test]
+    fn write_default_toml_overwrites_when_force_is_true() {
+        Jail::expect_with(|jail| {
+            jail.create_file("tepra.toml", "existing = true")
+                .expect("failed to create tepra.toml");
+            let path = jail.directory().join("tepra.toml");
+            write_default_toml(&path, true).expect("write with force must succeed");
+            let content = std::fs::read_to_string(&path).unwrap();
+            assert!(content.contains("template_dir"));
+            assert!(!content.contains("existing = true"));
             Ok(())
         });
     }
