@@ -98,15 +98,15 @@ async fn index_handles_client_error() {
     );
     let html = body_html(response.into_body()).await;
     assert!(
-        html.contains("TEPRA Creator WebAPI に接続できません"),
+        html.contains("Cannot connect to TEPRA Creator WebAPI"),
         "index error must show error banner; got:\n{html}"
     );
 }
 
 // ---------------------------------------------------------------------------
 // 3. printer_detail_calls_online_status
-//    Mock returns online=true; HTML must contain "オンライン".
-//    RED: stub always returns online=false → template shows "オフライン".
+//    Mock returns online=true; HTML must contain the online-status label.
+//    RED: stub always returns online=false → template shows the offline label.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -128,13 +128,13 @@ async fn printer_detail_calls_online_status() {
     let html = body_html(response.into_body()).await;
     assert!(
         html.contains("オンライン"),
-        "online printer must show オンライン; got:\n{html}"
+        "online printer must show online label; got:\n{html}"
     );
 }
 
 // ---------------------------------------------------------------------------
 // 4. printer_detail_offline
-//    Mock returns online=false; HTML must contain "オフライン".
+//    Mock returns online=false; HTML must contain the offline-status label.
 //    Also verifies that client.online_status was actually called.
 //    RED: stub never calls client → MockCall::OnlineStatus absent.
 // ---------------------------------------------------------------------------
@@ -159,7 +159,7 @@ async fn printer_detail_offline() {
     let html = body_html(response.into_body()).await;
     assert!(
         html.contains("オフライン"),
-        "offline printer must show オフライン; got:\n{html}"
+        "offline printer must show offline label; got:\n{html}"
     );
     let calls = mock.calls();
     assert!(
@@ -196,7 +196,7 @@ async fn printer_detail_handles_client_error() {
     );
     let html = body_html(response.into_body()).await;
     assert!(
-        html.contains("TEPRA Creator WebAPI に接続できません"),
+        html.contains("Cannot connect to TEPRA Creator WebAPI"),
         "printer_detail error must show error banner; got:\n{html}"
     );
     assert!(

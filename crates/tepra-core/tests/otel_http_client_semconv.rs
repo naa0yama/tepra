@@ -527,7 +527,7 @@ async fn transport_error_sets_span_status_error() {
     );
 }
 
-// ── Cycle 37: error.type kind 分岐 ────────────────────────────────────────────
+// ── Cycle 37: error.type kind branching ──────────────────────────────────────
 
 #[tokio::test]
 async fn transport_timeout_error_sets_error_type_timeout() {

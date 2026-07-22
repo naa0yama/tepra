@@ -15,7 +15,7 @@ use tepra_web::trace::{OtelHttpServerMakeSpan, OtelOnResponse};
 use tower::ServiceExt as _;
 use tower_http::trace::TraceLayer;
 
-/// traceparent header がある場合は `trace_id` 継承、ない場合は新規生成を検証。
+/// Verify `trace_id` is inherited when a traceparent header is present, and a new one is generated otherwise.
 #[tokio::test]
 async fn traceparent_propagation() {
     let exporter = InMemorySpanExporterBuilder::new().build();

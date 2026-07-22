@@ -11,7 +11,7 @@
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
-// GET /api/printer  — プリンタ一覧
+// GET /api/printer  — printer list
 // ---------------------------------------------------------------------------
 
 /// One element of the printer list array.

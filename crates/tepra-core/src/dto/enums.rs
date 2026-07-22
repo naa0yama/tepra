@@ -137,11 +137,11 @@ impl_u32_conv!(
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
 pub enum TapeCutWire {
-    /// テープカットしない (wire value 1)
+    /// No tape cut (wire value 1)
     NotCut = 1,
-    /// ラベル毎にテープカットする (wire value 2)
+    /// Cut tape after each label (wire value 2)
     EachLabel = 2,
-    /// 印刷JOB毎にテープカットする (wire value 3)
+    /// Cut tape after each print job (wire value 3)
     AfterJob = 3,
 }
 

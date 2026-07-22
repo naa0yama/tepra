@@ -161,7 +161,7 @@ async fn test_job_card_completed_shows_done_text() {
         .unwrap();
 
     let html = body_html(response.into_body()).await;
-    // Template shows "完了" when job_end=true
+    // Template shows the completion label when job_end=true
     assert!(
         html.contains("完了"),
         "completed card must show completion text; got:\n{html}"
@@ -211,7 +211,7 @@ async fn test_job_card_canceled_shows_canceled_text() {
         .unwrap();
 
     let html = body_html(response.into_body()).await;
-    // Template shows "キャンセル済み" when canceled=true
+    // Template shows the canceled label when canceled=true
     assert!(
         html.contains("キャンセル済み"),
         "canceled card must show cancel text; got:\n{html}"

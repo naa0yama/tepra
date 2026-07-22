@@ -17,7 +17,7 @@ use crate::{
     views::{HtmlTemplate, IndexTemplate, JobCardTemplate, PrinterDetailTemplate},
 };
 
-const CREATOR_API_ERROR: &str = "TEPRA Creator WebAPI に接続できません";
+const CREATOR_API_ERROR: &str = "Cannot connect to TEPRA Creator WebAPI";
 
 /// `GET /ui/` — printer list index page.
 #[instrument(
