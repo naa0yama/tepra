@@ -15,6 +15,8 @@ crates/tepra-web/
   pnpm-lock.yaml     # committed; frozen at build time
   src/
     assets.rs        # embed + serve static assets via axum routes
+    static/
+      favicon.svg    # favicon (printer-mark icon), served at GET /favicon.svg
     styles/
       app.css        # Tailwind 4 + DaisyUI 5 entry point
 ```
@@ -62,10 +64,11 @@ Steps executed by Cargo before compilation:
 | ------------------------- | ------------------- | ----------------- |
 | `GET /static/app.css`     | Compiled CSS bundle | none (dev)        |
 | `GET /static/htmx.min.js` | HTMX bundle         | none (dev)        |
+| `GET /favicon.svg`        | Favicon (SVG)       | none (dev)        |
 | `GET /fonts/{*path}`      | woff2 font files    | immutable, 1 year |
 
-Assets are embedded at compile time via `include_bytes!` (`APP_CSS`, `HTMX_JS`)
-and `rust_embed::RustEmbed` (`Fonts`).
+Assets are embedded at compile time via `include_bytes!` (`APP_CSS`, `HTMX_JS`,
+`FAVICON_SVG`) and `rust_embed::RustEmbed` (`Fonts`).
 
 ## Multi-Crate Consideration
 

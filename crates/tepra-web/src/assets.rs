@@ -14,6 +14,9 @@ pub static APP_CSS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/app.css"))
 /// HTMX JavaScript bundle (copied from `node_modules` by build.rs).
 pub static HTMX_JS: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/htmx.min.js"));
 
+/// Favicon SVG (printer-mark icon, shared with the sidebar logo).
+pub static FAVICON_SVG: &[u8] = include_bytes!("static/favicon.svg");
+
 /// Embedded font files (woff2, copied from @fontsource packages by build.rs).
 #[derive(rust_embed::RustEmbed)]
 #[folder = "$OUT_DIR/fonts"]
@@ -30,6 +33,7 @@ pub fn router() -> Router {
     Router::new()
         .route("/static/app.css", get(serve_css))
         .route("/static/htmx.min.js", get(serve_htmx))
+        .route("/favicon.svg", get(serve_favicon))
         .route("/fonts/{*path}", get(serve_font))
 }
 
@@ -43,6 +47,10 @@ async fn serve_htmx() -> Response {
         HTMX_JS,
     )
         .into_response()
+}
+
+async fn serve_favicon() -> Response {
+    ([(header::CONTENT_TYPE, "image/svg+xml")], FAVICON_SVG).into_response()
 }
 
 async fn serve_font(Path(path): Path<String>) -> Response {
