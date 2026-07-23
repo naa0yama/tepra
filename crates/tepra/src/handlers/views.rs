@@ -14,7 +14,10 @@ use tracing::{Span, instrument};
 
 use crate::{
     state::AppState,
-    views::{HtmlTemplate, IndexTemplate, JobCardTemplate, PrinterDetailTemplate},
+    views::{
+        Breadcrumb, HtmlTemplate, IndexTemplate, JobCardTemplate, NAV_PRINTERS,
+        PrinterDetailTemplate,
+    },
 };
 
 const CREATOR_API_ERROR: &str = "Cannot connect to TEPRA Creator WebAPI";
@@ -37,7 +40,15 @@ pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
         |items| (items.into_iter().map(|p| p.printer_name).collect(), None),
     );
     Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
-    HtmlTemplate(IndexTemplate { printers, error })
+    HtmlTemplate(IndexTemplate {
+        nav_active: NAV_PRINTERS.to_owned(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "Printers".into(),
+            href: None,
+        }],
+        printers,
+        error,
+    })
 }
 
 /// `GET /ui/printers/{name}` — per-printer detail page.
@@ -62,6 +73,17 @@ pub async fn printer_detail(
     );
     Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
     HtmlTemplate(PrinterDetailTemplate {
+        nav_active: NAV_PRINTERS.to_owned(),
+        breadcrumbs: vec![
+            Breadcrumb {
+                label: "Printers".into(),
+                href: Some("/ui/".into()),
+            },
+            Breadcrumb {
+                label: name.clone(),
+                href: None,
+            },
+        ],
         printer_name: name,
         online,
         error,

@@ -27,10 +27,31 @@ impl<T: Template> IntoResponse for HtmlTemplate<T> {
 // Index page — printer list
 // ---------------------------------------------------------------------------
 
+/// Sidebar section key for the printers page (`nav_active` field below).
+///
+/// Matched by string equality in `templates/components/sidebar.html`
+/// (`{% if active == "printers" %}`); defined once here so the two handlers
+/// that set `nav_active` (`handlers::views::index`, `::printer_detail`)
+/// cannot drift out of sync with each other.
+pub const NAV_PRINTERS: &str = "printers";
+
+/// One entry in a navbar breadcrumb trail (`shells/dashboard.html`).
+#[derive(Debug, Clone)]
+pub struct Breadcrumb {
+    /// Display label.
+    pub label: String,
+    /// Link target; `None` renders the current page as plain text.
+    pub href: Option<String>,
+}
+
 /// Context for the top-level index page (`GET /`).
 #[derive(Debug, Template)]
 #[template(path = "pages/index.html")]
 pub struct IndexTemplate {
+    /// Active sidebar section key (`shells/dashboard.html`).
+    pub nav_active: String,
+    /// Navbar breadcrumb trail (`shells/dashboard.html`).
+    pub breadcrumbs: Vec<Breadcrumb>,
     /// Display names of all known printers.
     pub printers: Vec<String>,
     /// Creator API error message, if the API call failed.
@@ -45,6 +66,10 @@ pub struct IndexTemplate {
 #[derive(Debug, Template)]
 #[template(path = "pages/printer_detail.html")]
 pub struct PrinterDetailTemplate {
+    /// Active sidebar section key (`shells/dashboard.html`).
+    pub nav_active: String,
+    /// Navbar breadcrumb trail (`shells/dashboard.html`).
+    pub breadcrumbs: Vec<Breadcrumb>,
     /// Printer identifier.
     pub printer_name: String,
     /// Whether the printer is currently reachable.

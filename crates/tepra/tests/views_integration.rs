@@ -127,7 +127,7 @@ async fn printer_detail_calls_online_status() {
     assert_eq!(response.status(), StatusCode::OK);
     let html = body_html(response.into_body()).await;
     assert!(
-        html.contains("オンライン"),
+        html.contains("Online"),
         "online printer must show online label; got:\n{html}"
     );
 }
@@ -158,7 +158,7 @@ async fn printer_detail_offline() {
     assert_eq!(response.status(), StatusCode::OK);
     let html = body_html(response.into_body()).await;
     assert!(
-        html.contains("オフライン"),
+        html.contains("Offline"),
         "offline printer must show offline label; got:\n{html}"
     );
     let calls = mock.calls();
@@ -225,5 +225,128 @@ async fn error_banner_contains_full_product_name() {
     assert!(
         html.contains("TEPRA Creator WebAPI"),
         "error banner must contain full product name 'TEPRA Creator WebAPI'; got:\n{html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 7. sidebar_renders_nav_structure
+//    The dashboard sidebar must show all four nav sections with the printers
+//    item active and the three unimplemented items disabled + "Coming soon" badge.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn sidebar_renders_nav_structure() {
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_list_printers(Ok(vec![]));
+
+    let response = make_app(mock)
+        .oneshot(Request::builder().uri("/ui/").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+
+    for label in ["TEPRA Creator", "Printers", "Jobs", "Templates", "Settings"] {
+        assert!(
+            html.contains(label),
+            "sidebar must render nav label {label:?}; got:\n{html}"
+        );
+    }
+    assert!(
+        html.contains("menu-active"),
+        "printers item must be marked active; got:\n{html}"
+    );
+    assert!(
+        html.contains("menu-disabled"),
+        "unimplemented items must be disabled; got:\n{html}"
+    );
+    assert!(
+        html.contains("Coming soon"),
+        "unimplemented items must show a Coming soon badge; got:\n{html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 8. index_breadcrumb_trail
+//    The index page navbar shows a single "Printers" breadcrumb (no link).
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn index_breadcrumb_trail() {
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_list_printers(Ok(vec![]));
+
+    let response = make_app(mock)
+        .oneshot(Request::builder().uri("/ui/").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+    assert!(
+        html.contains(r#"<span aria-current="page">Printers</span>"#),
+        "index breadcrumb must show current page as plain text; got:\n{html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 9. printer_detail_breadcrumb_trail
+//    The detail page navbar shows "Printers > <name>", where "Printers"
+//    links back to the index and the printer name is the current page.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn printer_detail_breadcrumb_trail() {
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_online_status(Ok(OnlineStatusResponse { online: true }));
+
+    let response = make_app(mock)
+        .oneshot(
+            Request::builder()
+                .uri("/ui/printers/PR-001")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+    assert!(
+        html.contains(r#"<a href="/ui/">Printers</a>"#),
+        "detail breadcrumb must link back to the index; got:\n{html}"
+    );
+    assert!(
+        html.contains(r#"<span aria-current="page">PR-001</span>"#),
+        "detail breadcrumb must show the printer name as the current page; got:\n{html}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// 10. sidebar_active_on_printer_detail
+//    The printers section stays active on the per-printer detail page too.
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn sidebar_active_on_printer_detail() {
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_online_status(Ok(OnlineStatusResponse { online: true }));
+
+    let response = make_app(mock)
+        .oneshot(
+            Request::builder()
+                .uri("/ui/printers/PR-001")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+    assert!(
+        html.contains("menu-active"),
+        "printers section must stay active on detail page; got:\n{html}"
     );
 }

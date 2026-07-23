@@ -1,0 +1,71 @@
+{# templates/components/sidebar.html #}
+{# Dashboard sidebar navigation. `active` is the current section key
+   (`views::NAV_PRINTERS`, e.g. "printers"). Unimplemented sections render
+   disabled with a "Coming soon" badge and no link. #}
+{% macro sidebar(active) %}
+<div class="bg-base-100 border-r border-base-300 min-h-full w-64 flex flex-col">
+  {# WHY-NOT: repeating the printer-mark path data at both call sites below —
+     a hidden <symbol> keeps the markup as the single source, referenced via
+     <use>. favicon.svg keeps its own copy since it is served standalone and
+     needs a fixed stroke color, not `currentColor`. #}
+  <svg class="hidden" aria-hidden="true">
+    <symbol id="icon-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="6" y="3" width="12" height="6" rx="1"/>
+      <path d="M6 14H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="7" rx="1"/>
+    </symbol>
+  </svg>
+
+  <div class="flex flex-col items-center gap-2 px-4 py-6 border-b border-base-300 text-base-content">
+    <a href="/ui/" class="flex flex-col items-center gap-2">
+      <svg class="size-8" aria-hidden="true"><use href="#icon-printer"/></svg>
+      <span class="text-base font-semibold">TEPRA Creator</span>
+    </a>
+    <span class="text-xs text-base-content/60">
+      Created by <a href="https://github.com/naa0yama" class="link link-hover" target="_blank" rel="noopener noreferrer">naa0yama</a>
+    </span>
+  </div>
+
+  <ul class="menu p-4 gap-1">
+  <li>
+    <a href="/ui/"{% if active == "printers" %} class="menu-active" aria-current="page"{% endif %}>
+      <svg class="size-5" aria-hidden="true"><use href="#icon-printer"/></svg>
+      Printers
+    </a>
+  </li>
+
+  <li class="menu-disabled">
+    <a aria-disabled="true">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+        <rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>
+      </svg>
+      Jobs
+      <span class="badge badge-sm">Coming soon</span>
+    </a>
+  </li>
+
+  <li class="menu-disabled">
+    <a aria-disabled="true">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 3v5h5"/>
+      </svg>
+      Templates
+      <span class="badge badge-sm">Coming soon</span>
+    </a>
+  </li>
+
+  <li class="menu-disabled">
+    <a aria-disabled="true">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      Settings
+      <span class="badge badge-sm">Coming soon</span>
+    </a>
+  </li>
+  </ul>
+</div>
+{% endmacro %}

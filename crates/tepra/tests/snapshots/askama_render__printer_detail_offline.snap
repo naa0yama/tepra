@@ -3,18 +3,36 @@ source: crates/tepra/tests/askama_render.rs
 expression: html
 ---
 
+
+
+
 <!doctype html>
 <html lang="ja" data-theme="corporate">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>QL-800 — TEPRA Creator</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script>
+    // Read before the stylesheet loads to avoid a flash of the wrong theme
+    // (FOUC). Declared at page (not IIFE) scope: the body-end <script> below
+    // reuses THEME_STORAGE_KEY/THEME_DARK to persist the toggle change —
+    // both scripts run in the same document, so this depends on source
+    // order, not a module import.
+    const THEME_STORAGE_KEY = "theme";
+    const THEME_DARK = "business";
+    (() => {
+      if (localStorage.getItem(THEME_STORAGE_KEY) === THEME_DARK) {
+        document.documentElement.setAttribute("data-theme", THEME_DARK);
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="/static/app.css">
   <script src="/static/htmx.min.js" defer></script>
 </head>
 <body class="min-h-screen bg-base-200">
   <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 btn btn-sm">
-    コンテンツへスキップ
+    Skip to content
   </a>
 
   <div class="drawer lg:drawer-open">
@@ -23,15 +41,43 @@ expression: html
     <div class="drawer-content flex flex-col">
       <div class="navbar bg-base-100 shadow-sm">
         <div class="flex-none lg:hidden">
-          <label for="drawer-toggle" class="btn btn-square btn-ghost" aria-label="メニューを開く">
+          <label for="drawer-toggle" class="btn btn-square btn-ghost" aria-label="Open menu">
             <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M4 6h16M4 12h16M4 18h16"/>
             </svg>
           </label>
         </div>
-        <div class="flex-1 px-2">
-          <a class="btn btn-ghost text-xl" href="/">TEPRA Creator</a>
-        </div>
+        
+<div class="breadcrumbs text-sm flex-1 px-2">
+  <ul>
+    
+      <li>
+        
+          <a href="/ui/">Printers</a>
+        
+      </li>
+    
+      <li>
+        
+          <span aria-current="page">QL-800</span>
+        
+      </li>
+    
+  </ul>
+</div>
+
+        
+<label class="swap swap-rotate flex-none mr-2">
+  <input type="checkbox" class="theme-controller" value="business" aria-label="Toggle theme">
+  <svg class="swap-off size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="5"/>
+    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+  </svg>
+  <svg class="swap-on size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+</label>
+
       </div>
 
       <main id="main" tabindex="-1" class="flex-1 p-4">
@@ -41,21 +87,96 @@ expression: html
   <h1 class="text-2xl font-bold mb-4">QL-800</h1>
 
   <div class="badge badge-error">
-    オフライン
+    Offline
   </div>
 
       </main>
     </div>
 
     <div class="drawer-side">
-      <label for="drawer-toggle" aria-label="メニューを閉じる" class="drawer-overlay"></label>
-      <ul class="menu bg-base-200 min-h-full w-56 p-4 gap-1">
-        <li><a href="/ui/">プリンター一覧</a></li>
-      </ul>
+      <label for="drawer-toggle" aria-label="Close menu" class="drawer-overlay"></label>
+      
+<div class="bg-base-100 border-r border-base-300 min-h-full w-64 flex flex-col">
+  
+  <svg class="hidden" aria-hidden="true">
+    <symbol id="icon-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="6" y="3" width="12" height="6" rx="1"/>
+      <path d="M6 14H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="7" rx="1"/>
+    </symbol>
+  </svg>
+
+  <div class="flex flex-col items-center gap-2 px-4 py-6 border-b border-base-300 text-base-content">
+    <a href="/ui/" class="flex flex-col items-center gap-2">
+      <svg class="size-8" aria-hidden="true"><use href="#icon-printer"/></svg>
+      <span class="text-base font-semibold">TEPRA Creator</span>
+    </a>
+    <span class="text-xs text-base-content/60">
+      Created by <a href="https://github.com/naa0yama" class="link link-hover" target="_blank" rel="noopener noreferrer">naa0yama</a>
+    </span>
+  </div>
+
+  <ul class="menu p-4 gap-1">
+  <li>
+    <a href="/ui/" class="menu-active" aria-current="page">
+      <svg class="size-5" aria-hidden="true"><use href="#icon-printer"/></svg>
+      Printers
+    </a>
+  </li>
+
+  <li class="menu-disabled">
+    <a aria-disabled="true">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+        <rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>
+      </svg>
+      Jobs
+      <span class="badge badge-sm">Coming soon</span>
+    </a>
+  </li>
+
+  <li class="menu-disabled">
+    <a aria-disabled="true">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 3v5h5"/>
+      </svg>
+      Templates
+      <span class="badge badge-sm">Coming soon</span>
+    </a>
+  </li>
+
+  <li class="menu-disabled">
+    <a aria-disabled="true">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      Settings
+      <span class="badge badge-sm">Coming soon</span>
+    </a>
+  </li>
+  </ul>
+</div>
+
     </div>
   </div>
 
   <div id="toast-container" class="toast toast-top toast-end z-50"
        aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    (() => {
+      const toggle = document.querySelector(".theme-controller");
+      if (!toggle) return;
+      // WHY-NOT: hardcoding "business" here too — read the checkbox's own
+      // `value` attribute (set in theme_toggle.html) as the single source
+      // for the dark-theme name.
+      toggle.checked = localStorage.getItem(THEME_STORAGE_KEY) === toggle.value;
+      toggle.addEventListener("change", () => {
+        localStorage.setItem(THEME_STORAGE_KEY, toggle.checked ? toggle.value : "corporate");
+      });
+    })();
+  </script>
 </body>
 </html>

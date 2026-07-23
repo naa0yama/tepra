@@ -18,7 +18,7 @@
 )]
 
 use askama::Template as _;
-use tepra::views::{IndexTemplate, JobCardTemplate, PrinterDetailTemplate};
+use tepra::views::{Breadcrumb, IndexTemplate, JobCardTemplate, PrinterDetailTemplate};
 
 // ---------------------------------------------------------------------------
 // IndexTemplate
@@ -27,6 +27,11 @@ use tepra::views::{IndexTemplate, JobCardTemplate, PrinterDetailTemplate};
 #[test]
 fn test_index_render_empty_printers() {
     let tmpl = IndexTemplate {
+        nav_active: "printers".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "Printers".into(),
+            href: None,
+        }],
         printers: vec![],
         error: None,
     };
@@ -38,6 +43,11 @@ fn test_index_render_empty_printers() {
 #[test]
 fn test_index_render_multiple_printers() {
     let tmpl = IndexTemplate {
+        nav_active: "printers".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "Printers".into(),
+            href: None,
+        }],
         printers: vec!["PT-P710BT".into(), "QL-800".into()],
         error: None,
     };
@@ -54,6 +64,17 @@ fn test_index_render_multiple_printers() {
 #[test]
 fn test_printer_detail_online() {
     let tmpl = PrinterDetailTemplate {
+        nav_active: "printers".into(),
+        breadcrumbs: vec![
+            Breadcrumb {
+                label: "Printers".into(),
+                href: Some("/ui/".into()),
+            },
+            Breadcrumb {
+                label: "PT-P710BT".into(),
+                href: None,
+            },
+        ],
         printer_name: "PT-P710BT".into(),
         online: true,
         error: None,
@@ -66,6 +87,17 @@ fn test_printer_detail_online() {
 #[test]
 fn test_printer_detail_offline() {
     let tmpl = PrinterDetailTemplate {
+        nav_active: "printers".into(),
+        breadcrumbs: vec![
+            Breadcrumb {
+                label: "Printers".into(),
+                href: Some("/ui/".into()),
+            },
+            Breadcrumb {
+                label: "QL-800".into(),
+                href: None,
+            },
+        ],
         printer_name: "QL-800".into(),
         online: false,
         error: None,
