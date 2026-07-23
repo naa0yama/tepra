@@ -325,6 +325,22 @@ mod tests {
                             "200": {"description": "OK"}
                         }
                     }
+                },
+                "/api/printer/job/control/{id}": {
+                    "post": {
+                        "summary": "Control a print job",
+                        "responses": {
+                            "200": {"description": "OK"}
+                        }
+                    }
+                },
+                "/api/printer/getmargin": {
+                    "post": {
+                        "summary": "Get printer margin",
+                        "responses": {
+                            "200": {"description": "OK"}
+                        }
+                    }
                 }
             },
             "components": {
@@ -355,7 +371,7 @@ mod tests {
     #[test]
     fn build_endpoint_views_enumerates_every_operation() {
         let endpoints = build_endpoint_views(&fixture_openapi());
-        assert_eq!(endpoints.len(), 3);
+        assert_eq!(endpoints.len(), 5);
     }
 
     #[test]
@@ -367,8 +383,27 @@ mod tests {
             .unwrap();
         assert!(print.is_destructive);
 
+        let tapefeed = endpoints
+            .iter()
+            .find(|e| e.path == "/api/printer/tapefeed/{name}")
+            .unwrap();
+        assert!(tapefeed.is_destructive);
+
+        let job_control = endpoints
+            .iter()
+            .find(|e| e.path == "/api/printer/job/control/{id}")
+            .unwrap();
+        assert!(job_control.is_destructive);
+
         let list = endpoints.iter().find(|e| e.path == "/api/printer").unwrap();
         assert!(!list.is_destructive);
+
+        // POST alone must not trigger the flag — it is path-marker driven, not method-driven.
+        let getmargin = endpoints
+            .iter()
+            .find(|e| e.path == "/api/printer/getmargin")
+            .unwrap();
+        assert!(!getmargin.is_destructive);
     }
 
     #[test]

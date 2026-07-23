@@ -163,7 +163,7 @@ fn test_job_card_canceled() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn test_api_docs_render_lists_endpoints_and_marks_sidebar_active() {
+fn test_api_docs_render_lists_endpoints() {
     let tmpl = ApiDocsTemplate {
         nav_active: "api".into(),
         breadcrumbs: vec![Breadcrumb {
@@ -199,9 +199,24 @@ fn test_api_docs_render_lists_endpoints_and_marks_sidebar_active() {
     assert!(html.contains("List printers"));
     assert!(html.contains("Print a label"));
     assert!(html.contains("destructive"));
+    insta::assert_snapshot!("api_docs_two_endpoints", html);
+}
+
+#[test]
+fn test_api_docs_render_marks_sidebar_active() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
     // Sidebar active branch (`components/sidebar.html`) picks up `nav_active`.
     assert!(html.contains(r#"href="/ui/api" class="menu-active" aria-current="page""#));
-    insta::assert_snapshot!("api_docs_two_endpoints", html);
 }
 
 #[test]
