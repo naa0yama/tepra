@@ -179,6 +179,7 @@ fn test_api_docs_render_lists_endpoints() {
                 response_schema_json: Some("{\"type\":\"array\"}".into()),
                 sample_json: Some("[]".into()),
                 is_destructive: false,
+                path_params: vec![],
             },
             EndpointView {
                 method: "POST".into(),
@@ -188,6 +189,7 @@ fn test_api_docs_render_lists_endpoints() {
                 response_schema_json: None,
                 sample_json: None,
                 is_destructive: true,
+                path_params: vec!["name".into()],
             },
         ],
         error: None,
@@ -199,7 +201,46 @@ fn test_api_docs_render_lists_endpoints() {
     assert!(html.contains("List printers"));
     assert!(html.contains("Print a label"));
     assert!(html.contains("destructive"));
+
+    // Non-destructive `GET /api/printer` gets a Try it out form (execute
+    // button + result <pre>); the destructive `print` endpoint stays
+    // schema-only in 4a (modal gate for it is added in 4b).
+    assert_eq!(html.matches(r#"class="try-it-out-form"#).count(), 1);
+    assert!(html.contains(r#"hx-get="/api/printer""#));
+    assert!(html.contains("Execute"));
+    assert!(html.contains(r#"id="try-it-out-result-1""#));
+
     insta::assert_snapshot!("api_docs_two_endpoints", html);
+}
+
+#[test]
+fn test_api_docs_render_non_destructive_with_path_param_and_body() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "POST".into(),
+            path: "/api/printer/getmargin/{name}".into(),
+            summary: "Get printer margin".into(),
+            request_schema_json: Some("{\"type\":\"object\"}".into()),
+            response_schema_json: Some("{\"type\":\"object\"}".into()),
+            sample_json: Some("{}".into()),
+            is_destructive: false,
+            path_params: vec!["name".into()],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    // Path-param input rendered, and the form falls back to the plain-JS
+    // submit handler (no hx-post) because it also carries a JSON body.
+    assert!(html.contains(r#"data-path-param="name""#));
+    assert!(html.contains("data-json-body"));
+    assert!(html.contains("data-json-body-form"));
+    assert!(!html.contains(r#"hx-post="/api/printer/getmargin/{name}""#));
 }
 
 #[test]

@@ -1,0 +1,36 @@
+{# templates/partials/try_it_out.html #}
+{% macro try_it_out(endpoint, index) %}
+<div class="mt-2 border-t border-base-300 pt-3">
+  <h3 class="font-semibold text-sm mb-2">Try it out</h3>
+  <form
+    class="try-it-out-form flex flex-col gap-2"
+    data-method="{{ endpoint.method }}"
+    data-path="{{ endpoint.path }}"
+    {% if endpoint.request_schema_json.is_none() %}
+    hx-{{ endpoint.method|lower }}="{{ endpoint.path }}"
+    hx-target="#try-it-out-result-{{ index }}"
+    hx-swap="none"
+    {% else %}
+    data-json-body-form
+    {% endif %}
+  >
+    {% for param in endpoint.path_params %}
+      <label class="input input-sm input-bordered flex items-center gap-2">
+        <span class="font-mono">{{ param }}</span>
+        <input type="text" name="{{ param }}" data-path-param="{{ param }}" required class="grow" />
+      </label>
+    {% endfor %}
+    {% if endpoint.request_schema_json.is_some() %}
+      <textarea
+        name="body"
+        data-json-body
+        class="textarea textarea-bordered textarea-sm font-mono"
+        rows="4"
+        placeholder="JSON request body"
+      ></textarea>
+    {% endif %}
+    <button type="submit" class="btn btn-primary btn-sm self-start">Execute</button>
+  </form>
+  <pre id="try-it-out-result-{{ index }}" class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-2"></pre>
+</div>
+{% endmacro %}

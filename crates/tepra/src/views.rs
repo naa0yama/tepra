@@ -129,6 +129,10 @@ pub struct EndpointView {
     /// job cancel). Consumed by the Try-it-out confirm modal added in a
     /// later task; this page only displays the flag.
     pub is_destructive: bool,
+    /// Path parameter names in declaration order (e.g. `["name"]` for
+    /// `/api/printer/info/{name}`), used by the Try-it-out form to render
+    /// one input per placeholder.
+    pub path_params: Vec<String>,
 }
 
 /// Context for the API reference page (`GET /ui/api`).
@@ -153,6 +157,22 @@ fn is_destructive_path(path: &str) -> bool {
     DESTRUCTIVE_PATH_MARKERS
         .iter()
         .any(|marker| path.contains(marker))
+}
+
+/// Extract `{name}`-style path parameter names, in declaration order
+/// (e.g. `/api/printer/info/{name}` -> `["name"]`).
+fn extract_path_params(path: &str) -> Vec<String> {
+    let mut params = Vec::new();
+    let mut rest = path;
+    while let Some(start) = rest.find('{') {
+        let after_brace = &rest[start.saturating_add(1)..];
+        let Some(end) = after_brace.find('}') else {
+            break;
+        };
+        params.push(after_brace[..end].to_owned());
+        rest = &after_brace[end.saturating_add(1)..];
+    }
+    params
 }
 
 /// Resolve a JSON-Schema `$ref` (`#/components/schemas/Name`) against the
@@ -263,6 +283,7 @@ pub fn build_endpoint_views(openapi: &Value) -> Vec<EndpointView> {
                 response_schema_json,
                 sample_json,
                 is_destructive: is_destructive_path(path),
+                path_params: extract_path_params(path),
             });
         }
     }
@@ -459,5 +480,39 @@ mod tests {
     fn build_endpoint_views_returns_empty_for_missing_paths() {
         let endpoints = build_endpoint_views(&json!({}));
         assert!(endpoints.is_empty());
+    }
+
+    #[test]
+    fn build_endpoint_views_extracts_path_params() {
+        let endpoints = build_endpoint_views(&fixture_openapi());
+        let print = endpoints
+            .iter()
+            .find(|e| e.path == "/api/printer/print/{name}")
+            .unwrap();
+        assert_eq!(print.path_params, vec!["name".to_owned()]);
+
+        let list = endpoints.iter().find(|e| e.path == "/api/printer").unwrap();
+        assert!(list.path_params.is_empty());
+    }
+
+    #[test]
+    fn extract_path_params_finds_single_placeholder() {
+        assert_eq!(
+            extract_path_params("/api/printer/info/{name}"),
+            vec!["name".to_owned()]
+        );
+    }
+
+    #[test]
+    fn extract_path_params_finds_multiple_placeholders() {
+        assert_eq!(
+            extract_path_params("/api/{a}/foo/{b}"),
+            vec!["a".to_owned(), "b".to_owned()]
+        );
+    }
+
+    #[test]
+    fn extract_path_params_returns_empty_for_no_placeholder() {
+        assert!(extract_path_params("/api/printer").is_empty());
     }
 }

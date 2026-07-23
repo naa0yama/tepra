@@ -107,6 +107,28 @@ expression: html
                 <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto">[]</pre>
               </div>
             
+            
+              
+<div class="mt-2 border-t border-base-300 pt-3">
+  <h3 class="font-semibold text-sm mb-2">Try it out</h3>
+  <form
+    class="try-it-out-form flex flex-col gap-2"
+    data-method="GET"
+    data-path="/api/printer"
+    
+    hx-get="/api/printer"
+    hx-target="#try-it-out-result-1"
+    hx-swap="none"
+    
+  >
+    
+    
+    <button type="submit" class="btn btn-primary btn-sm self-start">Execute</button>
+  </form>
+  <pre id="try-it-out-result-1" class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-2"></pre>
+</div>
+
+            
           </div>
         </div>
       
@@ -131,11 +153,78 @@ expression: html
             
             
             
+            
           </div>
         </div>
       
     </div>
   
+
+  <script>
+    (() => {
+      // Path param substitution for `hx-get` forms (mechanism 2): htmx does
+      // not fill `{name}` placeholders from form inputs, so replace them
+      // here and drop the matching entries from the outgoing parameters —
+      // otherwise they would also be sent as a duplicate query string.
+      document.body.addEventListener("htmx:configRequest", (evt) => {
+        const form = evt.detail.elt;
+        if (!(form instanceof HTMLFormElement) || !form.classList.contains("try-it-out-form")) {
+          return;
+        }
+        form.querySelectorAll("[data-path-param]").forEach((input) => {
+          const name = input.dataset.pathParam;
+          evt.detail.path = evt.detail.path.replace(`{${name}}`, encodeURIComponent(input.value));
+          delete evt.detail.parameters[name];
+        });
+      });
+
+      // JSON.parse -> JSON.stringify(pretty) into the result <pre> (mechanism
+      // 1): a naive hx-swap would insert the raw JSON as HTML and both skip
+      // pretty-printing and break on `<`/`>` inside string values.
+      document.body.addEventListener("htmx:beforeSwap", (evt) => {
+        const form = evt.detail.requestConfig?.elt;
+        if (!(form instanceof HTMLFormElement) || !form.classList.contains("try-it-out-form")) {
+          return;
+        }
+        evt.detail.shouldSwap = false;
+        renderResult(evt.detail.target, evt.detail.xhr.responseText);
+      });
+
+      // POST forms carrying a JSON request body (mechanism 3): htmx has no
+      // built-in JSON body encoding, so these forms skip hx-post entirely
+      // and are submitted by hand via fetch().
+      document.body.querySelectorAll("form.try-it-out-form[data-json-body-form]").forEach((form) => {
+        form.addEventListener("submit", (evt) => {
+          evt.preventDefault();
+          let path = form.dataset.path;
+          form.querySelectorAll("[data-path-param]").forEach((input) => {
+            path = path.replace(`{${input.dataset.pathParam}}`, encodeURIComponent(input.value));
+          });
+          const bodyField = form.querySelector("[data-json-body]");
+          const result = form.nextElementSibling;
+          fetch(path, {
+            method: form.dataset.method,
+            headers: { "Content-Type": "application/json" },
+            body: bodyField.value || "{}",
+          })
+            .then((res) => res.text())
+            .then((text) => renderResult(result, text))
+            .catch((err) => renderResult(result, String(err)));
+        });
+      });
+
+      function renderResult(target, text) {
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        try {
+          target.textContent = JSON.stringify(JSON.parse(text), null, 2);
+        } catch {
+          target.textContent = text;
+        }
+      }
+    })();
+  </script>
 
       </main>
     </div>
