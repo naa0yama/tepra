@@ -28,6 +28,15 @@ use tracing::{Span, instrument};
 use super::err_502;
 
 /// `GET /api/printer` — list all connected printers.
+#[utoipa::path(
+    get,
+    path = "/api/printer",
+    tag = "printer",
+    responses(
+        (status = 200, description = "List of connected printers", body = Vec<PrinterListItem>),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.list_printers",
@@ -51,6 +60,15 @@ pub async fn list_printers(
 }
 
 /// `GET /api/printer/version` — `WebAPI` module and driver versions.
+#[utoipa::path(
+    get,
+    path = "/api/printer/version",
+    tag = "printer",
+    responses(
+        (status = 200, description = "WebAPI module and driver versions", body = VersionResponse),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.version",
@@ -74,6 +92,15 @@ pub async fn version(
 }
 
 /// `GET /api/printer/autoselect` — currently auto-selected printer name.
+#[utoipa::path(
+    get,
+    path = "/api/printer/autoselect",
+    tag = "printer",
+    responses(
+        (status = 200, description = "Currently auto-selected printer", body = AutoselectResponse),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.autoselect",
@@ -97,6 +124,18 @@ pub async fn autoselect(
 }
 
 /// `GET /api/printer/info/{name}` — printer capabilities and tape list.
+#[utoipa::path(
+    get,
+    path = "/api/printer/info/{name}",
+    tag = "printer",
+    params(
+        ("name" = String, Path, description = "Printer name"),
+    ),
+    responses(
+        (status = 200, description = "Printer capabilities and tape list", body = PrinterInfoResponse),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.printer_info",
@@ -121,6 +160,18 @@ pub async fn printer_info(
 }
 
 /// `GET /api/printer/onlinestatus/{name}` — printer online/offline state.
+#[utoipa::path(
+    get,
+    path = "/api/printer/onlinestatus/{name}",
+    tag = "printer",
+    params(
+        ("name" = String, Path, description = "Printer name"),
+    ),
+    responses(
+        (status = 200, description = "Printer online/offline state", body = OnlineStatusResponse),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.online_status",
@@ -145,6 +196,18 @@ pub async fn online_status(
 }
 
 /// `GET /api/printer/lwstatus/{name}` — detailed tape and device status.
+#[utoipa::path(
+    get,
+    path = "/api/printer/lwstatus/{name}",
+    tag = "printer",
+    params(
+        ("name" = String, Path, description = "Printer name"),
+    ),
+    responses(
+        (status = 200, description = "Detailed tape and device status", body = LwStatusResponse),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.lw_status",
@@ -169,6 +232,19 @@ pub async fn lw_status(
 }
 
 /// `POST /api/printer/getmargin/{name}` — compute print margins.
+#[utoipa::path(
+    post,
+    path = "/api/printer/getmargin/{name}",
+    tag = "printer",
+    params(
+        ("name" = String, Path, description = "Printer name"),
+    ),
+    request_body = GetMarginRequest,
+    responses(
+        (status = 200, description = "Computed print margins", body = GetMarginResponse),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.get_margin",

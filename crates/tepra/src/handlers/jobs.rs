@@ -21,6 +21,19 @@ use super::err_502;
 use crate::state::AppState;
 
 /// `POST /api/printer/print/{name}` — enqueue a print job via the Creator API.
+#[utoipa::path(
+    post,
+    path = "/api/printer/print/{name}",
+    tag = "job",
+    params(
+        ("name" = String, Path, description = "Printer name"),
+    ),
+    request_body = PrintRequest,
+    responses(
+        (status = 200, description = "Print job enqueued", body = PrintResponse),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.print",
@@ -51,13 +64,26 @@ pub async fn print(
 }
 
 /// Query parameters for `GET /api/printer/tapefeed/{name}`.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct TapefeedQuery {
     /// Cut tape after feed when `true`.
     pub cutflag: bool,
 }
 
 /// `GET /api/printer/tapefeed/{name}?cutflag=<bool>` — advance tape.
+#[utoipa::path(
+    get,
+    path = "/api/printer/tapefeed/{name}",
+    tag = "job",
+    params(
+        ("name" = String, Path, description = "Printer name"),
+        TapefeedQuery,
+    ),
+    responses(
+        (status = 200, description = "Tape advanced"),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.tapefeed",
@@ -88,13 +114,26 @@ pub async fn tapefeed(
 }
 
 /// Query parameters for job progress and info endpoints.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::IntoParams)]
 pub struct JobIdQuery {
     /// Creator API job identifier returned by `/print`.
     pub jobid: u64,
 }
 
 /// `GET /api/printer/job/progress/{name}?jobid=N` — poll print job progress.
+#[utoipa::path(
+    get,
+    path = "/api/printer/job/progress/{name}",
+    tag = "job",
+    params(
+        ("name" = String, Path, description = "Printer name"),
+        JobIdQuery,
+    ),
+    responses(
+        (status = 200, description = "Print job progress", body = JobProgressResponse),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.job_progress",
@@ -125,6 +164,19 @@ pub async fn job_progress(
 }
 
 /// `GET /api/printer/job/info/{name}?jobid=N` — Win32 job status bitmask.
+#[utoipa::path(
+    get,
+    path = "/api/printer/job/info/{name}",
+    tag = "job",
+    params(
+        ("name" = String, Path, description = "Printer name"),
+        JobIdQuery,
+    ),
+    responses(
+        (status = 200, description = "Win32 job status bitmask", body = JobInfoResponse),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.job_info",
@@ -155,6 +207,19 @@ pub async fn job_info(
 }
 
 /// `POST /api/printer/job/control/{name}` — pause / resume / cancel a job.
+#[utoipa::path(
+    post,
+    path = "/api/printer/job/control/{name}",
+    tag = "job",
+    params(
+        ("name" = String, Path, description = "Printer name"),
+    ),
+    request_body = JobControlRequest,
+    responses(
+        (status = 200, description = "Job control applied"),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.job_control",

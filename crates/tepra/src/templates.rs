@@ -6,7 +6,7 @@ use anyhow::Context as _;
 use serde::{Deserialize, Serialize};
 
 /// Metadata for a single template file.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
 pub struct TemplateEntry {
     /// Path relative to the template directory, using forward slashes.
     pub path: String,

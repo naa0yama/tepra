@@ -14,6 +14,16 @@ use super::err_502;
 use crate::{state::AppState, templates::TemplateEntry};
 
 /// `POST /api/printer/template/importframe` — extract frame list from a template file.
+#[utoipa::path(
+    post,
+    path = "/api/printer/template/importframe",
+    tag = "template",
+    request_body = ImportFrameRequest,
+    responses(
+        (status = 200, description = "Frame list extracted from template", body = Vec<ImportFrameItem>),
+        (status = 502, description = "Creator API error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.import_frame",
@@ -43,6 +53,15 @@ pub async fn import_frame(
 }
 
 /// `GET /api/templates` — list template files in the configured template directory.
+#[utoipa::path(
+    get,
+    path = "/api/templates",
+    tag = "template",
+    responses(
+        (status = 200, description = "Template files in the configured directory", body = Vec<TemplateEntry>),
+        (status = 500, description = "Template directory read error"),
+    ),
+)]
 #[axum::debug_handler]
 #[instrument(
     name = "handler.list_template_files",

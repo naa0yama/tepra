@@ -11,7 +11,7 @@ use axum::{
 use tepra_core::client::traits::TepraClient;
 
 use crate::{
-    handlers::{jobs, printers, templates, views},
+    handlers::{jobs, openapi, printers, templates, views},
     state::AppState,
 };
 
@@ -28,6 +28,7 @@ pub fn build_router(client: Arc<dyn TepraClient>) -> Router {
         )
         .route("/api/printer/lwstatus/{name}", get(printers::lw_status))
         .route("/api/printer/getmargin/{name}", post(printers::get_margin))
+        .route("/api/openapi.json", get(openapi::openapi_json))
         .with_state(client)
 }
 
