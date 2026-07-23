@@ -7,17 +7,17 @@
 {% endif %}
   class="card bg-base-100 shadow p-4 m-2">
   <p class="font-bold">{{ printer_name }}</p>
-  <p>ジョブ #{{ job_id }}</p>
+  <p>Job #{{ job_id }}</p>
 {% if canceled %}
-  <p class="text-error">キャンセル済み</p>
+  <p class="text-error">Canceled</p>
 {% else if job_end %}
-  <p class="text-success">完了</p>
+  <p class="text-success">Completed</p>
 {% else %}
-  <p>進捗:
+  <p>Progress:
 {% if let Some(p) = progress %}
     {{ p }}%
 {% else %}
-    待機中
+    Pending
 {% endif %}
   </p>
 {% endif %}

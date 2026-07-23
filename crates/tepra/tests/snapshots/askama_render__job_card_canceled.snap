@@ -1,14 +1,14 @@
 ---
-source: crates/tepra-api/tests/askama_render.rs
-assertion_line: 114
+source: crates/tepra/tests/askama_render.rs
 expression: html
 ---
+
 <div id="job-3"
 
   class="card bg-base-100 shadow p-4 m-2">
   <p class="font-bold">PT-P710BT</p>
-  <p>ジョブ #3</p>
+  <p>Job #3</p>
 
-  <p class="text-error">キャンセル済み</p>
+  <p class="text-error">Canceled</p>
 
 </div>
