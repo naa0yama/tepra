@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 // ---------------------------------------------------------------------------
 
 /// One element of the printer list array.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrinterListItem {
@@ -26,6 +27,7 @@ pub struct PrinterListItem {
 // ---------------------------------------------------------------------------
 
 /// Driver version entry within a version response.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DriverVersion {
@@ -34,6 +36,7 @@ pub struct DriverVersion {
 }
 
 /// Response body for `GET /api/printer/version`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VersionResponse {
@@ -46,6 +49,7 @@ pub struct VersionResponse {
 // ---------------------------------------------------------------------------
 
 /// Response body for `GET /api/printer/autoselect`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AutoselectResponse {
@@ -57,6 +61,7 @@ pub struct AutoselectResponse {
 // ---------------------------------------------------------------------------
 
 /// Tape entry within a printer info response.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TapeEntry {
@@ -65,6 +70,7 @@ pub struct TapeEntry {
 }
 
 /// Response body for `GET /api/printer/info/{name}`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrinterInfoResponse {
@@ -78,6 +84,7 @@ pub struct PrinterInfoResponse {
 // ---------------------------------------------------------------------------
 
 /// Response body for `GET /api/printer/onlinestatus/{name}`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OnlineStatusResponse {
     pub online: bool,
@@ -92,6 +99,7 @@ pub struct OnlineStatusResponse {
 /// Field semantics are interpreted by `tepraprint.js`
 /// `tepraprint_fetchPrinterStatus_Async`. Optional fields (`tapeSw`,
 /// `t8Option`) are only present for `statusType >= 5`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LwStatusResponse {

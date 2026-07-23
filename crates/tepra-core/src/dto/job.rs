@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 // ---------------------------------------------------------------------------
 
 /// Base64-encoded file payload used in request bodies.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FilePayload {
@@ -26,6 +27,7 @@ pub struct FilePayload {
 // ---------------------------------------------------------------------------
 
 /// Files to be printed (template, CSV, or image — all optional).
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrintFiles {
@@ -38,6 +40,7 @@ pub struct PrintFiles {
 }
 
 /// Density mode sub-object within a print parameter.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DensityParam {
     /// 1 = specified density; other values reserved.
@@ -46,6 +49,7 @@ pub struct DensityParam {
 }
 
 /// Error message output control within a print parameter.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorMessageParam {
@@ -60,6 +64,7 @@ pub struct ErrorMessageParam {
 ///
 /// Integer fields use **REST wire values** (not JS SDK logical constants).
 /// See `tepraprint_getWebApiPrintParameter` in `tepraprint.js` for the mapping.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrintParameter {
@@ -96,6 +101,7 @@ pub struct PrintParameter {
 }
 
 /// Request body for `POST /api/printer/print/{name}`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrintRequest {
@@ -106,6 +112,7 @@ pub struct PrintRequest {
 /// Response body for `POST /api/printer/print/{name}` on success.
 ///
 /// `result = 1` means the job was enqueued; `jobid` is the assigned ID.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PrintResponse {
     pub result: u32,
@@ -117,6 +124,7 @@ pub struct PrintResponse {
 // ---------------------------------------------------------------------------
 
 /// Response body for `GET /api/printer/job/progress/{name}?jobid=N`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct JobProgressResponse {
@@ -136,6 +144,7 @@ pub struct JobProgressResponse {
 /// Response body for `GET /api/printer/job/info/{name}?jobid=N`.
 ///
 /// `status` is a Win32 job status bitmask. Bit 0 (`0x01`) = paused.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JobInfoResponse {
     pub status: u32,
@@ -148,6 +157,7 @@ pub struct JobInfoResponse {
 /// Request body for `POST /api/printer/job/control/{name}`.
 ///
 /// `control`: 1 = pause, 2 = resume, 3 = cancel.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct JobControlRequest {
     pub jobid: u64,

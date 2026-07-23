@@ -133,3 +133,23 @@ fn print_files_optional_fields_omitted_on_serialize() {
     let back: PrintFiles = serde_json::from_str(&json).expect("deserialize");
     assert_eq!(files, back);
 }
+
+#[cfg(feature = "schema")]
+mod schema {
+    use tepra_core::dto::printer::PrinterListItem;
+    use utoipa::PartialSchema;
+
+    #[test]
+    fn printer_list_item_schema_uses_camel_case_field_name() {
+        let schema = PrinterListItem::schema();
+        let json = serde_json::to_value(&schema).expect("serialize schema");
+        let properties = json
+            .get("properties")
+            .and_then(serde_json::Value::as_object)
+            .expect("schema must describe an object with properties");
+        assert!(
+            properties.contains_key("printerName"),
+            "expected camelCase field `printerName`, got {json}"
+        );
+    }
+}

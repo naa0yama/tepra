@@ -13,6 +13,7 @@ use super::{enums::ImportFrameAttribute, job::FilePayload};
 // ---------------------------------------------------------------------------
 
 /// Request body for `POST /api/printer/template/importframe`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportFrameRequest {
@@ -22,6 +23,7 @@ pub struct ImportFrameRequest {
 /// One import frame entry returned by `POST /api/printer/template/importframe`.
 ///
 /// The response body is an array of these items.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImportFrameItem {
     pub id: u32,
@@ -35,6 +37,7 @@ pub struct ImportFrameItem {
 // ---------------------------------------------------------------------------
 
 /// Request body for `POST /api/printer/getmargin/{name}`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetMarginRequest {
@@ -45,6 +48,7 @@ pub struct GetMarginRequest {
 }
 
 /// Response body for `POST /api/printer/getmargin/{name}`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetMarginResponse {

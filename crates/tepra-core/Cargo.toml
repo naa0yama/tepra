@@ -25,6 +25,9 @@ otel = [
 process-metrics = ["otel", "dep:sysinfo"]
 # Exposes test-only constructors for integration tests.
 test-utils = []
+# OpenAPI schema derivation for DTOs (see ADR 0010). Kept opt-in so the
+# default build stays web-agnostic; enabled transitively by tepra-web.
+schema = ["dep:utoipa"]
 
 # - -------------------------------------------------------------------------------------------------
 # - Dependencies
@@ -38,6 +41,9 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
+
+## OpenAPI (optional, behind `schema` feature)
+utoipa = { workspace = true, optional = true }
 
 ## Logging
 tracing.workspace = true
