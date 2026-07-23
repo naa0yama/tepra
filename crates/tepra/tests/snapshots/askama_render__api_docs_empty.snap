@@ -11,7 +11,7 @@ expression: html
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>QL-800 — TEPRA Creator</title>
+  <title>API Reference — TEPRA Creator</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <script>
     // Read before the stylesheet loads to avoid a flash of the wrong theme
@@ -53,13 +53,7 @@ expression: html
     
       <li>
         
-          <a href="/ui/">Printers</a>
-        
-      </li>
-    
-      <li>
-        
-          <span aria-current="page">QL-800</span>
+          <span aria-current="page">API</span>
         
       </li>
     
@@ -84,11 +78,17 @@ expression: html
         
   
 
-  <h1 class="text-2xl font-bold mb-4">QL-800</h1>
+  <h1 class="text-2xl font-bold mb-4">API Reference</h1>
 
-  <div class="badge badge-error">
-    Offline
-  </div>
+  
+    <div class="hero min-h-64">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h2 class="text-xl font-semibold mt-4">No endpoints found</h2>
+        </div>
+      </div>
+    </div>
+  
 
       </main>
     </div>
@@ -118,7 +118,7 @@ expression: html
 
   <ul class="menu p-4 gap-1">
   <li>
-    <a href="/ui/" class="menu-active" aria-current="page">
+    <a href="/ui/">
       <svg class="size-5" aria-hidden="true"><use href="#icon-printer"/></svg>
       Printers
     </a>
@@ -147,7 +147,7 @@ expression: html
   </li>
 
   <li>
-    <a href="/ui/api">
+    <a href="/ui/api" class="menu-active" aria-current="page">
       <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="16 18 22 12 16 6"/>
         <polyline points="8 6 2 12 8 18"/>

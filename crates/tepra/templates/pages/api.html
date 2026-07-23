@@ -1,0 +1,61 @@
+{# templates/pages/api.html #}
+{% extends "shells/dashboard.html" %}
+{% import "components/alert.html" as components %}
+
+{% block title %}API Reference{% endblock %}
+
+{% block body %}
+  {% if let Some(e) = error %}
+    {{ components::error_alert(message=e) }}
+  {% endif %}
+
+  <h1 class="text-2xl font-bold mb-4">API Reference</h1>
+
+  {% if endpoints.is_empty() %}
+    <div class="hero min-h-64">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h2 class="text-xl font-semibold mt-4">No endpoints found</h2>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="join join-vertical w-full">
+      {% for endpoint in endpoints %}
+        <div class="collapse collapse-arrow join-item border border-base-300 bg-base-100">
+          <input type="checkbox" aria-label="{{ endpoint.method }} {{ endpoint.path }}" />
+          <div class="collapse-title flex flex-wrap items-center gap-3">
+            <span class="badge {% if endpoint.method == "GET" %}badge-info{% else %}badge-warning{% endif %}">
+              {{ endpoint.method }}
+            </span>
+            <code class="font-mono text-sm">{{ endpoint.path }}</code>
+            <span class="opacity-70 text-sm">{{ endpoint.summary }}</span>
+            {% if endpoint.is_destructive %}
+              <span class="badge badge-error badge-sm">destructive</span>
+            {% endif %}
+          </div>
+          <div class="collapse-content flex flex-col gap-3">
+            {% if let Some(req) = endpoint.request_schema_json %}
+              <div>
+                <h3 class="font-semibold text-sm mb-1">Request schema</h3>
+                <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto">{{ req }}</pre>
+              </div>
+            {% endif %}
+            {% if let Some(res) = endpoint.response_schema_json %}
+              <div>
+                <h3 class="font-semibold text-sm mb-1">Response schema</h3>
+                <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto">{{ res }}</pre>
+              </div>
+            {% endif %}
+            {% if let Some(sample) = endpoint.sample_json %}
+              <div>
+                <h3 class="font-semibold text-sm mb-1">Sample response</h3>
+                <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto">{{ sample }}</pre>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

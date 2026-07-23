@@ -18,7 +18,10 @@
 )]
 
 use askama::Template as _;
-use tepra::views::{Breadcrumb, IndexTemplate, JobCardTemplate, PrinterDetailTemplate};
+use tepra::views::{
+    ApiDocsTemplate, Breadcrumb, EndpointView, IndexTemplate, JobCardTemplate,
+    PrinterDetailTemplate,
+};
 
 // ---------------------------------------------------------------------------
 // IndexTemplate
@@ -153,4 +156,66 @@ fn test_job_card_canceled() {
     };
     let html = tmpl.render().unwrap();
     insta::assert_snapshot!("job_card_canceled", html);
+}
+
+// ---------------------------------------------------------------------------
+// ApiDocsTemplate
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_api_docs_render_lists_endpoints_and_marks_sidebar_active() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![
+            EndpointView {
+                method: "GET".into(),
+                path: "/api/printer".into(),
+                summary: "List printers".into(),
+                request_schema_json: None,
+                response_schema_json: Some("{\"type\":\"array\"}".into()),
+                sample_json: Some("[]".into()),
+                is_destructive: false,
+            },
+            EndpointView {
+                method: "POST".into(),
+                path: "/api/printer/print/{name}".into(),
+                summary: "Print a label".into(),
+                request_schema_json: Some("{\"type\":\"object\"}".into()),
+                response_schema_json: None,
+                sample_json: None,
+                is_destructive: true,
+            },
+        ],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains("/api/printer"));
+    assert!(html.contains("/api/printer/print/{name}"));
+    assert!(html.contains("List printers"));
+    assert!(html.contains("Print a label"));
+    assert!(html.contains("destructive"));
+    // Sidebar active branch (`components/sidebar.html`) picks up `nav_active`.
+    assert!(html.contains(r#"href="/ui/api" class="menu-active" aria-current="page""#));
+    insta::assert_snapshot!("api_docs_two_endpoints", html);
+}
+
+#[test]
+fn test_api_docs_render_empty_endpoints() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+    assert!(html.contains("No endpoints found"));
+    insta::assert_snapshot!("api_docs_empty", html);
 }

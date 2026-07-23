@@ -11,16 +11,19 @@ use axum::{
 };
 use opentelemetry_semantic_conventions::attribute as semconv;
 use tracing::{Span, instrument};
+use utoipa::OpenApi as _;
 
 use crate::{
+    handlers::openapi::ApiDoc,
     state::AppState,
     views::{
-        Breadcrumb, HtmlTemplate, IndexTemplate, JobCardTemplate, NAV_PRINTERS,
-        PrinterDetailTemplate,
+        ApiDocsTemplate, Breadcrumb, HtmlTemplate, IndexTemplate, JobCardTemplate, NAV_API,
+        NAV_PRINTERS, PrinterDetailTemplate, build_endpoint_views,
     },
 };
 
 const CREATOR_API_ERROR: &str = "Cannot connect to TEPRA Creator WebAPI";
+const API_DOC_SERIALIZE_ERROR: &str = "Failed to build the OpenAPI document";
 
 /// `GET /ui/` — printer list index page.
 #[instrument(
@@ -129,4 +132,34 @@ pub async fn job_card(
         canceled: resp.canceled,
         progress,
     }))
+}
+
+/// `GET /ui/api` — read-only API reference page listing every built-in
+/// `/api/*` endpoint with its request/response schema.
+#[instrument(
+    name = "handler.api_docs",
+    skip_all,
+    fields(
+        http.request.method = "GET",
+        http.route = "/ui/api",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+    )
+)]
+pub async fn api_docs() -> impl IntoResponse {
+    let (endpoints, error) = serde_json::to_value(ApiDoc::openapi()).map_or_else(
+        |_| (Vec::new(), Some(API_DOC_SERIALIZE_ERROR.to_owned())),
+        |openapi| (build_endpoint_views(&openapi), None),
+    );
+
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
+    HtmlTemplate(ApiDocsTemplate {
+        nav_active: NAV_API.to_owned(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints,
+        error,
+    })
 }
