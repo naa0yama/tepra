@@ -81,13 +81,27 @@ expression: html
   <h1 class="text-2xl font-bold mb-4">Printers</h1>
 
   
-    <ul class="menu bg-base-100 rounded-box w-64">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       
-        <li><a href="/ui/printers/PT-P710BT">PT-P710BT</a></li>
+        <div class="card bg-base-100 shadow p-4">
+          <div class="flex items-center justify-between mb-2">
+            <a class="card-title link" href="/ui/printers/PT-P710BT">PT-P710BT</a>
+          </div>
+          <div hx-get="/ui/printers/PT-P710BT/status-card" hx-trigger="load" hx-swap="innerHTML">
+            <span class="loading loading-spinner"></span>
+          </div>
+        </div>
       
-        <li><a href="/ui/printers/QL-800">QL-800</a></li>
+        <div class="card bg-base-100 shadow p-4">
+          <div class="flex items-center justify-between mb-2">
+            <a class="card-title link" href="/ui/printers/QL-800">QL-800</a>
+          </div>
+          <div hx-get="/ui/printers/QL-800/status-card" hx-trigger="load" hx-swap="innerHTML">
+            <span class="loading loading-spinner"></span>
+          </div>
+        </div>
       
-    </ul>
+    </div>
   
 
       </main>
