@@ -276,8 +276,33 @@ expression: html
       // Execute click through a confirm modal instead of submitting the
       // form directly (the button's type attribute is button, not submit).
       let pendingDestructiveForm = null;
+      let destructiveConfirmed = false;
       const modal = document.getElementById("destructive-confirm-modal");
       const confirmTarget = document.getElementById("destructive-confirm-target");
+
+      // WHY-NOT: click-only gate — a single required text field submits
+      // natively on Enter, bypassing the click-based [data-destructive-trigger]
+      // listener below entirely. Guard the "submit" event itself, in capture
+      // phase so this fires before htmx's own form-level submit listener and
+      // the json-body-form handler above (both of which stopPropagation
+      // cannot reach once we've stopped it here).
+      document.body.addEventListener("submit", (evt) => {
+        const form = evt.target;
+        if (!(form instanceof HTMLFormElement) || form.dataset.destructiveForm === undefined) {
+          return;
+        }
+        if (destructiveConfirmed) {
+          destructiveConfirmed = false;
+          return;
+        }
+        evt.preventDefault();
+        evt.stopPropagation();
+        pendingDestructiveForm = form;
+        if (confirmTarget) {
+          confirmTarget.textContent = `${form.dataset.method} ${form.dataset.path}`;
+        }
+        modal?.showModal();
+      }, true);
 
       document.body.addEventListener("click", (evt) => {
         const trigger = evt.target.closest("[data-destructive-trigger]");
@@ -298,8 +323,10 @@ expression: html
       document.getElementById("destructive-confirm-confirm")?.addEventListener("click", () => {
         modal?.close();
         // requestSubmit() re-dispatches a native "submit" event, which the
-        // existing htmx / fetch handlers above already know how to handle —
-        // no separate destructive-submit code path is needed.
+        // capturing guard above intercepts again — set destructiveConfirmed
+        // so this one re-dispatch is let through to the existing htmx /
+        // fetch handlers instead of re-opening the modal.
+        destructiveConfirmed = true;
         pendingDestructiveForm?.requestSubmit();
         pendingDestructiveForm = null;
       });
