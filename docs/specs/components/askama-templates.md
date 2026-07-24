@@ -13,9 +13,10 @@ crates/tepra/templates/
     index.html          # Printer list page (GET /ui/)
     api.html            # API Reference page (GET /ui/api)
   partials/
-    job_card.html       # HTMX job-status polling card (GET /ui/jobs/{printer}/{id})
-    try_it_out.html     # Per-endpoint "Try it out" form macro (used by api.html)
-    property_table.html # Request/response/param property table macro (used by api.html)
+    job_card.html              # HTMX job-status polling card (GET /ui/jobs/{printer}/{id})
+    printer_status_card.html   # HTMX lazy-loaded printer status card (GET /ui/printers/{name}/status-card)
+    try_it_out.html            # Per-endpoint "Try it out" form macro (used by api.html)
+    property_table.html        # Request/response/param property table macro (used by api.html)
   components/
     alert.html          # Reusable alert macros
     sidebar.html        # Drawer sidebar nav (logo + section menu)
@@ -51,7 +52,8 @@ Base layout used by all page templates via `{% extends %}`:
 
 Extends `shells/dashboard.html`. Bound to `IndexTemplate` in `views.rs`.
 
-- Shows a DaisyUI menu list of known printer names
+- Shows a 2-column responsive grid of printer cards (lazy-loaded via HTMX)
+- Each card performs `hx-get="/ui/printers/{printer}/status-card"` on load and swaps into the card body
 - Renders `components::error_alert` when `error: Option<String>` is set
 - Empty-state hero when `printers` is empty
 
@@ -137,6 +139,16 @@ Macro file: `{% macro property_table(title, name_header, rows) %}`. Imported by
 - Called once per shape per endpoint (path params, request properties,
   response properties)
 
+### partials/printer_status_card.html
+
+Standalone partial, not extending any shell. Bound to `PrinterStatusCardTemplate`.
+
+- `hx-get` target for `GET /ui/printers/{name}/status-card`
+- Shows printer name, online/offline status badge, and current tape width / kind
+- Renders error message when the status fetch fails (offline/unreachable printer)
+- Replaced the old per-printer detail page; lazy-loads into cards on the
+  printer list (`pages/index.html`)
+
 ### partials/job_card.html
 
 Standalone partial, not extending any shell. Bound to `JobCardTemplate`.
@@ -190,11 +202,12 @@ Macro file: `{% macro theme_toggle() %}`.
 
 ## Rust Bindings (`crates/tepra/src/views.rs`)
 
-| Struct            | Template path            |
-| ----------------- | ------------------------ |
-| `IndexTemplate`   | `pages/index.html`       |
-| `JobCardTemplate` | `partials/job_card.html` |
-| `ApiDocsTemplate` | `pages/api.html`         |
+| Struct                      | Template path                       |
+| --------------------------- | ----------------------------------- |
+| `IndexTemplate`             | `pages/index.html`                  |
+| `PrinterStatusCardTemplate` | `partials/printer_status_card.html` |
+| `JobCardTemplate`           | `partials/job_card.html`            |
+| `ApiDocsTemplate`           | `pages/api.html`                    |
 
 All implement `askama::Template` and are wrapped in `HtmlTemplate<T>` for
 axum `IntoResponse` compatibility.
