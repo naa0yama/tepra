@@ -17,6 +17,7 @@ use super::{enums::ImportFrameAttribute, job::FilePayload};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportFrameRequest {
+    /// Template file to inspect for import-frame attributes.
     pub template_file: FilePayload,
 }
 
@@ -26,9 +27,13 @@ pub struct ImportFrameRequest {
 #[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImportFrameItem {
+    /// Import frame index within the template.
     pub id: u32,
+    /// Import frame content type (see `TepraPrintImportFrameAttribute`).
     pub attribute: ImportFrameAttribute,
+    /// Import frame width.
     pub width: u32,
+    /// Import frame height.
     pub height: u32,
 }
 
@@ -41,6 +46,7 @@ pub struct ImportFrameItem {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetMarginRequest {
+    /// Tape ID to compute the margin for (see `TepraPrintTapeID` in the Creator `WebAPI` reference).
     #[serde(rename = "tapeID")]
     pub tape_id: u32,
     /// Optional template file; `null` when computing margin without a template.
@@ -52,7 +58,10 @@ pub struct GetMarginRequest {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GetMarginResponse {
+    /// Top margin in 0.1mm units.
     pub top: u32,
+    /// Bottom margin in 0.1mm units.
     pub bottom: u32,
+    /// Left/right margin in 0.1mm units.
     pub left_right: u32,
 }

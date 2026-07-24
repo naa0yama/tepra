@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrinterListItem {
+    /// Printer name as registered with the driver (used as the `{name}` path param elsewhere).
     pub printer_name: String,
 }
 
@@ -31,7 +32,9 @@ pub struct PrinterListItem {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DriverVersion {
+    /// Printer driver name.
     pub driver_name: String,
+    /// Printer driver version string.
     pub version: String,
 }
 
@@ -40,7 +43,9 @@ pub struct DriverVersion {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VersionResponse {
+    /// `WebAPI` communication module version string.
     pub web_api_module: String,
+    /// Version info for each installed printer driver.
     pub printer_drivers: Vec<DriverVersion>,
 }
 
@@ -53,6 +58,7 @@ pub struct VersionResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AutoselectResponse {
+    /// Printer name auto-selected by the driver.
     pub printer_name: String,
 }
 
@@ -65,6 +71,7 @@ pub struct AutoselectResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TapeEntry {
+    /// Loaded tape ID (see `TepraPrintTapeID` in the Creator `WebAPI` reference).
     #[serde(rename = "tapeID")]
     pub tape_id: u32,
 }
@@ -74,8 +81,11 @@ pub struct TapeEntry {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PrinterInfoResponse {
+    /// Printer driver name.
     pub driver_name: String,
+    /// Print resolution in dots per inch.
     pub dpi: u32,
+    /// Tapes currently loaded or available on the printer.
     pub tape_list: Vec<TapeEntry>,
 }
 
@@ -87,6 +97,7 @@ pub struct PrinterInfoResponse {
 #[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OnlineStatusResponse {
+    /// Whether the printer is currently online.
     pub online: bool,
 }
 
@@ -103,9 +114,12 @@ pub struct OnlineStatusResponse {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LwStatusResponse {
+    /// Loaded tape ID (see `TepraPrintTapeID` in the Creator `WebAPI` reference).
     #[serde(rename = "tapeID")]
     pub tape_id: u32,
+    /// Tape type (see `TepraPrintTapeKind` in the Creator `WebAPI` reference).
     pub tape_kind: i32,
+    /// Device error code (see `TepraPrintStatusError` in the Creator `WebAPI` reference).
     pub error: u32,
     /// Internal tape type discriminator used by SDK to override `tapeKind`.
     pub br_tape_kind: u32,
