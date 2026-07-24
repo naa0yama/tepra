@@ -5,9 +5,9 @@
     <span class="card-title">{{ printer_name }}</span>
   </div>
   {% if let Some(msg) = error %}
-  <div class="badge badge-error">Offline</div>
+  <div class="badge badge-outline badge-error rounded-full">Offline</div>
   {% else %}
-  <div class="badge {% if online %}badge-success{% else %}badge-error{% endif %}">
+  <div class="badge badge-outline {% if online %}badge-success{% else %}badge-error{% endif %} rounded-full">
   {% if online %}
     Online
   {% else %}
