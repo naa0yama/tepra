@@ -51,6 +51,11 @@ front-end も同じスキーマ導出を再利用できる ( ADR 0010 )。
 
 - `dto/` の Request/Response 型に
   `#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]` を付与
+- 各 pub field に `///` doc comment を付与する。`utoipa` は struct doc comment
+  を schema `description`、field doc comment を各 property の `description` に
+  出力するため、これらが `openapi.json` 経由で API リファレンスページの
+  プロパティ表 ( field / 型 / 必須 / 説明 ) の「説明」列を埋める。doc comment
+  自体は feature gate 不要 ( `schema` feature 有効時のみ utoipa が拾う )
 - `utoipa` 依存は `schema = ["dep:utoipa"]` feature の下に閉じ込め、default build
   には一切 leak しない ( `cargo tree` で default に utoipa が現れないことを確認済み )
 - HTTP operation metadata ( `#[utoipa::path]` / `#[derive(OpenApi)]` ) は

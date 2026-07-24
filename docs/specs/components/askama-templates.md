@@ -16,6 +16,7 @@ crates/tepra/templates/
   partials/
     job_card.html       # HTMX job-status polling card (GET /ui/jobs/{printer}/{id})
     try_it_out.html     # Per-endpoint "Try it out" form macro (used by api.html)
+    property_table.html # Request/response/param property table macro (used by api.html)
   components/
     alert.html          # Reusable alert macros
     sidebar.html        # Drawer sidebar nav (logo + section menu)
@@ -70,10 +71,28 @@ Extends `shells/dashboard.html`. Bound to `ApiDocsTemplate` in `views.rs`.
   the code-derived `openapi.json` (view-model built in-process by
   `build_endpoint_views`, not fetched client-side)
 - One DaisyUI accordion (`collapse`) per endpoint, showing `method` + `path` +
-  `summary` and the request/response JSON schemas (`request_schema_json` /
-  `response_schema_json`) plus a request `sample_json`
+  `summary`
+- The `method` badge is a `badge badge-outline` pill (outline ring, not a
+  filled block) colour-coded per method — GET / POST are visually distinct by
+  ring colour rather than fill
+- Request / response / path-param shapes render as **property tables**
+  (`property_table.html` macro) from the structured view-model fields
+  (`params` / `request_properties` / `response_properties`), one row per field
+  with name / type / required / description. The raw JSON schemas
+  (`request_schema_json` / `response_schema_json` / `sample_json`) are kept
+  behind a `<details>` "Raw JSON schema" disclosure for advanced readers, not
+  shown inline by default
 - Embeds the `try_it_out` macro per endpoint for live execution against the
   running server's own `/api/*` routes
+- Printer-name dropdown population (inline `<script>`, IIFE-scoped): on load,
+  a single client-side `fetch("/api/printer")` fills every
+  `[data-printer-select]` `<option>` with the connected printer names, so the
+  `{name}` path param is a pick-list, not free text. On fetch failure or an
+  empty list it degrades each `<select>` to a plain text input (keeping
+  `data-path-param` so the existing path-substitution logic is unchanged).
+  The `api_docs` handler stays stateless — the printer list is fetched
+  client-side from the already-instrumented `/api/printer` route rather than
+  injected server-side (see `try_it_out.html` and ADR 0010 rationale)
 - Destructive-endpoint confirm gate (inline `<script>`, IIFE-scoped):
   - Endpoints whose path contains a `DESTRUCTIVE_PATH_MARKERS` segment
     (`/print/`, `/tapefeed/`, `/job/control/`) render with a
@@ -95,14 +114,29 @@ Macro file: `{% macro try_it_out(endpoint, index) %}`. Imported by
 `pages/api.html`; not a standalone page.
 
 - Builds one execution form per endpoint from an `EndpointView`
-- `path_params` (extracted from `{...}` path segments) render as required text
-  inputs; endpoints with a request body get a JSON `<textarea>` prefilled with
+- `path_params` (extracted from `{...}` path segments) render as required
+  inputs; the `name` param renders as a `<select data-printer-select>` dropdown
+  (populated client-side, see `api.html` above), all other params as text
+  inputs. Endpoints with a request body get a JSON `<textarea>` prefilled with
   `sample_json`
 - Non-destructive forms submit via HTMX (`hx-{method}`, or `data-json-body-form`
   for body-carrying POSTs) with a `type="submit"` Execute button
 - Destructive forms carry `data-destructive-form` and use a `type="button"`
   Execute (`data-destructive-trigger`) so the confirm gate in `api.html`
   mediates every execution
+
+### partials/property_table.html
+
+Macro file: `{% macro property_table(title, name_header, rows) %}`. Imported by
+`pages/api.html`; not a standalone page.
+
+- Renders a DaisyUI `table table-sm` of `rows` (each a `ParamView` or
+  `PropertyView`), one row per field: name (`<code>`) / type / required
+  (Yes/No) / description (em-dash when absent)
+- Skips rendering entirely when `rows` is empty, so body-less endpoints and
+  param-less operations produce no empty table
+- Called once per shape per endpoint (path params, request properties,
+  response properties)
 
 ### partials/job_card.html
 
@@ -175,6 +209,17 @@ axum `IntoResponse` compatibility.
 drift out of sync with each other. `ApiDocsTemplate` additionally carries
 `endpoints: Vec<EndpointView>` (see `try_it_out.html` above) and
 `error: Option<String>`.
+
+`EndpointView` carries both the raw schema JSON (`request_schema_json` /
+`response_schema_json` / `sample_json`, kept for the `<details>` disclosure)
+and structured, pre-extracted view-models for the property tables:
+`params: Vec<ParamView>` (path/query parameters), `request_properties` and
+`response_properties: Vec<PropertyView>`. `ParamView` and `PropertyView` are
+plain data carriers (`name`, `type_name`, `required: bool`,
+`description: Option<String>`). They are built by pure functions
+(`extract_params` / `extract_properties`, resolving `$ref` via `resolve_ref`)
+inside `build_endpoint_views`, which keeps the seam unit-testable against a
+fixture `openapi.json` (`views.rs` tests).
 `Breadcrumb` is a plain data carrier (not an `askama::Template`):
 
 ```rust
