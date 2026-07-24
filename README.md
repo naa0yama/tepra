@@ -1,268 +1,161 @@
-# Boilerplate-Rust
+# tepra
 
 ![coverage](https://raw.githubusercontent.com/naa0yama/boilerplate-rust/badges/coverage.svg)
 ![test execution time](https://raw.githubusercontent.com/naa0yama/boilerplate-rust/badges/time.svg)
 
-Rust プロジェクトのための開発テンプレート
+TEPRA ラベルプリンター向け REST API + WebUI サーバー
 
 ## 概要
 
-このプロジェクトは、Rust 開発を始めるためのボイラープレートです。Dev Containers に対応しており、VS Code での開発環境が簡単に構築できます。
+[テプラ クリエイター](https://www.kingjim.co.jp/sp/tepra_creator/) Ver.4.20 が提供する
+WebAPI 通信モジュール (`29108/tcp`) を経由してプリンター操作・印刷を行うサーバーです。
 
-## 必要要件
+**主要機能:**
 
-- Docker
-- Visual Studio Code
-- VS Code Dev Containers 拡張機能
+- `data/` に配置したテンプレートを WebUI から選択して印刷指示
+- REST API 経由でテンプレートへのデータ流し込み印刷
+- WebUI 上で OpenAPI ドキュメント参照
+- 画像の WebUI / REST API 印刷
 
-## セットアップ
-
-1. リポジトリをクローン:
-
-```bash
-git clone <repository-url>
-cd boilerplate-rust
-```
-
-2. VS Codeでプロジェクトを開く:
+## クイックスタート
 
 ```bash
-code .
-```
+# HTTP サーバー起動 (引数なし — tepra.toml または built-in default を使用)
+cargo run -p tepra-web -- serve
 
-3. VS Codeのコマンドパレット（`Ctrl+Shift+P` / `Cmd+Shift+P`）から「Dev Containers: Reopen in Container」を選択
-
-## devcontainer CLI + traefik による開発環境 (WSL2)
-
-VS Code を使わず tmux + yazi + claude code などで複数 worktree / 複数プロジェクトを
-並行開発する場合は、devcontainer CLI と traefik を組み合わせる方法を使います。
-ポート衝突なしに各 devcontainer へ `p<port>.<branch>.<project>.localhost:8080` で
-アクセスできます。
-
-### ホスト前提条件
-
-WSL2 ホストに以下が必要です。いずれもユーザーグローバルの mise で管理します
-(プロジェクトの `mise.toml` には含まれていません)。
-
-```bash
-# Node.js (devcontainer-cli の実行に必要)
-mise use --global node@lts
-
-# devcontainer CLI
-mise use --global devcontainer-cli@0.86.0
-```
-
-`dev:up` 実行時に、ホストで `ssh-agent` と `gpg-agent` が起動していれば
-SSH エージェント転送と GPG 署名がコンテナ内で自動的に有効になります。
-未起動の場合は起動時に警告が出力されますが、開発は続行できます。
-
-### 初回セットアップ (WSL2 ホストで1回だけ実行)
-
-前提条件のインストール後、以下を実行します。
-traefik バイナリの取得・設定・systemd user service への登録を一括で行います。
-
-```bash
-mise run traefik:setup
-```
-
-traefik の状態確認:
-
-```bash
-systemctl --user status traefik
-```
-
-### devcontainer の起動と停止
-
-```bash
-mise run dev:up      # 現在の worktree の devcontainer を起動
-mise run dev:down    # 現在の worktree の devcontainer を停止・削除
-mise run dev:exec    # 稼働中の devcontainer に bash で接続
-mise run dev:status  # 稼働中の devcontainer 一覧を表示
-```
-
-`dev:up` は `devcontainer.json` の `portsAttributes` に定義された全ポートに対して
-traefik ルーティングを自動設定します。起動後に以下の形式の URL が表示されます。
-
-```
-http://p<port>.<branch>.<project>.localhost:8080
-```
-
-例 (ポート `5080`、ブランチ `feature/add-auth`、プロジェクト `boilerplate-rust`):
-
-```
-http://p5080.feature-add-auth.boilerplate-rust.localhost:8080
-```
-
-### 複数 worktree での利用
-
-```bash
-# 1つ目の worktree
-cd /path/to/boilerplate-rust
-mise run dev:up
-# -> http://p5080.main.boilerplate-rust.localhost:8080
-
-# 2つ目の worktree (別ブランチ)
-cd /path/to/boilerplate-rust-feat
-mise run dev:up
-# -> http://p5080.feature-x.boilerplate-rust.localhost:8080
-```
-
-ブランチ名は DNS ラベル形式 (小文字英数字とハイフン、63文字以内) に自動変換されます。
-
-## 使い方
-
-すべてのタスクは `mise run <task>` で実行します。
-
-### 基本操作
-
-```bash
-mise run build            # デバッグビルド
-mise run build:release    # リリースビルド
-mise run test             # テスト実行
-mise run test:watch       # TDD ウォッチモード
-mise run test:doc         # ドキュメントテスト
-```
-
-### コード品質
-
-```bash
-mise run fmt              # フォーマット (cargo fmt + dprint)
-mise run fmt:check        # フォーマットチェック
-mise run clippy           # Lint
-mise run clippy:strict    # Lint (warnings をエラー扱い)
-mise run ast-grep         # ast-grep カスタムルールチェック
-```
-
-### コミット前チェック
-
-```bash
-mise run pre-commit       # clean:sweep + fmt:check + clippy:strict + ast-grep + lint:gh + check:no-plans
-```
-
-### `tepra-api` サーバー起動
-
-```bash
-# HTTP サーバー起動 ( default: 0.0.0.0:3000 / creator-base http://localhost:29108 )
-cargo run -p tepra-web -- serve --template-dir ./templates
+# --template-dir を明示 (default: templates/)
+cargo run -p tepra-web -- serve --template-dir ./data
 
 # bind / creator-base を明示
 cargo run -p tepra-web -- serve \
-  --template-dir ./templates \
-  --bind 127.0.0.1:8080 \
-  --creator-base http://localhost:29108
+  --template-dir ./data \
+  --bind 127.0.0.1:3000 \
+  --creator-base http://198.51.100.1:29108
+
+# デフォルト値入りの tepra.toml を生成 (--path / --force で挙動制御)
+cargo run -p tepra-web -- config init
 
 # バージョン表示
 cargo run -p tepra-web -- version
 ```
 
-詳細は `docs/specs/components/tepra-web-cli.md` を参照。
+### tepra.toml (最小構成例)
 
-## プロジェクト構造
+プロジェクトルートに `tepra.toml` を配置すると `tepra serve` 単独で起動できる。
+`tepra config init` でデフォルト値入りのテンプレートを生成できる (既存ファイルは
+`--force` 未指定時は上書きしない)。
 
-```
-.
-├── .cargo/                     # Cargo設定
-│   └── config.toml
-├── .devcontainer/              # Dev Container設定
-│   ├── devcontainer.json       # Dev Container設定ファイル
-│   ├── initializeCommand.sh    # 初期化コマンド
-│   └── postStartCommand.sh     # 起動後コマンド
-├── .githooks/                  # Git hooks (mise run 連携)
-│   ├── commit-msg              # Conventional Commits 検証
-│   ├── post-checkout           # tmux ペイン名を repo:branch に設定
-│   ├── pre-commit              # コミット前チェック
-│   └── pre-push                # プッシュ前チェック
-├── .github/                    # GitHub Actions & 設定
-│   ├── actions/                # カスタムアクション
-│   ├── graft/                  # graft マニフェスト (テンプレートリポジトリからのファイル同期設定)
-│   ├── workflows/              # CI/CD ワークフロー
-│   ├── labeler.yml
-│   ├── project-config.json         # CI/リリース設定 (ビルドターゲット・タイムアウト・apt パッケージ等)
-│   └── release.yml
-├── .mise/                      # mise タスク定義
-│   ├── tasks.toml              # 共通タスク定義 (boilerplate から管理)
-│   └── overrides.toml          # プロジェクト固有のタスク上書き
-├── .vscode/                    # VS Code設定
-│   ├── launch.json             # デバッグ設定
-│   └── settings.json           # ワークスペース設定
-├── ast-rules/                  # ast-grep プロジェクトルール
-├── crates/                     # ワークスペースクレート
-│   ├── tepra-core/             # ドメイン型 + KING JIM WebAPI クライアント
-│   │   ├── src/lib.rs
-│   │   └── Cargo.toml
-│   ├── tepra-api/              # REST API レイヤー
-│   │   ├── src/lib.rs
-│   │   └── Cargo.toml
-│   └── tepra-web/              # HTTP サーバー + テンプレート (バイナリ: tepra-api)
-│       ├── src/lib.rs
-│       └── Cargo.toml
-├── docs/                       # ドキュメント
-├── .editorconfig               # エディター設定
-├── .gitignore                  # Git除外設定
-├── .octocov.yml                # カバレッジレポート設定
-├── Cargo.lock                  # 依存関係のロックファイル
-├── Cargo.toml                  # ワークスペース設定と共有依存関係
-├── deny.toml                   # cargo-deny 設定
-├── Dockerfile                  # Dockerイメージ定義
-├── dprint.jsonc                # Dprint フォーマッター設定
-├── LICENSE                     # ライセンスファイル
-├── mise.toml                   # ツール管理 (タスクは .mise/ を参照)
-├── README.md                   # このファイル
-├── renovate.json               # Renovate自動依存関係更新設定
-├── rust-toolchain.toml         # Rust toolchain バージョン固定
-└── sgconfig.yml                # ast-grep 設定ファイル
+```toml
+# tepra serve config file
+# CLI arg > env var (TEPRA_*) > file > built-in default の順で上書き。
+
+template_dir = "data"
+bind = "0.0.0.0:3000"
+creator_base = "http://localhost:29108"
 ```
 
-## VSCode拡張機能
+詳細は [`docs/specs/components/tepra-web-cli.md`](docs/specs/components/tepra-web-cli.md) を参照。
 
-このプロジェクトの Dev Containers には、Rust開発を効率化する以下の拡張機能が含まれています：
+## TEPRA WebAPI セットアップ
 
-### Rust開発
+テプラ クリエイター Ver.4.20 に含まれる「WebAPI 用通信モジュール」を事前にセットアップしてください。
+本サーバーはこのモジュールが提供する `29108/tcp` へ通信します。
 
-- **[rust-analyzer](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)** - Rust言語サポート（コード補完、エラー検出、リファクタリング）
-- **[CodeLLDB](https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb)** - Rustプログラムのデバッグサポート
-- **[Even Better TOML](https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml)** - Cargo.tomlファイルのシンタックスハイライトとバリデーション
+デフォルトでは `127.0.0.1:29108` で待ち受けるため、Linux / WSL2 環境から利用する場合は
+以下の手順でネットワーク全体に公開します。不要な場合はスキップしてください。
 
-### コード品質・フォーマット
+### サービス停止
 
-- **[Biome](https://marketplace.visualstudio.com/items?itemName=biomejs.biome)** - 高速なフォーマッターとリンター
-- **[dprint](https://marketplace.visualstudio.com/items?itemName=dprint.dprint)** - 高速なコードフォーマッター（設定ファイル: `dprint.jsonc`）
-- **[EditorConfig for VS Code](https://marketplace.visualstudio.com/items?itemName=EditorConfig.EditorConfig)** - エディター設定の統一
-- **[Error Lens](https://marketplace.visualstudio.com/items?itemName=usernamehw.errorlens)** - エラーと警告をインラインで表示
+```powershell
+### 管理者 ###
+PS> Stop-Service -Name "TpsWebPrintService"
+```
 
-### 開発支援
+### appsettings.json 書き換え (IPv4 All で待ち受け)
 
-- **[Claude Code for VSCode](https://marketplace.visualstudio.com/items?itemName=Anthropic.claude-code)** - AIアシスタントによるコーディング支援
-- **[Calculate](https://marketplace.visualstudio.com/items?itemName=acarreiro.calculate)** - 選択したテキストの計算式を評価
-- **[indent-rainbow](https://marketplace.visualstudio.com/items?itemName=oderwat.indent-rainbow)** - インデントレベルを色分け表示
-- **[Local History](https://marketplace.visualstudio.com/items?itemName=xyz.local-history)** - ファイルの変更履歴をローカルに保存
+```powershell
+### 管理者 ###
 
-### テキスト編集
+#Requires -Version 5.1
+$ErrorActionPreference = 'Stop'
 
-- **[lowercase](https://marketplace.visualstudio.com/items?itemName=ruiquelhas.vscode-lowercase)** - 選択テキストを小文字に変換
-- **[uppercase](https://marketplace.visualstudio.com/items?itemName=ruiquelhas.vscode-uppercase)** - 選択テキストを大文字に変換
-- **[Markdown All in One](https://marketplace.visualstudio.com/items?itemName=yzhang.markdown-all-in-one)** - Markdownファイルの編集支援
+$Path   = 'C:\Windows\KING JIM\TEPRA WEBAPI\appsettings.json'
+$NewUrl = 'http://0.0.0.0:29108'
+
+if (-not (Test-Path -LiteralPath $Path)) { throw "見つかりません: $Path" }
+
+$json = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+
+$http = $json.Kestrel.Endpoints.Http
+if (-not $http) { throw 'Kestrel.Endpoints.Http が存在しません。' }
+
+if ($http.PSObject.Properties['Url']) {
+    $old = $http.Url
+    $http.Url = $NewUrl
+} else {
+    $old = '(なし)'
+    $http | Add-Member -NotePropertyName Url -NotePropertyValue $NewUrl
+}
+
+$out = $json | ConvertTo-Json -Depth 64
+[System.IO.File]::WriteAllText($Path, $out, [System.Text.UTF8Encoding]::new($false))
+
+Write-Host "Url: $old -> $NewUrl"
+```
+
+### サービス再起動・疎通確認
+
+```powershell
+### 管理者 ###
+PS> Restart-Service -Name "TpsWebPrintService"
+PS> netstat -ano | Select-String -Pattern ":29108"
+
+  TCP    0.0.0.0:29108    0.0.0.0:0    LISTENING    <pid>
+```
+
+### Windows Firewall 解放
+
+```powershell
+### 管理者 ###
+
+New-NetFirewallRule `
+  -DisplayName "Tepra Series Web Print Service (TEPWPAPI)" `
+  -Direction Inbound `
+  -Action Allow `
+  -Protocol TCP `
+  -LocalPort 29108 `
+  -Program "C:\WINDOWS\KING JIM\TEPRA WEBAPI\TEPWPAPI.exe" `
+  -RemoteAddress LocalSubnet `
+  -Profile Domain,Private
+```
+
+`-RemoteAddress 192.0.2.0/24` のように接続元サブネットを制限することを推奨します。
+
+## クレート構成
+
+```
+crates/
+  tepra-core/   ドメイン型 + KING JIM WebAPI クライアント
+  tepra/        REST API レイヤー (ルーター・ハンドラー・テンプレート)
+  tepra-web/    HTTP サーバーエントリーポイント (バイナリ: tepra)
+```
+
+## ドキュメント
+
+| ドキュメント                                                                                 | 内容                                            |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| [`docs/development.md`](docs/development.md)                                                 | 開発環境セットアップ・mise タスク・コミット規約 |
+| [`docs/specs/`](docs/specs/)                                                                 | コンポーネント仕様・アーキテクチャ設計          |
+| [`docs/adr/`](docs/adr/)                                                                     | アーキテクチャ決定記録 (ADR)                    |
+| [`docs/specs/external/tepra-creator-webapi.md`](docs/specs/external/tepra-creator-webapi.md) | TEPRA Creator WebAPI 仕様                       |
 
 ## ライセンス
 
-このプロジェクトは [LICENSE](./LICENSE) ファイルに記載されているライセンスの下で公開されています。
+[LICENSE](./LICENSE) に記載のライセンスの下で公開。
 
-### サードパーティライセンスについて
+### OpenObserve (サードパーティ)
 
-Dev Container の起動時に [OpenObserve Enterprise Edition](https://openobserve.ai/) が自動的にダウンロード・インストールされます。Enterprise 版は MCP (Model Context Protocol) サーバー機能など OSS 版にはない付加機能を備えているため採用しています。Enterprise 版は 200GB/Day のインジェストクォータ内であれば無料で利用できます。
-
-OpenObserve Enterprise Edition は [EULA (End User License Agreement)](https://openobserve.ai/enterprise-license/) の下で提供されており、OSS 版 (AGPL-3.0) とはライセンスが異なります。Enterprise 版の機能一覧は [OpenObserve Enterprise](https://openobserve.ai/docs/features/enterprise/) を参照してください。
-
-## 参考資料
-
-- [The Rust Programming Language 日本語版](https://doc.rust-jp.rs/book-ja/)
-- [Developing inside a Container](https://code.visualstudio.com/docs/devcontainers/containers)
-- [Cargo Documentation](https://doc.rust-lang.org/cargo/)
-
-## Troubleshooting
-
-### Rust debug
-
-```bash
-RUST_LOG=trace RUST_BACKTRACE=1 cargo run -- help
-```
+Dev Container 起動時に [OpenObserve Enterprise Edition](https://openobserve.ai/) が
+自動的にダウンロード・インストールされます。Enterprise 版は 200 GB/Day のインジェスト
+クォータ内であれば無料で利用できます。ライセンスは
+[EULA](https://openobserve.ai/enterprise-license/) を参照してください。

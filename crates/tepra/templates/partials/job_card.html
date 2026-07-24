@@ -1,0 +1,24 @@
+{# templates/partials/job_card.html #}
+<div id="job-{{ job_id }}"
+{% if !job_end && !canceled %}
+  hx-get="/ui/jobs/{{ printer_name }}/{{ job_id }}"
+  hx-trigger="every 1s"
+  hx-swap="outerHTML"
+{% endif %}
+  class="card bg-base-100 shadow p-4 m-2">
+  <p class="font-bold">{{ printer_name }}</p>
+  <p>Job #{{ job_id }}</p>
+{% if canceled %}
+  <p class="text-error">Canceled</p>
+{% else if job_end %}
+  <p class="text-success">Completed</p>
+{% else %}
+  <p>Progress:
+{% if let Some(p) = progress %}
+    {{ p }}%
+{% else %}
+    Pending
+{% endif %}
+  </p>
+{% endif %}
+</div>

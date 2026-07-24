@@ -37,6 +37,7 @@ All tasks use `mise run <task>`:
 | Clean (full)          | `mise run clean`              |
 | Clean (sweep)         | `mise run clean:sweep`        |
 | Badges (init)         | `mise run badges:init`        |
+| Playwright setup      | `mise run setup:playwright`   |
 | Claude Code (install) | `mise run claudecode:install` |
 | O2 (install)          | `mise run o2:install`         |
 | O2 (start)            | `mise run o2`                 |
@@ -46,6 +47,9 @@ All tasks use `mise run <task>`:
 | Dev (exec)            | `mise run dev:exec`           |
 | Dev (status)          | `mise run dev:status`         |
 | Traefik setup         | `mise run traefik:setup`      |
+| Web serve             | `mise run web:serve`          |
+| Wireframe (start)     | `mise run wireframe:up`       |
+| Wireframe (stop)      | `mise run wireframe:down`     |
 
 ## Commit Convention
 

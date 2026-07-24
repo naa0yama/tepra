@@ -1,0 +1,23 @@
+{# templates/partials/printer_status_card.html #}
+<div class="flex items-center justify-between mb-2">
+  <div class="flex items-center gap-2">
+    <svg class="size-5" aria-hidden="true"><use href="#icon-printer"/></svg>
+    <span class="card-title">{{ printer_name }}</span>
+  </div>
+  {% if let Some(msg) = error %}
+  <div class="badge badge-outline badge-error rounded-full">Offline</div>
+  {% else %}
+  <div class="badge badge-outline {% if online %}badge-success{% else %}badge-error{% endif %} rounded-full">
+  {% if online %}
+    Online
+  {% else %}
+    Offline
+  {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% if let Some(msg) = error %}
+<p class="text-error text-sm">{{ msg }}</p>
+{% else %}
+<p>Tape: {{ tape_width }} / {{ tape_kind }}</p>
+{% endif %}

@@ -1,0 +1,37 @@
+{# templates/pages/index.html #}
+{% extends "shells/dashboard.html" %}
+{% import "components/alert.html" as components %}
+
+{% block title %}Printers{% endblock %}
+
+{% block body %}
+  {% if let Some(e) = error %}
+    {{ components::error_alert(message=e) }}
+  {% endif %}
+
+  <h1 class="text-2xl font-bold mb-4">Printers</h1>
+
+  {% if printers.is_empty() %}
+    <div class="hero min-h-64">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h2 class="text-xl font-semibold mt-4">No printers found</h2>
+          <p class="opacity-70 mt-2">Make sure TEPRA Creator WebAPI is reachable.</p>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {% for printer in printers %}
+        <div class="card bg-base-100 shadow p-4">
+          <div hx-get="/ui/printers/{{ printer }}/status-card" hx-trigger="load" hx-swap="innerHTML">
+            <div class="flex items-center justify-between mb-2">
+              <span class="card-title">{{ printer }}</span>
+              <span class="loading loading-spinner"></span>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,374 @@
+---
+source: crates/tepra/tests/askama_render.rs
+expression: html
+---
+
+
+
+
+<!doctype html>
+<html lang="ja" data-theme="corporate">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API Reference — TEPRA Creator</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <script>
+    // Read before the stylesheet loads to avoid a flash of the wrong theme
+    // (FOUC). Declared at page (not IIFE) scope: the body-end <script> below
+    // reuses THEME_STORAGE_KEY/THEME_DARK to persist the toggle change —
+    // both scripts run in the same document, so this depends on source
+    // order, not a module import.
+    const THEME_STORAGE_KEY = "theme";
+    const THEME_DARK = "business";
+    (() => {
+      if (localStorage.getItem(THEME_STORAGE_KEY) === THEME_DARK) {
+        document.documentElement.setAttribute("data-theme", THEME_DARK);
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+</head>
+<body class="min-h-screen bg-base-200">
+  <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 btn btn-sm">
+    Skip to content
+  </a>
+
+  <div class="drawer lg:drawer-open">
+    <input id="drawer-toggle" type="checkbox" class="drawer-toggle" />
+
+    <div class="drawer-content flex flex-col">
+      <div class="navbar bg-base-100 shadow-sm">
+        <div class="flex-none lg:hidden">
+          <label for="drawer-toggle" class="btn btn-square btn-ghost" aria-label="Open menu">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 6h16M4 12h16M4 18h16"/>
+            </svg>
+          </label>
+        </div>
+        
+<div class="breadcrumbs text-sm flex-1 px-2">
+  <ul>
+    
+      <li>
+        
+          <span aria-current="page">API</span>
+        
+      </li>
+    
+  </ul>
+</div>
+
+        
+<label class="swap swap-rotate flex-none mr-2">
+  <input type="checkbox" class="theme-controller" value="business" aria-label="Toggle theme">
+  <svg class="swap-off size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="5"/>
+    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+  </svg>
+  <svg class="swap-on size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+</label>
+
+      </div>
+
+      <main id="main" tabindex="-1" class="flex-1 p-4">
+        
+  
+
+  <h1 class="text-2xl font-bold mb-4">API Reference</h1>
+
+  
+    <div class="hero min-h-64">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h2 class="text-xl font-semibold mt-4">No endpoints found</h2>
+        </div>
+      </div>
+    </div>
+  
+
+  <script>
+    (() => {
+      // WHY-NOT: server-side printer <option> render — api_docs handler stays
+      // stateless (no client dependency); populate the {name} dropdown via a
+      // client-side fetch of the already-instrumented /api/printer route instead.
+      fetch("/api/printer")
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((printers) => {
+          if (!Array.isArray(printers) || printers.length === 0) {
+            throw new Error("empty printer list");
+          }
+          document.querySelectorAll("[data-printer-select]").forEach((select) => {
+            select.innerHTML = "";
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            placeholder.textContent = "Select printer…";
+            select.appendChild(placeholder);
+            printers.forEach((printer) => {
+              const option = document.createElement("option");
+              option.value = printer.printerName;
+              option.textContent = printer.printerName;
+              select.appendChild(option);
+            });
+          });
+        })
+        .catch(() => {
+          // Degrade to a plain text input: keep data-path-param so the
+          // existing path-substitution handlers below need no changes.
+          document.querySelectorAll("[data-printer-select]").forEach((select) => {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.name = select.name;
+            input.required = true;
+            input.className = select.className;
+            input.dataset.pathParam = select.dataset.pathParam;
+            select.replaceWith(input);
+          });
+        });
+
+      // Path param substitution for `hx-get` forms (mechanism 2): htmx does
+      // not fill `{name}` placeholders from form inputs, so replace them
+      // here and drop the matching entries from the outgoing parameters —
+      // otherwise they would also be sent as a duplicate query string.
+      document.body.addEventListener("htmx:configRequest", (evt) => {
+        const form = evt.detail.elt;
+        if (!(form instanceof HTMLFormElement) || !form.classList.contains("try-it-out-form")) {
+          return;
+        }
+        form.querySelectorAll("[data-path-param]").forEach((input) => {
+          const name = input.dataset.pathParam;
+          evt.detail.path = evt.detail.path.replace(`{${name}}`, encodeURIComponent(input.value));
+          delete evt.detail.parameters[name];
+        });
+      });
+
+      // WHY-NOT: hx-swap — inserts raw JSON as HTML, no pretty-print, breaks on '<'/'>'
+      document.body.addEventListener("htmx:beforeSwap", (evt) => {
+        const form = evt.detail.requestConfig?.elt;
+        if (!(form instanceof HTMLFormElement) || !form.classList.contains("try-it-out-form")) {
+          return;
+        }
+        evt.detail.shouldSwap = false;
+        renderResult(evt.detail.target, evt.detail.xhr.responseText);
+      });
+
+      // POST forms carrying a JSON request body (mechanism 3): htmx has no
+      // built-in JSON body encoding, so these forms skip hx-post entirely
+      // and are submitted by hand via fetch().
+      // Invariant: query params (query_params) only ever appear on GET,
+      // body-less operations (jobid / cutflag), so this body-carrying path
+      // substitutes path params only and never appends a query string. If a
+      // POST ever gains a query param, append endpoint.query_params to `path`
+      // here — otherwise it would be silently dropped.
+      document.body.querySelectorAll("form.try-it-out-form[data-json-body-form]").forEach((form) => {
+        form.addEventListener("submit", (evt) => {
+          evt.preventDefault();
+          let path = form.dataset.path;
+          form.querySelectorAll("[data-path-param]").forEach((input) => {
+            path = path.replace(`{${input.dataset.pathParam}}`, encodeURIComponent(input.value));
+          });
+          const bodyField = form.querySelector("[data-json-body]");
+          const result = form.nextElementSibling;
+          fetch(path, {
+            method: form.dataset.method,
+            headers: { "Content-Type": "application/json" },
+            body: bodyField.value || "{}",
+          })
+            .then((res) => res.text())
+            .then((text) => renderResult(result, text))
+            .catch((err) => renderResult(result, String(err)));
+        });
+      });
+
+      function renderResult(target, text) {
+        if (!(target instanceof HTMLElement)) {
+          return;
+        }
+        try {
+          target.textContent = JSON.stringify(JSON.parse(text), null, 2);
+        } catch {
+          target.textContent = text;
+        }
+      }
+
+      // Destructive endpoints (print / tapefeed / job_control) route the
+      // Execute click through a confirm modal instead of submitting the
+      // form directly (the button's type attribute is button, not submit).
+      let pendingDestructiveForm = null;
+      let destructiveConfirmed = false;
+      const modal = document.getElementById("destructive-confirm-modal");
+      const confirmTarget = document.getElementById("destructive-confirm-target");
+
+      // WHY-NOT: click-only gate — a single required text field submits
+      // natively on Enter, bypassing the click-based [data-destructive-trigger]
+      // listener below entirely. Guard the "submit" event itself, in capture
+      // phase so this fires before htmx's own form-level submit listener and
+      // the json-body-form handler above (both of which stopPropagation
+      // cannot reach once we've stopped it here).
+      document.body.addEventListener("submit", (evt) => {
+        const form = evt.target;
+        if (!(form instanceof HTMLFormElement) || form.dataset.destructiveForm === undefined) {
+          return;
+        }
+        if (destructiveConfirmed) {
+          destructiveConfirmed = false;
+          return;
+        }
+        evt.preventDefault();
+        evt.stopPropagation();
+        pendingDestructiveForm = form;
+        if (confirmTarget) {
+          confirmTarget.textContent = `${form.dataset.method} ${form.dataset.path}`;
+        }
+        modal?.showModal();
+      }, true);
+
+      document.body.addEventListener("click", (evt) => {
+        const trigger = evt.target.closest("[data-destructive-trigger]");
+        if (!trigger) {
+          return;
+        }
+        const form = trigger.closest("form.try-it-out-form");
+        if (!form) {
+          return;
+        }
+        pendingDestructiveForm = form;
+        if (confirmTarget) {
+          confirmTarget.textContent = `${form.dataset.method} ${form.dataset.path}`;
+        }
+        modal?.showModal();
+      });
+
+      document.getElementById("destructive-confirm-confirm")?.addEventListener("click", () => {
+        modal?.close();
+        // requestSubmit() re-dispatches a native "submit" event, which the
+        // capturing guard above intercepts again — set destructiveConfirmed
+        // so this one re-dispatch is let through to the existing htmx /
+        // fetch handlers instead of re-opening the modal.
+        destructiveConfirmed = true;
+        pendingDestructiveForm?.requestSubmit();
+        // requestSubmit() skips the "submit" event entirely when the form
+        // fails interactive constraint validation, so the guard above never
+        // runs and never resets the flag. Force-clear here so a failed
+        // validation attempt cannot leave the gate open for a later submit.
+        destructiveConfirmed = false;
+        pendingDestructiveForm = null;
+      });
+
+      document.getElementById("destructive-confirm-cancel")?.addEventListener("click", () => {
+        modal?.close();
+        pendingDestructiveForm = null;
+      });
+    })();
+  </script>
+
+      </main>
+    </div>
+
+    <div class="drawer-side">
+      <label for="drawer-toggle" aria-label="Close menu" class="drawer-overlay"></label>
+      
+<div class="bg-base-100 border-r border-base-300 min-h-full w-64 flex flex-col">
+  
+  <svg class="hidden" aria-hidden="true">
+    <symbol id="icon-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="6" y="3" width="12" height="6" rx="1"/>
+      <path d="M6 14H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="7" rx="1"/>
+    </symbol>
+  </svg>
+
+  <div class="flex flex-col items-center gap-2 px-4 py-6 border-b border-base-300 text-base-content">
+    <a href="/ui/" class="flex flex-col items-center gap-2">
+      <svg class="size-8" aria-hidden="true"><use href="#icon-printer"/></svg>
+      <span class="text-base font-semibold">TEPRA Creator</span>
+    </a>
+    <span class="text-xs text-base-content/60">
+      Created by <a href="https://github.com/naa0yama" class="link link-hover" target="_blank" rel="noopener noreferrer">naa0yama</a>
+    </span>
+  </div>
+
+  <ul class="menu p-4 gap-1">
+  <li>
+    <a href="/ui/">
+      <svg class="size-5" aria-hidden="true"><use href="#icon-printer"/></svg>
+      Printers
+    </a>
+  </li>
+
+  <li class="menu-disabled">
+    <a aria-disabled="true">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+        <rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>
+      </svg>
+      Jobs
+      <span class="badge badge-sm">Coming soon</span>
+    </a>
+  </li>
+
+  <li class="menu-disabled">
+    <a aria-disabled="true">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 3v5h5"/>
+      </svg>
+      Templates
+      <span class="badge badge-sm">Coming soon</span>
+    </a>
+  </li>
+
+  <li>
+    <a href="/ui/api" class="menu-active" aria-current="page">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="16 18 22 12 16 6"/>
+        <polyline points="8 6 2 12 8 18"/>
+      </svg>
+      API
+    </a>
+  </li>
+
+  <li class="menu-disabled">
+    <a aria-disabled="true">
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      Settings
+      <span class="badge badge-sm">Coming soon</span>
+    </a>
+  </li>
+  </ul>
+</div>
+
+    </div>
+  </div>
+
+  <div id="toast-container" class="toast toast-top toast-end z-50"
+       aria-live="polite" aria-atomic="true"></div>
+
+  <script>
+    (() => {
+      const toggle = document.querySelector(".theme-controller");
+      if (!toggle) return;
+      // WHY-NOT: hardcoding "business" here too — read the checkbox's own
+      // `value` attribute (set in theme_toggle.html) as the single source
+      // for the dark-theme name.
+      toggle.checked = localStorage.getItem(THEME_STORAGE_KEY) === toggle.value;
+      toggle.addEventListener("change", () => {
+        localStorage.setItem(THEME_STORAGE_KEY, toggle.checked ? toggle.value : "corporate");
+      });
+    })();
+  </script>
+</body>
+</html>

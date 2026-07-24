@@ -1,17 +1,17 @@
 # Printer Actor Architecture
 
-`tepra-api` のジョブ実行層は per-printer の actor pattern で構成。
+`tepra` のジョブ実行層は per-printer の actor pattern で構成。
 KING JIM TEPRA Creator `WebAPI` ( `http://localhost:29108/api/printer` )
 は物理プリンタ毎 single in-flight job なため、 1 プリンタ = 1 worker task
 を型で表現する。
 
 ## 構成要素
 
-- `PrinterRegistry` ( `crates/tepra-api/src/actor/registry.rs` )
+- `PrinterRegistry` ( `crates/tepra/src/actor/registry.rs` )
   - `DashMap<String, Arc<PrinterHandle>>` でプリンタ名 → handle を保持
   - `get_or_spawn(name)` で lazy spawn ( 初回アクセス時に 1 task 生成 )
   - `shutdown_all()` で全 actor に `Msg::Shutdown` 送信
-- `PrinterActor` ( `crates/tepra-api/src/actor/printer.rs` )
+- `PrinterActor` ( `crates/tepra/src/actor/printer.rs` )
   - `tokio::spawn` で起動する 1 task = 1 worker
   - `mpsc::Receiver<Msg>` でメッセージ受信、状態は task 内 `WorkerState`
     に閉じ込め ( 外部から参照不可 )

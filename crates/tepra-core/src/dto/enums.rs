@@ -35,6 +35,7 @@ macro_rules! impl_u32_conv {
 // ---------------------------------------------------------------------------
 
 /// Creator API error code returned in `{ "errcode": N }` error bodies.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
 pub enum CreatorError {
@@ -73,6 +74,7 @@ impl_u32_conv!(
 // ---------------------------------------------------------------------------
 
 /// Tape identifier values used in print parameters and printer info responses.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
 pub enum TapeId {
@@ -134,14 +136,15 @@ impl_u32_conv!(
 // ---------------------------------------------------------------------------
 
 /// Tape cut mode — REST wire values (not JS SDK logical values).
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
 pub enum TapeCutWire {
-    /// テープカットしない (wire value 1)
+    /// No tape cut (wire value 1)
     NotCut = 1,
-    /// ラベル毎にテープカットする (wire value 2)
+    /// Cut tape after each label (wire value 2)
     EachLabel = 2,
-    /// 印刷JOB毎にテープカットする (wire value 3)
+    /// Cut tape after each print job (wire value 3)
     AfterJob = 3,
 }
 
@@ -158,6 +161,7 @@ impl_u32_conv!(
 // ---------------------------------------------------------------------------
 
 /// Print speed — REST wire values.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
 pub enum PrintSpeedWire {
@@ -179,6 +183,7 @@ impl_u32_conv!(
 // ---------------------------------------------------------------------------
 
 /// Tape material/kind returned in `lwstatus` response.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "i32", into = "i32")]
 pub enum TapeKind {
@@ -275,6 +280,7 @@ impl From<TapeKind> for i32 {
 // ---------------------------------------------------------------------------
 
 /// Device error code returned in `lwstatus.error` and `job/progress.statusError`.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
 #[repr(u32)]
@@ -358,6 +364,7 @@ impl_u32_conv!(
 // ---------------------------------------------------------------------------
 
 /// Template import frame attribute type.
+#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(try_from = "u32", into = "u32")]
 pub enum ImportFrameAttribute {
