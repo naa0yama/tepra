@@ -84,20 +84,20 @@ expression: html
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       
         <div class="card bg-base-100 shadow p-4">
-          <div class="flex items-center justify-between mb-2">
-            <span class="card-title">PT-P710BT</span>
-          </div>
           <div hx-get="/ui/printers/PT-P710BT/status-card" hx-trigger="load" hx-swap="innerHTML">
-            <span class="loading loading-spinner"></span>
+            <div class="flex items-center justify-between mb-2">
+              <span class="card-title">PT-P710BT</span>
+              <span class="loading loading-spinner"></span>
+            </div>
           </div>
         </div>
       
         <div class="card bg-base-100 shadow p-4">
-          <div class="flex items-center justify-between mb-2">
-            <span class="card-title">QL-800</span>
-          </div>
           <div hx-get="/ui/printers/QL-800/status-card" hx-trigger="load" hx-swap="innerHTML">
-            <span class="loading loading-spinner"></span>
+            <div class="flex items-center justify-between mb-2">
+              <span class="card-title">QL-800</span>
+              <span class="loading loading-spinner"></span>
+            </div>
           </div>
         </div>
       

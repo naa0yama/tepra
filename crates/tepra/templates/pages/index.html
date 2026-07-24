@@ -24,11 +24,11 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {% for printer in printers %}
         <div class="card bg-base-100 shadow p-4">
-          <div class="flex items-center justify-between mb-2">
-            <span class="card-title">{{ printer }}</span>
-          </div>
           <div hx-get="/ui/printers/{{ printer }}/status-card" hx-trigger="load" hx-swap="innerHTML">
-            <span class="loading loading-spinner"></span>
+            <div class="flex items-center justify-between mb-2">
+              <span class="card-title">{{ printer }}</span>
+              <span class="loading loading-spinner"></span>
+            </div>
           </div>
         </div>
       {% endfor %}
