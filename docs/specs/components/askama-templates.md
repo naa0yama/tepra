@@ -119,6 +119,11 @@ Macro file: `{% macro try_it_out(endpoint, index) %}`. Imported by
   (populated client-side, see `api.html` above), all other params as text
   inputs. Endpoints with a request body get a JSON `<textarea>` prefilled with
   `sample_json`
+- `query_params` (the operation's `in == "query"` parameters, e.g. `jobid`,
+  `cutflag`) each render as a text input carrying `name` but **not**
+  `data-path-param` — on the htmx GET path they are serialized into the query
+  string, and the `configRequest` handler in `api.html` strips only
+  `data-path-param` inputs, so query inputs survive as `?jobid=N`
 - Non-destructive forms submit via HTMX (`hx-{method}`, or `data-json-body-form`
   for body-carrying POSTs) with a `type="submit"` Execute button
 - Destructive forms carry `data-destructive-form` and use a `type="button"`
@@ -213,11 +218,14 @@ drift out of sync with each other. `ApiDocsTemplate` additionally carries
 `EndpointView` carries both the raw schema JSON (`request_schema_json` /
 `response_schema_json` / `sample_json`, kept for the `<details>` disclosure)
 and structured, pre-extracted view-models for the property tables:
-`params: Vec<ParamView>` (path/query parameters), `request_properties` and
+`params: Vec<ParamView>` (path/query parameters, for the property table),
+`query_params: Vec<ParamView>` (query-only subset, for the Try-it-out form's
+query-string inputs), `request_properties` and
 `response_properties: Vec<PropertyView>`. `ParamView` and `PropertyView` are
 plain data carriers (`name`, `type_name`, `required: bool`,
 `description: Option<String>`). They are built by pure functions
-(`extract_params` / `extract_properties`, resolving `$ref` via `resolve_ref`)
+(`extract_params` / `extract_query_params` / `extract_properties`, resolving
+`$ref` via `resolve_ref`)
 inside `build_endpoint_views`, which keeps the seam unit-testable against a
 fixture `openapi.json` (`views.rs` tests).
 `Breadcrumb` is a plain data carrier (not an `askama::Template`):

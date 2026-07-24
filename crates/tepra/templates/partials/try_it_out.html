@@ -29,6 +29,15 @@
         {% endif %}
       </label>
     {% endfor %}
+    {# Query params carry `name` but NOT `data-path-param`: htmx serializes #}
+    {# them into the GET query string, and the configRequest handler in #}
+    {# api.html strips only `data-path-param` inputs, so these survive. #}
+    {% for param in endpoint.query_params %}
+      <label class="input input-sm input-bordered flex items-center gap-2">
+        <span class="font-mono">{{ param.name }}</span>
+        <input type="text" name="{{ param.name }}" {% if param.required %}required{% endif %} class="grow" placeholder="{{ param.type_name }}" />
+      </label>
+    {% endfor %}
     {% if endpoint.request_schema_json.is_some() %}
       <textarea
         name="body"

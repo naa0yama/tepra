@@ -168,6 +168,12 @@ pub struct EndpointView {
     /// `/api/printer/info/{name}`), used by the Try-it-out form to render
     /// one input per placeholder.
     pub path_params: Vec<String>,
+    /// Query parameters declared on the operation (`in == "query"`), used by
+    /// the Try-it-out form to render one input each (e.g. `jobid`, `cutflag`).
+    /// Separate from `path_params` because query inputs must NOT carry the
+    /// `data-path-param` marker — htmx serializes them into the GET query
+    /// string, whereas path params are substituted into `{...}` placeholders.
+    pub query_params: Vec<ParamView>,
 }
 
 /// Context for the API reference page (`GET /ui/api`).
@@ -291,33 +297,50 @@ fn schema_description(schema: &Value) -> Option<String> {
         .map(str::to_owned)
 }
 
+/// Map one entry of an operation's `parameters` array to a [`ParamView`].
+fn param_view(param: &Value) -> ParamView {
+    ParamView {
+        name: param
+            .get("name")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned(),
+        type_name: param
+            .get("schema")
+            .map_or_else(|| "any".to_owned(), schema_type_name),
+        required: param
+            .get("required")
+            .and_then(Value::as_bool)
+            .unwrap_or(false),
+        description: param
+            .get("description")
+            .and_then(Value::as_str)
+            .map(str::to_owned),
+    }
+}
+
 /// Extract an operation's path/query parameters (`parameters` array) for
 /// the property table. Returns an empty `Vec` for operations without one.
 fn extract_params(operation: &Value) -> Vec<ParamView> {
     operation
         .get("parameters")
         .and_then(Value::as_array)
+        .map(|params| params.iter().map(param_view).collect())
+        .unwrap_or_default()
+}
+
+/// Extract only the query parameters (`in == "query"`) from an operation's
+/// `parameters` array, for the Try-it-out form's query-string inputs.
+/// Returns an empty `Vec` for operations without any query parameter.
+fn extract_query_params(operation: &Value) -> Vec<ParamView> {
+    operation
+        .get("parameters")
+        .and_then(Value::as_array)
         .map(|params| {
             params
                 .iter()
-                .map(|param| ParamView {
-                    name: param
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                        .to_owned(),
-                    type_name: param
-                        .get("schema")
-                        .map_or_else(|| "any".to_owned(), schema_type_name),
-                    required: param
-                        .get("required")
-                        .and_then(Value::as_bool)
-                        .unwrap_or(false),
-                    description: param
-                        .get("description")
-                        .and_then(Value::as_str)
-                        .map(str::to_owned),
-                })
+                .filter(|param| param.get("in").and_then(Value::as_str) == Some("query"))
+                .map(param_view)
                 .collect()
         })
         .unwrap_or_default()
@@ -429,6 +452,7 @@ pub fn build_endpoint_views(openapi: &Value) -> Vec<EndpointView> {
                 .to_owned();
 
             let params = extract_params(operation);
+            let query_params = extract_query_params(operation);
 
             let request_schema = operation.pointer("/requestBody/content/application~1json/schema");
             let request_schema_json = request_schema
@@ -462,6 +486,7 @@ pub fn build_endpoint_views(openapi: &Value) -> Vec<EndpointView> {
                 sample_json,
                 is_destructive: is_destructive_path(path),
                 path_params: extract_path_params(path),
+                query_params,
             });
         }
     }
@@ -738,6 +763,48 @@ mod tests {
         assert_eq!(name_param.type_name, "string");
         assert!(name_param.required);
         assert_eq!(name_param.description.as_deref(), Some("Printer name"));
+    }
+
+    #[test]
+    fn extract_query_params_keeps_only_query_location_params() {
+        let operation = json!({
+            "parameters": [
+                {
+                    "name": "name",
+                    "in": "path",
+                    "required": true,
+                    "schema": {"type": "string"}
+                },
+                {
+                    "name": "jobid",
+                    "in": "query",
+                    "required": true,
+                    "description": "Creator API job identifier.",
+                    "schema": {"type": "integer"}
+                }
+            ]
+        });
+
+        let query = extract_query_params(&operation);
+        assert_eq!(query.len(), 1);
+        let jobid = query.first().unwrap();
+        assert_eq!(jobid.name, "jobid");
+        assert_eq!(jobid.type_name, "integer");
+        assert!(jobid.required);
+        assert_eq!(
+            jobid.description.as_deref(),
+            Some("Creator API job identifier.")
+        );
+    }
+
+    #[test]
+    fn extract_query_params_returns_empty_when_operation_declares_none() {
+        let operation = json!({
+            "parameters": [
+                {"name": "name", "in": "path", "required": true, "schema": {"type": "string"}}
+            ]
+        });
+        assert!(extract_query_params(&operation).is_empty());
     }
 
     #[test]

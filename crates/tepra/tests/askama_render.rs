@@ -183,6 +183,7 @@ fn test_api_docs_render_lists_endpoints() {
                 sample_json: Some("[]".into()),
                 is_destructive: false,
                 path_params: vec![],
+                query_params: vec![],
             },
             EndpointView {
                 method: "POST".into(),
@@ -196,6 +197,7 @@ fn test_api_docs_render_lists_endpoints() {
                 sample_json: None,
                 is_destructive: true,
                 path_params: vec!["name".into()],
+                query_params: vec![],
             },
         ],
         error: None,
@@ -267,6 +269,7 @@ fn api_docs_renders_property_table_when_endpoint_declares_properties() {
             sample_json: Some("{}".into()),
             is_destructive: true,
             path_params: vec!["name".into()],
+            query_params: vec![],
         }],
         error: None,
     };
@@ -304,6 +307,7 @@ fn api_docs_renders_placeholder_when_property_has_no_description() {
             sample_json: None,
             is_destructive: true,
             path_params: vec!["name".into()],
+            query_params: vec![],
         }],
         error: None,
     };
@@ -342,6 +346,7 @@ fn api_docs_places_raw_json_after_property_table_when_endpoint_declares_properti
             sample_json: None,
             is_destructive: true,
             path_params: vec!["name".into()],
+            query_params: vec![],
         }],
         error: None,
     };
@@ -375,6 +380,7 @@ fn api_docs_omits_property_table_when_endpoint_declares_no_properties() {
             sample_json: Some("[]".into()),
             is_destructive: false,
             path_params: vec![],
+            query_params: vec![],
         }],
         error: None,
     };
@@ -405,6 +411,7 @@ fn api_docs_non_destructive_form_has_no_destructive_gate_marker() {
             sample_json: Some("[]".into()),
             is_destructive: false,
             path_params: vec![],
+            query_params: vec![],
         }],
         error: None,
     };
@@ -430,6 +437,7 @@ fn destructive_endpoint_view() -> EndpointView {
         sample_json: None,
         is_destructive: true,
         path_params: vec!["name".into()],
+        query_params: vec![],
     }
 }
 
@@ -493,6 +501,7 @@ fn api_docs_renders_path_param_input_when_endpoint_has_path_param() {
             sample_json: Some("{}".into()),
             is_destructive: false,
             path_params: vec!["name".into()],
+            query_params: vec![],
         }],
         error: None,
     };
@@ -521,6 +530,7 @@ fn api_docs_renders_name_path_param_as_select_when_param_is_printer_name() {
             sample_json: None,
             is_destructive: false,
             path_params: vec!["name".into()],
+            query_params: vec![],
         }],
         error: None,
     };
@@ -550,6 +560,7 @@ fn api_docs_renders_non_name_path_param_as_text_input_when_param_is_not_printer_
             sample_json: None,
             is_destructive: false,
             path_params: vec!["jobid".into()],
+            query_params: vec![],
         }],
         error: None,
     };
@@ -559,6 +570,43 @@ fn api_docs_renders_non_name_path_param_as_text_input_when_param_is_not_printer_
     // The populate script always references [data-printer-select] as a
     // selector string; only assert no such *element* was rendered.
     assert!(!html.contains(r#"data-path-param="jobid" data-printer-select"#));
+}
+
+#[test]
+fn api_docs_renders_query_param_input_without_path_param_marker() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "GET".into(),
+            path: "/api/printer/job/progress/{name}".into(),
+            summary: "Get job progress".into(),
+            params: vec![],
+            request_properties: vec![],
+            response_properties: vec![],
+            request_schema_json: None,
+            response_schema_json: None,
+            sample_json: None,
+            is_destructive: false,
+            path_params: vec!["name".into()],
+            query_params: vec![ParamView {
+                name: "jobid".into(),
+                type_name: "integer".into(),
+                required: true,
+                description: Some("Creator API job identifier.".into()),
+            }],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains(r#"<input type="text" name="jobid""#));
+    // It must NOT carry data-path-param — otherwise the configRequest handler
+    // would strip it from the outgoing query string instead of sending it.
+    assert!(!html.contains(r#"name="jobid" data-path-param"#));
 }
 
 #[test]
@@ -581,6 +629,7 @@ fn api_docs_uses_json_submit_when_endpoint_has_request_body() {
             sample_json: Some("{}".into()),
             is_destructive: false,
             path_params: vec!["name".into()],
+            query_params: vec![],
         }],
         error: None,
     };
