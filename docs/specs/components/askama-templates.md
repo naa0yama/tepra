@@ -74,14 +74,16 @@ Extends `shells/dashboard.html`. Bound to `ApiDocsTemplate` in `views.rs`.
   `summary`
 - The `method` badge is a `badge badge-outline` pill (outline ring, not a
   filled block) colour-coded per method — GET / POST are visually distinct by
-  ring colour rather than fill
+  ring colour rather than fill — and fixed-width (`w-16 justify-center`) so the
+  3-char `GET` and 4-char `POST` badges align to the same box size
 - Request / response / path-param shapes render as **property tables**
   (`property_table.html` macro) from the structured view-model fields
   (`params` / `request_properties` / `response_properties`), one row per field
   with name / type / required / description. The raw JSON schemas
-  (`request_schema_json` / `response_schema_json` / `sample_json`) are kept
-  behind a `<details>` "Raw JSON schema" disclosure for advanced readers, not
-  shown inline by default
+  (`request_schema_json` / `response_schema_json` / `sample_json`) are kept in
+  a `<details>` "Raw JSON schema" / "Sample response" disclosure, expanded by
+  default (`open`) so they are visible as soon as the endpoint accordion is
+  opened — collapsible for readers who want to fold them away again
 - Embeds the `try_it_out` macro per endpoint for live execution against the
   running server's own `/api/*` routes
 - Printer-name dropdown population (inline `<script>`, IIFE-scoped): on load,

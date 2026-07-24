@@ -226,9 +226,8 @@ fn test_api_docs_render_lists_endpoints() {
     assert!(html.contains("data-destructive-trigger"));
     assert!(html.contains(r#"id="destructive-confirm-modal""#));
 
-    // Method badges use an outline pill, not a filled badge.
-    assert!(html.contains(r"badge badge-outline badge-info"));
-    assert!(html.contains(r"badge badge-outline badge-warning"));
+    assert!(html.contains(r"badge badge-outline w-16 justify-center badge-info"));
+    assert!(html.contains(r"badge badge-outline w-16 justify-center badge-warning"));
     assert!(html.contains(r"badge badge-outline badge-error badge-sm"));
 
     insta::assert_snapshot!("api_docs_two_endpoints", html);
@@ -352,8 +351,7 @@ fn api_docs_places_raw_json_after_property_table_when_endpoint_declares_properti
     };
     let html = tmpl.render().unwrap();
 
-    // WHY-NOT: always-visible <pre> — collapsed by default per usability task
-    assert!(html.contains("<details>"));
+    assert!(html.contains("<details open>"));
     assert!(html.contains("Raw JSON schema (request)"));
     let table_pos = html.find("templateName").unwrap();
     let request_json_pos = html.find("{&#34;type&#34;:&#34;object&#34;}").unwrap();

@@ -165,6 +165,11 @@ expression: html
       // POST forms carrying a JSON request body (mechanism 3): htmx has no
       // built-in JSON body encoding, so these forms skip hx-post entirely
       // and are submitted by hand via fetch().
+      // Invariant: query params (query_params) only ever appear on GET,
+      // body-less operations (jobid / cutflag), so this body-carrying path
+      // substitutes path params only and never appends a query string. If a
+      // POST ever gains a query param, append endpoint.query_params to `path`
+      // here — otherwise it would be silently dropped.
       document.body.querySelectorAll("form.try-it-out-form[data-json-body-form]").forEach((form) => {
         form.addEventListener("submit", (evt) => {
           evt.preventDefault();

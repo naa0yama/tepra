@@ -86,7 +86,7 @@ expression: html
         <div class="collapse collapse-arrow join-item border border-base-300 bg-base-100">
           <input type="checkbox" aria-label="GET /api/printer" />
           <div class="collapse-title flex flex-wrap items-center gap-3">
-            <span class="badge badge-outline badge-info">
+            <span class="badge badge-outline w-16 justify-center badge-info">
               GET
             </span>
             <code class="font-mono text-sm">/api/printer</code>
@@ -105,13 +105,13 @@ expression: html
 
             
             
-              <details>
+              <details open>
                 <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (response)</summary>
                 <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{&#34;type&#34;:&#34;array&#34;}</pre>
               </details>
             
             
-              <details>
+              <details open>
                 <summary class="cursor-pointer text-xs font-semibold opacity-70">Sample response</summary>
                 <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">[]</pre>
               </details>
@@ -149,7 +149,7 @@ expression: html
         <div class="collapse collapse-arrow join-item border border-base-300 bg-base-100">
           <input type="checkbox" aria-label="POST /api/printer/print/{name}" />
           <div class="collapse-title flex flex-wrap items-center gap-3">
-            <span class="badge badge-outline badge-warning">
+            <span class="badge badge-outline w-16 justify-center badge-warning">
               POST
             </span>
             <code class="font-mono text-sm">/api/printer/print/{name}</code>
@@ -169,7 +169,7 @@ expression: html
   
 
             
-              <details>
+              <details open>
                 <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (request)</summary>
                 <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{&#34;type&#34;:&#34;object&#34;}</pre>
               </details>
@@ -315,6 +315,11 @@ expression: html
       // POST forms carrying a JSON request body (mechanism 3): htmx has no
       // built-in JSON body encoding, so these forms skip hx-post entirely
       // and are submitted by hand via fetch().
+      // Invariant: query params (query_params) only ever appear on GET,
+      // body-less operations (jobid / cutflag), so this body-carrying path
+      // substitutes path params only and never appends a query string. If a
+      // POST ever gains a query param, append endpoint.query_params to `path`
+      // here — otherwise it would be silently dropped.
       document.body.querySelectorAll("form.try-it-out-form[data-json-body-form]").forEach((form) => {
         form.addEventListener("submit", (evt) => {
           evt.preventDefault();

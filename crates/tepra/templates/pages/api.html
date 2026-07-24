@@ -27,7 +27,7 @@
         <div class="collapse collapse-arrow join-item border border-base-300 bg-base-100">
           <input type="checkbox" aria-label="{{ endpoint.method }} {{ endpoint.path }}" />
           <div class="collapse-title flex flex-wrap items-center gap-3">
-            <span class="badge badge-outline {% if endpoint.method == "GET" %}badge-info{% else %}badge-warning{% endif %}">
+            <span class="badge badge-outline w-16 justify-center {% if endpoint.method == "GET" %}badge-info{% else %}badge-warning{% endif %}">
               {{ endpoint.method }}
             </span>
             <code class="font-mono text-sm">{{ endpoint.path }}</code>
@@ -41,19 +41,19 @@
             {{ property_table::property_table(title="Request body", name_header="Field", rows=endpoint.request_properties) }}
             {{ property_table::property_table(title="Response body", name_header="Field", rows=endpoint.response_properties) }}
             {% if let Some(req) = endpoint.request_schema_json %}
-              <details>
+              <details open>
                 <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (request)</summary>
                 <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{{ req }}</pre>
               </details>
             {% endif %}
             {% if let Some(res) = endpoint.response_schema_json %}
-              <details>
+              <details open>
                 <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (response)</summary>
                 <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{{ res }}</pre>
               </details>
             {% endif %}
             {% if let Some(sample) = endpoint.sample_json %}
-              <details>
+              <details open>
                 <summary class="cursor-pointer text-xs font-semibold opacity-70">Sample response</summary>
                 <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{{ sample }}</pre>
               </details>
@@ -154,6 +154,11 @@
       // POST forms carrying a JSON request body (mechanism 3): htmx has no
       // built-in JSON body encoding, so these forms skip hx-post entirely
       // and are submitted by hand via fetch().
+      // Invariant: query params (query_params) only ever appear on GET,
+      // body-less operations (jobid / cutflag), so this body-carrying path
+      // substitutes path params only and never appends a query string. If a
+      // POST ever gains a query param, append endpoint.query_params to `path`
+      // here — otherwise it would be silently dropped.
       document.body.querySelectorAll("form.try-it-out-form[data-json-body-form]").forEach((form) => {
         form.addEventListener("submit", (evt) => {
           evt.preventDefault();
