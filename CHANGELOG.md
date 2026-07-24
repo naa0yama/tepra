@@ -2,6 +2,85 @@
 
 ## What's Changed
 
+### Features 🎉
+
+- feat(observability): add TraceLayer and bump axum-test/tower-http by @naa0yama in https://github.com/naa0yama/tepra/pull/17
+
+### Bug Fixes 🐌
+
+- fix(ci): repair release-manager, badges push, and upload-release-assets after v0.0.1 by @naa0yama in https://github.com/naa0yama/tepra/pull/10
+
+### Documentation 🗒️
+
+- chore(deps): upgrade axum to 0.8.9 and askama to 0.16.0 by @naa0yama in https://github.com/naa0yama/tepra/pull/13
+
+### Dependency Updates 📦
+
+- Update Rust crate phf to 0.14 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/9
+- Update Rust crate rustls to v0.23.42 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/53
+- Update Rust crate clap to v4.6.2 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/62
+- Update Rust crate tokio to v1.52.4 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/65
+- Update Rust crate tokio to v1.53.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/71
+
+### Development Environment 🔧
+
+- Update dependency zizmor to v1.26.1 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/5
+- Update taiki-e/install-action action to v2.82.2 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/14
+- Lock file maintenance by @renovate[bot] in https://github.com/naa0yama/tepra/pull/18
+- Update zizmorcore/zizmor-action action to v0.5.7 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/21
+- Update dependency jdx/mise to v2026.6.12 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/20
+- Update dependency jdx/mise to v2026.6.14 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/25
+- Update dependency usage to v3.5.3 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/26
+- Update taiki-e/install-action action to v2.82.3 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/27
+- Update dependency aqua:ast-grep/ast-grep to v0.44.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/22
+- Update dependency openobserve/openobserve to v0.91.1 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/23
+- Update dependency aqua:cli/cli to v2.96.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/30
+- Update dependency dprint to v0.55.1 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/31
+- Update dependency jdx/mise to v2026.7.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/32
+- Update All action update by @renovate[bot] in https://github.com/naa0yama/tepra/pull/29
+- Update dependency aqua:ast-grep/ast-grep to v0.44.1 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/33
+- Update taiki-e/install-action action to v2.82.9 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/34
+- Lock file maintenance by @renovate[bot] in https://github.com/naa0yama/tepra/pull/35
+- Update dependency usage to v3.5.4 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/36
+- Update taiki-e/install-action action to v2.82.10 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/37
+- Update dependency jdx/mise to v2026.7.1 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/38
+- Update dependency jdx/mise to v2026.7.2 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/39
+- Update github/codeql-action action to v4.37.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/41
+- Update dependency jdx/mise to v2026.7.3 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/40
+- Update taiki-e/install-action action to v2.82.11 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/42
+- Update actions/labeler action to v6.2.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/43
+- Update dependency aqua:EmbarkStudios/cargo-deny to v0.20.2 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/45
+- Update taiki-e/install-action action to v2.83.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/46
+- Update dependency jdx/mise to v2026.7.5 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/44
+- Update taiki-e/install-action action to v2.83.1 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/47
+- Update dependency github:naa0yama/graft to v0.5.10 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/48
+- Update dependency github:naa0yama/graft to v0.5.11 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/49
+- Update taiki-e/install-action action to v2.83.2 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/51
+- Update actions/checkout digest to 3d3c42e by @renovate[bot] in https://github.com/naa0yama/tepra/pull/52
+- Update dependency zizmor to v1.27.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/54
+- Update dependency jdx/mise to v2026.7.6 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/55
+- Update dependency jdx/mise to v2026.7.6 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/56
+- Update dependency usage to v3.5.5 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/57
+- Update dependency dprint to v0.55.2 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/58
+- Update zizmorcore/zizmor-action action to v0.6.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/59
+- Update actions/cache action to v6 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/24
+- Update dependency jdx/mise to v2026.7.7 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/61
+- Update taiki-e/install-action action to v2.83.3 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/66
+- Update github/codeql-action action to v4.37.1 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/67
+- Update jdx/mise-action action to v4.2.1 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/69
+- Update dependency openobserve/openobserve to v0.91.2 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/70
+- Update taiki-e/install-action action to v2.83.4 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/72
+
+### Other Changes
+
+- Update rust Docker tag to v1.97.0 by @renovate[bot] in https://github.com/naa0yama/tepra/pull/1
+
+**Full Changelog**: https://github.com/naa0yama/tepra/compare/v0.0.1...v0.1.26
+
+<!-- Release notes generated using configuration in .github/release.yml at main -->
+
+## What's Changed
+
 ### Development Environment 🔧
 
 - chore(deps): lock file maintenance by @renovate[bot] in https://github.com/naa0yama/boilerplate-rust/pull/589
