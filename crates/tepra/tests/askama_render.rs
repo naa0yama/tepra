@@ -250,30 +250,54 @@ fn api_docs_non_destructive_form_has_no_destructive_gate_marker() {
     assert!(html.contains(r#"type="submit""#));
 }
 
+fn destructive_endpoint_view() -> EndpointView {
+    EndpointView {
+        method: "POST".into(),
+        path: "/api/printer/print/{name}".into(),
+        summary: "Print a label".into(),
+        request_schema_json: Some("{\"type\":\"object\"}".into()),
+        response_schema_json: None,
+        sample_json: None,
+        is_destructive: true,
+        path_params: vec!["name".into()],
+    }
+}
+
 #[test]
-fn api_docs_destructive_form_has_gate_marker_and_button_type() {
+fn api_docs_renders_destructive_form_marker_when_endpoint_is_destructive() {
     let tmpl = ApiDocsTemplate {
         nav_active: "api".into(),
         breadcrumbs: vec![Breadcrumb {
             label: "API".into(),
             href: None,
         }],
-        endpoints: vec![EndpointView {
-            method: "POST".into(),
-            path: "/api/printer/print/{name}".into(),
-            summary: "Print a label".into(),
-            request_schema_json: Some("{\"type\":\"object\"}".into()),
-            response_schema_json: None,
-            sample_json: None,
-            is_destructive: true,
-            path_params: vec!["name".into()],
-        }],
+        endpoints: vec![destructive_endpoint_view()],
         error: None,
     };
     let html = tmpl.render().unwrap();
 
-    assert!(html.contains("data-destructive"));
-    assert!(html.contains("data-destructive-trigger"));
+    // The click-handler script always references the `data-destructive-trigger`
+    // selector, so only the form-specific marker proves the destructive form
+    // itself was rendered (not just the shared script).
+    assert!(html.contains("data-destructive-form"));
+}
+
+#[test]
+fn api_docs_uses_button_type_trigger_when_endpoint_is_destructive() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![destructive_endpoint_view()],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    // The trailing `>` distinguishes the button's own attribute from the
+    // script's `closest("[data-destructive-trigger]")` selector string.
+    assert!(html.contains("data-destructive-trigger>Execute"));
     // Destructive Execute button must not be type="submit" — direct
     // submission would bypass the confirm modal.
     assert!(!html.contains(r#"type="submit""#));
