@@ -19,8 +19,8 @@
 
 use askama::Template as _;
 use tepra::views::{
-    ApiDocsTemplate, Breadcrumb, EndpointView, IndexTemplate, JobCardTemplate,
-    PrinterDetailTemplate,
+    ApiDocsTemplate, Breadcrumb, EndpointView, IndexTemplate, JobCardTemplate, ParamView,
+    PrinterDetailTemplate, PropertyView,
 };
 
 // ---------------------------------------------------------------------------
@@ -224,7 +224,165 @@ fn test_api_docs_render_lists_endpoints() {
     assert!(html.contains("data-destructive-trigger"));
     assert!(html.contains(r#"id="destructive-confirm-modal""#));
 
+    // Method badges use an outline pill, not a filled badge.
+    assert!(html.contains(r"badge badge-outline badge-info"));
+    assert!(html.contains(r"badge badge-outline badge-warning"));
+    assert!(html.contains(r"badge badge-outline badge-error badge-sm"));
+
     insta::assert_snapshot!("api_docs_two_endpoints", html);
+}
+
+#[test]
+fn api_docs_renders_property_table_when_endpoint_declares_properties() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "POST".into(),
+            path: "/api/printer/print/{name}".into(),
+            summary: "Print a label".into(),
+            params: vec![ParamView {
+                name: "name".into(),
+                type_name: "string".into(),
+                required: true,
+                description: Some("Printer name.".into()),
+            }],
+            request_properties: vec![PropertyView {
+                name: "templateName".into(),
+                type_name: "string".into(),
+                required: true,
+                description: Some("Template file to print.".into()),
+            }],
+            response_properties: vec![PropertyView {
+                name: "jobId".into(),
+                type_name: "integer".into(),
+                required: false,
+                description: Some("Queued job identifier.".into()),
+            }],
+            request_schema_json: Some("{\"type\":\"object\"}".into()),
+            response_schema_json: Some("{\"type\":\"object\"}".into()),
+            sample_json: Some("{}".into()),
+            is_destructive: true,
+            path_params: vec!["name".into()],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains("Printer name."));
+    assert!(html.contains("templateName"));
+    assert!(html.contains("Template file to print."));
+    assert!(html.contains("jobId"));
+    assert!(html.contains("Queued job identifier."));
+}
+
+#[test]
+fn api_docs_renders_placeholder_when_property_has_no_description() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "POST".into(),
+            path: "/api/printer/print/{name}".into(),
+            summary: "Print a label".into(),
+            params: vec![],
+            request_properties: vec![PropertyView {
+                name: "templateName".into(),
+                type_name: "string".into(),
+                required: true,
+                description: None,
+            }],
+            response_properties: vec![],
+            request_schema_json: Some("{\"type\":\"object\"}".into()),
+            response_schema_json: None,
+            sample_json: None,
+            is_destructive: true,
+            path_params: vec!["name".into()],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains("&mdash;"));
+}
+
+#[test]
+fn api_docs_places_raw_json_after_property_table_when_endpoint_declares_properties() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "POST".into(),
+            path: "/api/printer/print/{name}".into(),
+            summary: "Print a label".into(),
+            params: vec![ParamView {
+                name: "name".into(),
+                type_name: "string".into(),
+                required: true,
+                description: Some("Printer name.".into()),
+            }],
+            request_properties: vec![PropertyView {
+                name: "templateName".into(),
+                type_name: "string".into(),
+                required: true,
+                description: Some("Template file to print.".into()),
+            }],
+            response_properties: vec![],
+            request_schema_json: Some("{\"type\":\"object\"}".into()),
+            response_schema_json: None,
+            sample_json: None,
+            is_destructive: true,
+            path_params: vec!["name".into()],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    // WHY-NOT: always-visible <pre> — collapsed by default per usability task
+    assert!(html.contains("<details>"));
+    assert!(html.contains("Raw JSON schema (request)"));
+    let table_pos = html.find("templateName").unwrap();
+    let request_json_pos = html.find("{&#34;type&#34;:&#34;object&#34;}").unwrap();
+    assert!(request_json_pos > table_pos);
+}
+
+#[test]
+fn api_docs_omits_property_table_when_endpoint_declares_no_properties() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "GET".into(),
+            path: "/api/printer".into(),
+            summary: "List printers".into(),
+            params: vec![],
+            request_properties: vec![],
+            response_properties: vec![],
+            request_schema_json: None,
+            response_schema_json: Some("{\"type\":\"array\"}".into()),
+            sample_json: Some("[]".into()),
+            is_destructive: false,
+            path_params: vec![],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(!html.contains("<h3 class=\"font-semibold text-sm mb-1\">Parameters</h3>"));
+    assert!(!html.contains("<h3 class=\"font-semibold text-sm mb-1\">Request body</h3>"));
+    assert!(!html.contains("<h3 class=\"font-semibold text-sm mb-1\">Response body</h3>"));
 }
 
 #[test]

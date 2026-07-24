@@ -2,6 +2,7 @@
 {% extends "shells/dashboard.html" %}
 {% import "components/alert.html" as components %}
 {% import "partials/try_it_out.html" as try_it_out %}
+{% import "partials/property_table.html" as property_table %}
 
 {% block title %}API Reference{% endblock %}
 
@@ -26,33 +27,36 @@
         <div class="collapse collapse-arrow join-item border border-base-300 bg-base-100">
           <input type="checkbox" aria-label="{{ endpoint.method }} {{ endpoint.path }}" />
           <div class="collapse-title flex flex-wrap items-center gap-3">
-            <span class="badge {% if endpoint.method == "GET" %}badge-info{% else %}badge-warning{% endif %}">
+            <span class="badge badge-outline {% if endpoint.method == "GET" %}badge-info{% else %}badge-warning{% endif %}">
               {{ endpoint.method }}
             </span>
             <code class="font-mono text-sm">{{ endpoint.path }}</code>
             <span class="opacity-70 text-sm">{{ endpoint.summary }}</span>
             {% if endpoint.is_destructive %}
-              <span class="badge badge-error badge-sm">destructive</span>
+              <span class="badge badge-outline badge-error badge-sm">destructive</span>
             {% endif %}
           </div>
           <div class="collapse-content flex flex-col gap-3">
+            {{ property_table::property_table(title="Parameters", name_header="Name", rows=endpoint.params) }}
+            {{ property_table::property_table(title="Request body", name_header="Field", rows=endpoint.request_properties) }}
+            {{ property_table::property_table(title="Response body", name_header="Field", rows=endpoint.response_properties) }}
             {% if let Some(req) = endpoint.request_schema_json %}
-              <div>
-                <h3 class="font-semibold text-sm mb-1">Request schema</h3>
-                <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto">{{ req }}</pre>
-              </div>
+              <details>
+                <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (request)</summary>
+                <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{{ req }}</pre>
+              </details>
             {% endif %}
             {% if let Some(res) = endpoint.response_schema_json %}
-              <div>
-                <h3 class="font-semibold text-sm mb-1">Response schema</h3>
-                <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto">{{ res }}</pre>
-              </div>
+              <details>
+                <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (response)</summary>
+                <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{{ res }}</pre>
+              </details>
             {% endif %}
             {% if let Some(sample) = endpoint.sample_json %}
-              <div>
-                <h3 class="font-semibold text-sm mb-1">Sample response</h3>
-                <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto">{{ sample }}</pre>
-              </div>
+              <details>
+                <summary class="cursor-pointer text-xs font-semibold opacity-70">Sample response</summary>
+                <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{{ sample }}</pre>
+              </details>
             {% endif %}
             {{ try_it_out::try_it_out(endpoint=endpoint, index=loop.index) }}
           </div>
