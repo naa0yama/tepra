@@ -59,7 +59,6 @@ pub fn build_ui_router(state: AppState) -> Router {
     Router::new()
         .route("/", get(|| async { Redirect::permanent("/ui/") }))
         .route("/ui/", get(views::index))
-        .route("/ui/printers/{name}", get(views::printer_detail))
         .route("/ui/printers/{name}/status-card", get(views::status_card))
         .route("/ui/jobs/{printer}/{job_id}", get(views::job_card))
         .route("/ui/api", get(views::api_docs))

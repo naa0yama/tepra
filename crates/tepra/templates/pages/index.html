@@ -25,7 +25,7 @@
       {% for printer in printers %}
         <div class="card bg-base-100 shadow p-4">
           <div class="flex items-center justify-between mb-2">
-            <a class="card-title link" href="/ui/printers/{{ printer }}">{{ printer }}</a>
+            <span class="card-title">{{ printer }}</span>
           </div>
           <div hx-get="/ui/printers/{{ printer }}/status-card" hx-trigger="load" hx-swap="innerHTML">
             <span class="loading loading-spinner"></span>

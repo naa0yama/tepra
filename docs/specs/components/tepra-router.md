@@ -30,7 +30,6 @@
 - `build_ui_router(state)` — HTML UI ( Askama + HTMX )
   - `GET /` — `Redirect::permanent("/ui/")` ( ルートリダイレクト )
   - `GET /ui/` — index
-  - `GET /ui/printers/{name}` — 詳細カード
   - `GET /ui/jobs/{printer}/{job_id}` — ジョブカード ( 1s polling 対象 )
   - `GET /ui/api` — API リファレンスページ ( `openapi.json` を in-process で
     view-model 化し DaisyUI accordion で描画。Try it out は既存 `/api/*` route を

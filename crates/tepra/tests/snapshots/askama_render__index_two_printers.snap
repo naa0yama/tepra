@@ -85,7 +85,7 @@ expression: html
       
         <div class="card bg-base-100 shadow p-4">
           <div class="flex items-center justify-between mb-2">
-            <a class="card-title link" href="/ui/printers/PT-P710BT">PT-P710BT</a>
+            <span class="card-title">PT-P710BT</span>
           </div>
           <div hx-get="/ui/printers/PT-P710BT/status-card" hx-trigger="load" hx-swap="innerHTML">
             <span class="loading loading-spinner"></span>
@@ -94,7 +94,7 @@ expression: html
       
         <div class="card bg-base-100 shadow p-4">
           <div class="flex items-center justify-between mb-2">
-            <a class="card-title link" href="/ui/printers/QL-800">QL-800</a>
+            <span class="card-title">QL-800</span>
           </div>
           <div hx-get="/ui/printers/QL-800/status-card" hx-trigger="load" hx-swap="innerHTML">
             <span class="loading loading-spinner"></span>

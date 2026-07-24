@@ -1,7 +1,7 @@
 //! RED unit tests for Askama template rendering.
 //!
-//! These tests verify that `IndexTemplate`, `PrinterDetailTemplate`, and
-//! `JobCardTemplate` render to the expected HTML. They are committed in the
+//! These tests verify that `IndexTemplate` and `JobCardTemplate` render to
+//! the expected HTML. They are committed in the
 //! RED phase: `cargo build` fails with "template not found" because the
 //! `.html` files do not exist yet (created in T15b GREEN).
 //!
@@ -20,7 +20,7 @@
 use askama::Template as _;
 use tepra::views::{
     ApiDocsTemplate, Breadcrumb, EndpointView, IndexTemplate, JobCardTemplate, ParamView,
-    PrinterDetailTemplate, PropertyView,
+    PropertyView,
 };
 
 // ---------------------------------------------------------------------------
@@ -58,56 +58,6 @@ fn test_index_render_multiple_printers() {
     assert!(html.contains("PT-P710BT"));
     assert!(html.contains("QL-800"));
     insta::assert_snapshot!("index_two_printers", html);
-}
-
-// ---------------------------------------------------------------------------
-// PrinterDetailTemplate
-// ---------------------------------------------------------------------------
-
-#[test]
-fn test_printer_detail_online() {
-    let tmpl = PrinterDetailTemplate {
-        nav_active: "printers".into(),
-        breadcrumbs: vec![
-            Breadcrumb {
-                label: "Printers".into(),
-                href: Some("/ui/".into()),
-            },
-            Breadcrumb {
-                label: "PT-P710BT".into(),
-                href: None,
-            },
-        ],
-        printer_name: "PT-P710BT".into(),
-        online: true,
-        error: None,
-    };
-    let html = tmpl.render().unwrap();
-    assert!(html.contains("PT-P710BT"));
-    insta::assert_snapshot!("printer_detail_online", html);
-}
-
-#[test]
-fn test_printer_detail_offline() {
-    let tmpl = PrinterDetailTemplate {
-        nav_active: "printers".into(),
-        breadcrumbs: vec![
-            Breadcrumb {
-                label: "Printers".into(),
-                href: Some("/ui/".into()),
-            },
-            Breadcrumb {
-                label: "QL-800".into(),
-                href: None,
-            },
-        ],
-        printer_name: "QL-800".into(),
-        online: false,
-        error: None,
-    };
-    let html = tmpl.render().unwrap();
-    assert!(html.contains("QL-800"));
-    insta::assert_snapshot!("printer_detail_offline", html);
 }
 
 // ---------------------------------------------------------------------------

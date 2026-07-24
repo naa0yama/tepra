@@ -11,7 +11,6 @@ crates/tepra/templates/
     dashboard.html      # L1 shell (base layout)
   pages/
     index.html          # Printer list page (GET /ui/)
-    printer_detail.html # Per-printer detail page (GET /ui/printers/{name})
     api.html            # API Reference page (GET /ui/api)
   partials/
     job_card.html       # HTMX job-status polling card (GET /ui/jobs/{printer}/{id})
@@ -55,13 +54,6 @@ Extends `shells/dashboard.html`. Bound to `IndexTemplate` in `views.rs`.
 - Shows a DaisyUI menu list of known printer names
 - Renders `components::error_alert` when `error: Option<String>` is set
 - Empty-state hero when `printers` is empty
-
-### pages/printer_detail.html
-
-Extends `shells/dashboard.html`. Bound to `PrinterDetailTemplate` in `views.rs`.
-
-- Shows per-printer metadata and job history
-- Each job is rendered as a `job_card.html` partial via HTMX out-of-band swap
 
 ### pages/api.html
 
@@ -198,17 +190,16 @@ Macro file: `{% macro theme_toggle() %}`.
 
 ## Rust Bindings (`crates/tepra/src/views.rs`)
 
-| Struct                  | Template path               |
-| ----------------------- | --------------------------- |
-| `IndexTemplate`         | `pages/index.html`          |
-| `PrinterDetailTemplate` | `pages/printer_detail.html` |
-| `JobCardTemplate`       | `partials/job_card.html`    |
-| `ApiDocsTemplate`       | `pages/api.html`            |
+| Struct            | Template path            |
+| ----------------- | ------------------------ |
+| `IndexTemplate`   | `pages/index.html`       |
+| `JobCardTemplate` | `partials/job_card.html` |
+| `ApiDocsTemplate` | `pages/api.html`         |
 
 All implement `askama::Template` and are wrapped in `HtmlTemplate<T>` for
 axum `IntoResponse` compatibility.
 
-`IndexTemplate`, `PrinterDetailTemplate`, and `ApiDocsTemplate` all carry
+`IndexTemplate` and `ApiDocsTemplate` both carry
 `nav_active: String` (sidebar active section, `components/sidebar.html`) and
 `breadcrumbs: Vec<Breadcrumb>` (navbar trail, `components/breadcrumbs.html`).
 `nav_active` is set from named constants (`views::NAV_PRINTERS` /
@@ -240,8 +231,7 @@ pub struct Breadcrumb {
 ```
 
 Each handler builds its own trail — `index` yields a single non-linked
-`"Printers"` entry, `printer_detail` yields `Printers` (linked to `/ui/`)
-followed by the printer name.
+`"Printers"` entry.
 
 ## Related
 

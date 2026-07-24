@@ -19,7 +19,7 @@ use crate::{
     state::AppState,
     views::{
         ApiDocsTemplate, Breadcrumb, HtmlTemplate, IndexTemplate, JobCardTemplate, NAV_API,
-        NAV_PRINTERS, PrinterDetailTemplate, PrinterStatusCardTemplate, build_endpoint_views,
+        NAV_PRINTERS, PrinterStatusCardTemplate, build_endpoint_views,
     },
 };
 
@@ -51,45 +51,6 @@ pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
             href: None,
         }],
         printers,
-        error,
-    })
-}
-
-/// `GET /ui/printers/{name}` — per-printer detail page.
-#[instrument(
-    name = "handler.printer_detail",
-    skip_all,
-    fields(
-        http.request.method = "GET",
-        http.route = "/ui/printers/{name}",
-        http.response.status_code = tracing::field::Empty,
-        url.scheme = tracing::field::Empty,
-    )
-)]
-pub async fn printer_detail(
-    Path(name): Path<String>,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
-    let result = state.client.online_status(&name).await;
-    let (online, error) = result.map_or_else(
-        |_| (false, Some(CREATOR_API_ERROR.to_owned())),
-        |resp| (resp.online, None),
-    );
-    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
-    HtmlTemplate(PrinterDetailTemplate {
-        nav_active: NAV_PRINTERS.to_owned(),
-        breadcrumbs: vec![
-            Breadcrumb {
-                label: "Printers".into(),
-                href: Some("/ui/".into()),
-            },
-            Breadcrumb {
-                label: name.clone(),
-                href: None,
-            },
-        ],
-        printer_name: name,
-        online,
         error,
     })
 }
