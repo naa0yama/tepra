@@ -502,6 +502,66 @@ fn api_docs_renders_path_param_input_when_endpoint_has_path_param() {
 }
 
 #[test]
+fn api_docs_renders_name_path_param_as_select_when_param_is_printer_name() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "GET".into(),
+            path: "/api/printer/info/{name}".into(),
+            summary: "Get printer info".into(),
+            params: vec![],
+            request_properties: vec![],
+            response_properties: vec![],
+            request_schema_json: None,
+            response_schema_json: None,
+            sample_json: None,
+            is_destructive: false,
+            path_params: vec!["name".into()],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains(r#"<select name="name" data-path-param="name" data-printer-select"#));
+    assert!(!html.contains(r#"<input type="text" name="name""#));
+}
+
+#[test]
+fn api_docs_renders_non_name_path_param_as_text_input_when_param_is_not_printer_name() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "GET".into(),
+            path: "/api/job/{jobid}".into(),
+            summary: "Get job".into(),
+            params: vec![],
+            request_properties: vec![],
+            response_properties: vec![],
+            request_schema_json: None,
+            response_schema_json: None,
+            sample_json: None,
+            is_destructive: false,
+            path_params: vec!["jobid".into()],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains(r#"<input type="text" name="jobid" data-path-param="jobid""#));
+    // The populate script always references [data-printer-select] as a
+    // selector string; only assert no such *element* was rendered.
+    assert!(!html.contains(r#"data-path-param="jobid" data-printer-select"#));
+}
+
+#[test]
 fn api_docs_uses_json_submit_when_endpoint_has_request_body() {
     let tmpl = ApiDocsTemplate {
         nav_active: "api".into(),

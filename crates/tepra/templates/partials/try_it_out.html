@@ -20,7 +20,13 @@
     {% for param in endpoint.path_params %}
       <label class="input input-sm input-bordered flex items-center gap-2">
         <span class="font-mono">{{ param }}</span>
-        <input type="text" name="{{ param }}" data-path-param="{{ param }}" required class="grow" />
+        {% if param == "name" %}
+          <select name="{{ param }}" data-path-param="{{ param }}" data-printer-select required class="grow">
+            <option value="" disabled selected>Loading printers…</option>
+          </select>
+        {% else %}
+          <input type="text" name="{{ param }}" data-path-param="{{ param }}" required class="grow" />
+        {% endif %}
       </label>
     {% endfor %}
     {% if endpoint.request_schema_json.is_some() %}

@@ -189,7 +189,11 @@ expression: html
     
       <label class="input input-sm input-bordered flex items-center gap-2">
         <span class="font-mono">name</span>
-        <input type="text" name="name" data-path-param="name" required class="grow" />
+        
+          <select name="name" data-path-param="name" data-printer-select required class="grow">
+            <option value="" disabled selected>Loading printers…</option>
+          </select>
+        
       </label>
     
     
@@ -230,6 +234,50 @@ expression: html
 
   <script>
     (() => {
+      // WHY-NOT: server-side printer <option> render — api_docs handler stays
+      // stateless (no client dependency); populate the {name} dropdown via a
+      // client-side fetch of the already-instrumented /api/printer route instead.
+      fetch("/api/printer")
+        .then((res) => {
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+          }
+          return res.json();
+        })
+        .then((printers) => {
+          if (!Array.isArray(printers) || printers.length === 0) {
+            throw new Error("empty printer list");
+          }
+          document.querySelectorAll("[data-printer-select]").forEach((select) => {
+            select.innerHTML = "";
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            placeholder.textContent = "Select printer…";
+            select.appendChild(placeholder);
+            printers.forEach((printer) => {
+              const option = document.createElement("option");
+              option.value = printer.printerName;
+              option.textContent = printer.printerName;
+              select.appendChild(option);
+            });
+          });
+        })
+        .catch(() => {
+          // Degrade to a plain text input: keep data-path-param so the
+          // existing path-substitution handlers below need no changes.
+          document.querySelectorAll("[data-printer-select]").forEach((select) => {
+            const input = document.createElement("input");
+            input.type = "text";
+            input.name = select.name;
+            input.required = true;
+            input.className = select.className;
+            input.dataset.pathParam = select.dataset.pathParam;
+            select.replaceWith(input);
+          });
+        });
+
       // Path param substitution for `hx-get` forms (mechanism 2): htmx does
       // not fill `{name}` placeholders from form inputs, so replace them
       // here and drop the matching entries from the outgoing parameters —
