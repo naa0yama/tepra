@@ -100,6 +100,27 @@ pub struct JobCardTemplate {
 }
 
 // ---------------------------------------------------------------------------
+// Printer status card partial (HTMX lazy-load target)
+// ---------------------------------------------------------------------------
+
+/// Context for the printer status-card partial
+/// (`GET /ui/printers/{name}/status-card`).
+#[derive(Debug, Template)]
+#[template(path = "partials/printer_status_card.html")]
+pub struct PrinterStatusCardTemplate {
+    /// Printer identifier.
+    pub printer_name: String,
+    /// Whether the printer is currently reachable.
+    pub online: bool,
+    /// Loaded tape width label (e.g. `"12mm"`), from `tape_id_label`.
+    pub tape_width: String,
+    /// Loaded tape kind label (e.g. `"標準ラベル"`), from `tape_kind_label`.
+    pub tape_kind: &'static str,
+    /// Creator API error message, if the status fetch failed.
+    pub error: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
 // API reference page
 // ---------------------------------------------------------------------------
 

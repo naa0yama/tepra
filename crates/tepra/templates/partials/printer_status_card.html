@@ -1,0 +1,14 @@
+{# templates/partials/printer_status_card.html #}
+{% if let Some(msg) = error %}
+<div class="badge badge-error">Offline</div>
+<p class="text-error text-sm">{{ msg }}</p>
+{% else %}
+<div class="badge {% if online %}badge-success{% else %}badge-error{% endif %}">
+{% if online %}
+  Online
+{% else %}
+  Offline
+{% endif %}
+</div>
+<p>Tape: {{ tape_width }} / {{ tape_kind }}</p>
+{% endif %}

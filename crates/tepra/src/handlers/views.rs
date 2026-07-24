@@ -10,7 +10,8 @@ use axum::{
     response::IntoResponse,
 };
 use opentelemetry_semantic_conventions::attribute as semconv;
-use tracing::{Span, instrument};
+use tepra_core::dto::tape_label::{tape_id_label, tape_kind_label};
+use tracing::{Span, instrument, warn};
 use utoipa::OpenApi as _;
 
 use crate::{
@@ -18,7 +19,7 @@ use crate::{
     state::AppState,
     views::{
         ApiDocsTemplate, Breadcrumb, HtmlTemplate, IndexTemplate, JobCardTemplate, NAV_API,
-        NAV_PRINTERS, PrinterDetailTemplate, build_endpoint_views,
+        NAV_PRINTERS, PrinterDetailTemplate, PrinterStatusCardTemplate, build_endpoint_views,
     },
 };
 
@@ -132,6 +133,61 @@ pub async fn job_card(
         canceled: resp.canceled,
         progress,
     }))
+}
+
+/// `GET /ui/printers/{name}/status-card` — HTMX printer status-card partial.
+///
+/// Lazy-loaded by each card in the printer list index page so that one
+/// offline/slow printer cannot block the rest of the grid from rendering.
+#[instrument(
+    name = "printer.status_card",
+    skip_all,
+    fields(
+        http.request.method = "GET",
+        http.route = "/ui/printers/{name}/status-card",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+        printer.name = %name,
+    )
+)]
+pub async fn status_card(
+    Path(name): Path<String>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let online_result = state.client.online_status(&name).await;
+    let lw_result = state.client.lw_status(&name).await;
+
+    let (online, tape_width, tape_kind, error) = match (online_result, lw_result) {
+        (Ok(online_resp), Ok(lw_resp)) => (
+            online_resp.online,
+            tape_id_label(lw_resp.tape_id),
+            tape_kind_label(lw_resp.tape_kind),
+            None,
+        ),
+        (online_result, lw_result) => {
+            if let Err(err) = &online_result {
+                warn!(printer_name = %name, error = %err, "failed to fetch online status");
+            }
+            if let Err(err) = &lw_result {
+                warn!(printer_name = %name, error = %err, "failed to fetch lw status");
+            }
+            (
+                false,
+                String::new(),
+                "不明",
+                Some(CREATOR_API_ERROR.to_owned()),
+            )
+        }
+    };
+
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
+    HtmlTemplate(PrinterStatusCardTemplate {
+        printer_name: name,
+        online,
+        tape_width,
+        tape_kind,
+        error,
+    })
 }
 
 /// `GET /ui/api` — read-only API reference page listing every built-in
