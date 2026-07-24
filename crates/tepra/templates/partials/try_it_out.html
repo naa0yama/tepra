@@ -6,6 +6,9 @@
     class="try-it-out-form flex flex-col gap-2"
     data-method="{{ endpoint.method }}"
     data-path="{{ endpoint.path }}"
+    {% if endpoint.is_destructive %}
+    data-destructive-form
+    {% endif %}
     {% if endpoint.request_schema_json.is_none() %}
     hx-{{ endpoint.method|lower }}="{{ endpoint.path }}"
     hx-target="#try-it-out-result-{{ index }}"
@@ -29,7 +32,11 @@
         placeholder="JSON request body"
       ></textarea>
     {% endif %}
-    <button type="submit" class="btn btn-primary btn-sm self-start">Execute</button>
+    {% if endpoint.is_destructive %}
+      <button type="button" class="btn btn-error btn-sm self-start" data-destructive-trigger>Execute</button>
+    {% else %}
+      <button type="submit" class="btn btn-primary btn-sm self-start">Execute</button>
+    {% endif %}
   </form>
   <pre id="try-it-out-result-{{ index }}" class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-2"></pre>
 </div>

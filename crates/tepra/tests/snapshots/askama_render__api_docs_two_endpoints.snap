@@ -108,13 +108,13 @@ expression: html
               </div>
             
             
-              
 <div class="mt-2 border-t border-base-300 pt-3">
   <h3 class="font-semibold text-sm mb-2">Try it out</h3>
   <form
     class="try-it-out-form flex flex-col gap-2"
     data-method="GET"
     data-path="/api/printer"
+    
     
     hx-get="/api/printer"
     hx-target="#try-it-out-result-1"
@@ -123,12 +123,13 @@ expression: html
   >
     
     
-    <button type="submit" class="btn btn-primary btn-sm self-start">Execute</button>
+    
+      <button type="submit" class="btn btn-primary btn-sm self-start">Execute</button>
+    
   </form>
   <pre id="try-it-out-result-1" class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-2"></pre>
 </div>
 
-            
           </div>
         </div>
       
@@ -154,10 +155,59 @@ expression: html
             
             
             
+<div class="mt-2 border-t border-base-300 pt-3">
+  <h3 class="font-semibold text-sm mb-2">Try it out</h3>
+  <form
+    class="try-it-out-form flex flex-col gap-2"
+    data-method="POST"
+    data-path="/api/printer/print/{name}"
+    
+    data-destructive-form
+    
+    
+    data-json-body-form
+    
+  >
+    
+      <label class="input input-sm input-bordered flex items-center gap-2">
+        <span class="font-mono">name</span>
+        <input type="text" name="name" data-path-param="name" required class="grow" />
+      </label>
+    
+    
+      <textarea
+        name="body"
+        data-json-body
+        class="textarea textarea-bordered textarea-sm font-mono"
+        rows="4"
+        placeholder="JSON request body"
+      ></textarea>
+    
+    
+      <button type="button" class="btn btn-error btn-sm self-start" data-destructive-trigger>Execute</button>
+    
+  </form>
+  <pre id="try-it-out-result-2" class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-2"></pre>
+</div>
+
           </div>
         </div>
       
     </div>
+
+    <dialog id="destructive-confirm-modal" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">Confirm destructive action</h3>
+        <p class="py-2">
+          Executing <code id="destructive-confirm-target"></code> causes a
+          physical printer action (printing / tape feed). Continue?
+        </p>
+        <div class="modal-action">
+          <button type="button" class="btn" id="destructive-confirm-cancel">Cancel</button>
+          <button type="button" class="btn btn-error" id="destructive-confirm-confirm">Confirm</button>
+        </div>
+      </div>
+    </dialog>
   
 
   <script>
@@ -221,6 +271,43 @@ expression: html
           target.textContent = text;
         }
       }
+
+      // Destructive endpoints (print / tapefeed / job_control) route the
+      // Execute click through a confirm modal instead of submitting the
+      // form directly (the button's type attribute is button, not submit).
+      let pendingDestructiveForm = null;
+      const modal = document.getElementById("destructive-confirm-modal");
+      const confirmTarget = document.getElementById("destructive-confirm-target");
+
+      document.body.addEventListener("click", (evt) => {
+        const trigger = evt.target.closest("[data-destructive-trigger]");
+        if (!trigger) {
+          return;
+        }
+        const form = trigger.closest("form.try-it-out-form");
+        if (!form) {
+          return;
+        }
+        pendingDestructiveForm = form;
+        if (confirmTarget) {
+          confirmTarget.textContent = `${form.dataset.method} ${form.dataset.path}`;
+        }
+        modal?.showModal();
+      });
+
+      document.getElementById("destructive-confirm-confirm")?.addEventListener("click", () => {
+        modal?.close();
+        // requestSubmit() re-dispatches a native "submit" event, which the
+        // existing htmx / fetch handlers above already know how to handle —
+        // no separate destructive-submit code path is needed.
+        pendingDestructiveForm?.requestSubmit();
+        pendingDestructiveForm = null;
+      });
+
+      document.getElementById("destructive-confirm-cancel")?.addEventListener("click", () => {
+        modal?.close();
+        pendingDestructiveForm = null;
+      });
     })();
   </script>
 

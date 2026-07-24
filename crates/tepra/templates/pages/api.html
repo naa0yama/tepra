@@ -54,13 +54,25 @@
                 <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto">{{ sample }}</pre>
               </div>
             {% endif %}
-            {% if !endpoint.is_destructive %}
-              {{ try_it_out::try_it_out(endpoint=endpoint, index=loop.index) }}
-            {% endif %}
+            {{ try_it_out::try_it_out(endpoint=endpoint, index=loop.index) }}
           </div>
         </div>
       {% endfor %}
     </div>
+
+    <dialog id="destructive-confirm-modal" class="modal">
+      <div class="modal-box">
+        <h3 class="font-bold text-lg">Confirm destructive action</h3>
+        <p class="py-2">
+          Executing <code id="destructive-confirm-target"></code> causes a
+          physical printer action (printing / tape feed). Continue?
+        </p>
+        <div class="modal-action">
+          <button type="button" class="btn" id="destructive-confirm-cancel">Cancel</button>
+          <button type="button" class="btn btn-error" id="destructive-confirm-confirm">Confirm</button>
+        </div>
+      </div>
+    </dialog>
   {% endif %}
 
   <script>
@@ -124,6 +136,43 @@
           target.textContent = text;
         }
       }
+
+      // Destructive endpoints (print / tapefeed / job_control) route the
+      // Execute click through a confirm modal instead of submitting the
+      // form directly (the button's type attribute is button, not submit).
+      let pendingDestructiveForm = null;
+      const modal = document.getElementById("destructive-confirm-modal");
+      const confirmTarget = document.getElementById("destructive-confirm-target");
+
+      document.body.addEventListener("click", (evt) => {
+        const trigger = evt.target.closest("[data-destructive-trigger]");
+        if (!trigger) {
+          return;
+        }
+        const form = trigger.closest("form.try-it-out-form");
+        if (!form) {
+          return;
+        }
+        pendingDestructiveForm = form;
+        if (confirmTarget) {
+          confirmTarget.textContent = `${form.dataset.method} ${form.dataset.path}`;
+        }
+        modal?.showModal();
+      });
+
+      document.getElementById("destructive-confirm-confirm")?.addEventListener("click", () => {
+        modal?.close();
+        // requestSubmit() re-dispatches a native "submit" event, which the
+        // existing htmx / fetch handlers above already know how to handle —
+        // no separate destructive-submit code path is needed.
+        pendingDestructiveForm?.requestSubmit();
+        pendingDestructiveForm = null;
+      });
+
+      document.getElementById("destructive-confirm-cancel")?.addEventListener("click", () => {
+        modal?.close();
+        pendingDestructiveForm = null;
+      });
     })();
   </script>
 {% endblock %}

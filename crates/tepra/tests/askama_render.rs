@@ -202,15 +202,81 @@ fn test_api_docs_render_lists_endpoints() {
     assert!(html.contains("Print a label"));
     assert!(html.contains("destructive"));
 
-    // Non-destructive `GET /api/printer` gets a Try it out form (execute
-    // button + result <pre>); the destructive `print` endpoint stays
-    // schema-only in 4a (modal gate for it is added in 4b).
-    assert_eq!(html.matches(r#"class="try-it-out-form"#).count(), 1);
+    // Both the non-destructive `GET /api/printer` and the destructive
+    // `print` endpoint get a Try it out form (execute button + result
+    // <pre>); only the destructive one is gated behind the confirm modal.
+    assert_eq!(html.matches(r#"class="try-it-out-form"#).count(), 2);
     assert!(html.contains(r#"hx-get="/api/printer""#));
     assert!(html.contains("Execute"));
     assert!(html.contains(r#"id="try-it-out-result-1""#));
+    assert!(html.contains(r#"id="try-it-out-result-2""#));
+
+    // The destructive endpoint's form carries the modal gate marker and its
+    // Execute button is a plain button (not type="submit"), routed through
+    // the shared confirm modal instead of submitting directly.
+    assert_eq!(html.matches("data-destructive-form").count(), 1);
+    assert!(html.contains("data-destructive-trigger"));
+    assert!(html.contains(r#"id="destructive-confirm-modal""#));
 
     insta::assert_snapshot!("api_docs_two_endpoints", html);
+}
+
+#[test]
+fn api_docs_non_destructive_form_has_no_destructive_gate_marker() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "GET".into(),
+            path: "/api/printer".into(),
+            summary: "List printers".into(),
+            request_schema_json: None,
+            response_schema_json: Some("{\"type\":\"array\"}".into()),
+            sample_json: Some("[]".into()),
+            is_destructive: false,
+            path_params: vec![],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    // The click-handler script always references the `data-destructive-trigger`
+    // selector (it's static markup shared across all endpoint rows), so only
+    // the per-form marker distinguishes a destructive form from this one.
+    assert!(!html.contains("data-destructive-form"));
+    assert!(html.contains(r#"type="submit""#));
+}
+
+#[test]
+fn api_docs_destructive_form_has_gate_marker_and_button_type() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "POST".into(),
+            path: "/api/printer/print/{name}".into(),
+            summary: "Print a label".into(),
+            request_schema_json: Some("{\"type\":\"object\"}".into()),
+            response_schema_json: None,
+            sample_json: None,
+            is_destructive: true,
+            path_params: vec!["name".into()],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains("data-destructive"));
+    assert!(html.contains("data-destructive-trigger"));
+    // Destructive Execute button must not be type="submit" — direct
+    // submission would bypass the confirm modal.
+    assert!(!html.contains(r#"type="submit""#));
 }
 
 #[test]
