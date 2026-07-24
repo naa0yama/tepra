@@ -43,6 +43,20 @@
     JS `Boolean.toString()` 互換
   - 影響: `MockCall::Tapefeed(String, bool)` も同じ shape
 
+## OpenAPI スキーマ導出 ( `schema` feature )
+
+`tepra` ( web ) の API リファレンスページ / `openapi.json` が使う DTO スキーマ
+は、DTO 定義そのものと同じ場所 = `tepra-core` に置く。 これにより cli など別
+front-end も同じスキーマ導出を再利用できる ( ADR 0010 )。
+
+- `dto/` の Request/Response 型に
+  `#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]` を付与
+- `utoipa` 依存は `schema = ["dep:utoipa"]` feature の下に閉じ込め、default build
+  には一切 leak しない ( `cargo tree` で default に utoipa が現れないことを確認済み )
+- HTTP operation metadata ( `#[utoipa::path]` / `#[derive(OpenApi)]` ) は
+  `tepra-core` には置かず web crate 側に留める。 責務分割の詳細は
+  `tepra-router.md` の「OpenAPI ドキュメント生成」節を参照
+
 ## エラー型
 
 `TepraError` ( `error.rs` ):
@@ -100,4 +114,6 @@ span name 一覧 ( 13 caller ):
 
 - `docs/specs/architecture/otel-instrumentation.md` — 全体計装方針
 - `docs/specs/external/tepra-creator-webapi.md` — Creator API の生仕様
+- `docs/adr/latest/0010-openapi-schema-derivation-in-core-behind-feature-gate.md`
+  — `schema` feature 境界の決定記録
 - `crates/tepra-core/src/dto/` — Request/Response DTO 定義

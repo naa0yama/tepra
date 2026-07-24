@@ -15,6 +15,8 @@
   - `GET /api/printer/onlinestatus/{name}` — `online_status`
   - `GET /api/printer/lwstatus/{name}` — `lw_status`
   - `POST /api/printer/getmargin/{name}` — `get_margin`
+  - `GET /api/openapi.json` — `openapi::openapi_json` ( コード由来 OpenAPI 3.1
+    ドキュメント配信、`handlers::openapi::ApiDoc::openapi()` を JSON 化 )
 - `build_jobs_router(state)` — ジョブ実行系 ( actor 経由 )
   - state: `AppState` ( client + registry )
   - `POST /api/printer/print/{name}` — submit ( queued )
@@ -30,6 +32,9 @@
   - `GET /ui/` — index
   - `GET /ui/printers/{name}` — 詳細カード
   - `GET /ui/jobs/{printer}/{job_id}` — ジョブカード ( 1s polling 対象 )
+  - `GET /ui/api` — API リファレンスページ ( `openapi.json` を in-process で
+    view-model 化し DaisyUI accordion で描画。Try it out は既存 `/api/*` route を
+    再利用 )
 
 ## 合成方法
 
@@ -51,3 +56,18 @@
 
 Creator API 呼出失敗は handler 層で `StatusCode::BAD_GATEWAY` (502) に
 写像 ( `printers.rs::err_502` 参照 )。
+
+## OpenAPI ドキュメント生成
+
+OpenAPI はコード由来で生成し、手書き spec を持たない ( drift 回避 )。責務分割は
+ADR 0010 に従う:
+
+- **`tepra-core`**: DTO のデータ形状 ( スキーマ )。`#[cfg_attr(feature = "schema",
+  derive(utoipa::ToSchema))]` を付与し `schema` feature の下でのみ `utoipa` に依存
+  ( 詳細は `tepra-core-tepra-client.md` )。
+- **`tepra`** ( 本 crate ): HTTP operation metadata。各 handler に
+  `#[utoipa::path]` を付与し `handlers::openapi::ApiDoc` ( `#[derive(OpenApi)]` )
+  に集約、`GET /api/openapi.json` で配信する。`tepra-core` を
+  `features = ["schema"]` で有効化。
+- 配信される paths は router の実 route と 1:1 対応する ( 統合テスト
+  `handlers_openapi.rs` が全 path と主要 schema の存在を assert )。

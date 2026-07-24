@@ -12,8 +12,10 @@ crates/tepra/templates/
   pages/
     index.html          # Printer list page (GET /ui/)
     printer_detail.html # Per-printer detail page (GET /ui/printers/{name})
+    api.html            # API Reference page (GET /ui/api)
   partials/
     job_card.html       # HTMX job-status polling card (GET /ui/jobs/{printer}/{id})
+    try_it_out.html     # Per-endpoint "Try it out" form macro (used by api.html)
   components/
     alert.html          # Reusable alert macros
     sidebar.html        # Drawer sidebar nav (logo + section menu)
@@ -60,6 +62,48 @@ Extends `shells/dashboard.html`. Bound to `PrinterDetailTemplate` in `views.rs`.
 - Shows per-printer metadata and job history
 - Each job is rendered as a `job_card.html` partial via HTMX out-of-band swap
 
+### pages/api.html
+
+Extends `shells/dashboard.html`. Bound to `ApiDocsTemplate` in `views.rs`.
+
+- Swagger-UI-like reference for the built-in `/api/*` HTTP API, rendered from
+  the code-derived `openapi.json` (view-model built in-process by
+  `build_endpoint_views`, not fetched client-side)
+- One DaisyUI accordion (`collapse`) per endpoint, showing `method` + `path` +
+  `summary` and the request/response JSON schemas (`request_schema_json` /
+  `response_schema_json`) plus a request `sample_json`
+- Embeds the `try_it_out` macro per endpoint for live execution against the
+  running server's own `/api/*` routes
+- Destructive-endpoint confirm gate (inline `<script>`, IIFE-scoped):
+  - Endpoints whose path contains a `DESTRUCTIVE_PATH_MARKERS` segment
+    (`/print/`, `/tapefeed/`, `/job/control/`) render with a
+    `data-destructive-form` marker and must pass through a `<dialog>` confirm
+    modal before firing
+  - A **capturing-phase** `submit` listener on `document.body` (capture=true)
+    intercepts every native submit (including single-field Enter-key submit),
+    `preventDefault` + `stopPropagation`, and opens the modal — this closes the
+    click-only-gate bypass where Enter would skip a `type="button"` Execute
+  - A `destructiveConfirmed` flag authorizes exactly one pass-through after the
+    user confirms; it is force-cleared immediately after `requestSubmit()` so a
+    constraint-validation failure (which skips submit-event dispatch) cannot
+    leave the gate stuck open
+  - Non-destructive forms pass the guard untouched and execute directly
+
+### partials/try_it_out.html
+
+Macro file: `{% macro try_it_out(endpoint, index) %}`. Imported by
+`pages/api.html`; not a standalone page.
+
+- Builds one execution form per endpoint from an `EndpointView`
+- `path_params` (extracted from `{...}` path segments) render as required text
+  inputs; endpoints with a request body get a JSON `<textarea>` prefilled with
+  `sample_json`
+- Non-destructive forms submit via HTMX (`hx-{method}`, or `data-json-body-form`
+  for body-carrying POSTs) with a `type="submit"` Execute button
+- Destructive forms carry `data-destructive-form` and use a `type="button"`
+  Execute (`data-destructive-trigger`) so the confirm gate in `api.html`
+  mediates every execution
+
 ### partials/job_card.html
 
 Standalone partial, not extending any shell. Bound to `JobCardTemplate`.
@@ -86,8 +130,9 @@ Macro file: `{% macro sidebar(active) %}`.
 - Renders the `drawer-side` content: a clickable logo link (`<a href="/ui/">`,
   printer-mark icon + "TEPRA Creator") followed by a separate DaisyUI `menu`
   list
-- Menu items: Printers (linked), Jobs / Templates / Settings (`menu-disabled`,
-  no `href`, "Coming soon" badge) — unimplemented sections never 404
+- Menu items: Printers (linked), Jobs / Templates (`menu-disabled`, no `href`,
+  "Coming soon" badge), API (linked, `href="/ui/api"`, between Templates and
+  Settings), Settings (`menu-disabled`) — unimplemented sections never 404
 - `active` (from `nav_active`) marks the current item with `menu-active` +
   `aria-current="page"`
 
@@ -117,16 +162,19 @@ Macro file: `{% macro theme_toggle() %}`.
 | `IndexTemplate`         | `pages/index.html`          |
 | `PrinterDetailTemplate` | `pages/printer_detail.html` |
 | `JobCardTemplate`       | `partials/job_card.html`    |
+| `ApiDocsTemplate`       | `pages/api.html`            |
 
-All three implement `askama::Template` and are wrapped in `HtmlTemplate<T>` for
+All implement `askama::Template` and are wrapped in `HtmlTemplate<T>` for
 axum `IntoResponse` compatibility.
 
-`IndexTemplate` and `PrinterDetailTemplate` both carry `nav_active: String`
-(sidebar active section, `components/sidebar.html`) and
+`IndexTemplate`, `PrinterDetailTemplate`, and `ApiDocsTemplate` all carry
+`nav_active: String` (sidebar active section, `components/sidebar.html`) and
 `breadcrumbs: Vec<Breadcrumb>` (navbar trail, `components/breadcrumbs.html`).
-`nav_active` is set from `views::NAV_PRINTERS` (currently the only
-implemented section) rather than a literal, so the two handlers that build
-it cannot drift out of sync with each other.
+`nav_active` is set from named constants (`views::NAV_PRINTERS` /
+`views::NAV_API`) rather than literals, so the handlers that build it cannot
+drift out of sync with each other. `ApiDocsTemplate` additionally carries
+`endpoints: Vec<EndpointView>` (see `try_it_out.html` above) and
+`error: Option<String>`.
 `Breadcrumb` is a plain data carrier (not an `askama::Template`):
 
 ```rust
