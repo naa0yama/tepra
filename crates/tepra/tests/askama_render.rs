@@ -214,7 +214,7 @@ fn test_api_docs_render_lists_endpoints() {
 }
 
 #[test]
-fn test_api_docs_render_non_destructive_with_path_param_and_body() {
+fn api_docs_renders_path_param_input_when_endpoint_has_path_param() {
     let tmpl = ApiDocsTemplate {
         nav_active: "api".into(),
         breadcrumbs: vec![Breadcrumb {
@@ -235,9 +235,33 @@ fn test_api_docs_render_non_destructive_with_path_param_and_body() {
     };
     let html = tmpl.render().unwrap();
 
-    // Path-param input rendered, and the form falls back to the plain-JS
-    // submit handler (no hx-post) because it also carries a JSON body.
     assert!(html.contains(r#"data-path-param="name""#));
+}
+
+#[test]
+fn api_docs_uses_json_submit_when_endpoint_has_request_body() {
+    let tmpl = ApiDocsTemplate {
+        nav_active: "api".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "API".into(),
+            href: None,
+        }],
+        endpoints: vec![EndpointView {
+            method: "POST".into(),
+            path: "/api/printer/getmargin/{name}".into(),
+            summary: "Get printer margin".into(),
+            request_schema_json: Some("{\"type\":\"object\"}".into()),
+            response_schema_json: Some("{\"type\":\"object\"}".into()),
+            sample_json: Some("{}".into()),
+            is_destructive: false,
+            path_params: vec!["name".into()],
+        }],
+        error: None,
+    };
+    let html = tmpl.render().unwrap();
+
+    // The form falls back to the plain-JS submit handler (no hx-post)
+    // because it carries a JSON body.
     assert!(html.contains("data-json-body"));
     assert!(html.contains("data-json-body-form"));
     assert!(!html.contains(r#"hx-post="/api/printer/getmargin/{name}""#));

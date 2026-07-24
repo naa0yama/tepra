@@ -108,9 +108,7 @@ expression: html
         });
       });
 
-      // JSON.parse -> JSON.stringify(pretty) into the result <pre> (mechanism
-      // 1): a naive hx-swap would insert the raw JSON as HTML and both skip
-      // pretty-printing and break on `<`/`>` inside string values.
+      // WHY-NOT: hx-swap — inserts raw JSON as HTML, no pretty-print, breaks on '<'/'>'
       document.body.addEventListener("htmx:beforeSwap", (evt) => {
         const form = evt.detail.requestConfig?.elt;
         if (!(form instanceof HTMLFormElement) || !form.classList.contains("try-it-out-form")) {
