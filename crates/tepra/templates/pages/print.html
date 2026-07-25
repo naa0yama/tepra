@@ -141,6 +141,10 @@
         if (!value) {
           return;
         }
+        // WHY-NOT: loadFrames() swaps out #print-frames-pane's job_card,
+        // so the closure's activeJob would otherwise keep referencing a
+        // job that no longer has a button to reflect onto.
+        setPrintMode();
         loadPreview(value);
         loadFrames(value);
       });
@@ -278,11 +282,8 @@
       }
 
       // Reflects the job card's data-terminal/data-printer markers onto the
-      // Print/Cancel button — called after manual fetch inserts (root ===
-      // #print-result, containing the job card as a child) and via the
-      // MutationObserver below (root === #print-frames-pane, always, since
-      // the observer watches that fixed container rather than an event
-      // target).
+      // Print/Cancel button — called only via the MutationObserver below
+      // (root === #print-frames-pane, on any childList mutation within it).
       function reflectJobState(root) {
         const el = root?.matches?.("[data-terminal]") ? root : root?.querySelector?.("[data-terminal]");
         if (!el) {
@@ -334,7 +335,6 @@
           .then((html) => {
             result.innerHTML = html;
             htmx.process(result);
-            reflectJobState(result);
           })
           .catch((err) => {
             result.textContent = String(err);
@@ -353,7 +353,6 @@
           .then((html) => {
             result.innerHTML = html;
             htmx.process(result);
-            reflectJobState(result);
           })
           .catch((err) => {
             result.textContent = String(err);
