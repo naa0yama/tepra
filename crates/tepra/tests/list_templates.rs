@@ -52,6 +52,39 @@ fn test_list_templates_recursive() {
 }
 
 // ---------------------------------------------------------------------------
+// 1b. .lw1 files are listed alongside .lbl, case-insensitively
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_list_templates_lw1_extension() {
+    let dir = tempfile::tempdir().unwrap();
+    touch(dir.path(), "templateAB.lw1");
+    touch(dir.path(), "sub/templateCD.LW1");
+    touch(dir.path(), "legacy.lbl");
+
+    let entries = list_templates(dir.path()).unwrap();
+    assert_eq!(
+        entries.len(),
+        3,
+        "expected .lw1 (mixed case) and .lbl files"
+    );
+
+    let paths: Vec<&str> = entries.iter().map(|e| e.path.as_str()).collect();
+    assert!(
+        paths.contains(&"templateAB.lw1"),
+        "templateAB.lw1 missing: {paths:?}"
+    );
+    assert!(
+        paths.contains(&"sub/templateCD.LW1"),
+        "sub/templateCD.LW1 missing: {paths:?}"
+    );
+    assert!(
+        paths.contains(&"legacy.lbl"),
+        "legacy.lbl missing: {paths:?}"
+    );
+}
+
+// ---------------------------------------------------------------------------
 // 2. Extension filter — only .lbl files, not .txt / .md
 // ---------------------------------------------------------------------------
 
@@ -59,18 +92,19 @@ fn test_list_templates_recursive() {
 fn test_list_templates_extension_filter() {
     let dir = tempfile::tempdir().unwrap();
     touch(dir.path(), "label.lbl");
+    touch(dir.path(), "template.lw1");
     touch(dir.path(), "readme.md");
     touch(dir.path(), "notes.txt");
     touch(dir.path(), "sub/other.lbl");
 
     let entries = list_templates(dir.path()).unwrap();
-    assert_eq!(entries.len(), 2, "only .lbl files should be returned");
+    assert_eq!(entries.len(), 3, "only .lbl/.lw1 files should be returned");
 
     for e in &entries {
-        let is_lbl = Path::new(&e.path)
+        let is_template = Path::new(&e.path)
             .extension()
-            .is_some_and(|ext| ext.eq_ignore_ascii_case("lbl"));
-        assert!(is_lbl, "non-.lbl entry returned: {}", e.path);
+            .is_some_and(|ext| ext.eq_ignore_ascii_case("lbl") || ext.eq_ignore_ascii_case("lw1"));
+        assert!(is_template, "non-template entry returned: {}", e.path);
     }
 }
 

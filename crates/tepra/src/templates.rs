@@ -12,7 +12,7 @@ pub struct TemplateEntry {
     pub path: String,
 }
 
-/// Enumerate `.lbl` template files under `dir` recursively.
+/// Enumerate `.lw1`/`.lbl` template files under `dir` recursively.
 ///
 /// Relative paths in the returned entries always use forward slashes so that
 /// they are safe to embed in JSON responses on any OS (Windows `\` → `/`).
@@ -44,7 +44,7 @@ fn walk(root: &Path, current: &Path, out: &mut Vec<TemplateEntry>) -> anyhow::Re
             .with_context(|| format!("failed to get file type: {}", path.display()))?;
         if ft.is_dir() {
             walk(root, &path, out)?;
-        } else if ft.is_file() && is_lbl(&path) {
+        } else if ft.is_file() && is_template(&path) {
             let rel = path
                 .strip_prefix(root)
                 .with_context(|| format!("failed to strip prefix from: {}", path.display()))?;
@@ -60,7 +60,7 @@ fn walk(root: &Path, current: &Path, out: &mut Vec<TemplateEntry>) -> anyhow::Re
     Ok(())
 }
 
-fn is_lbl(path: &Path) -> bool {
+fn is_template(path: &Path) -> bool {
     path.extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("lbl"))
+        .is_some_and(|ext| ext.eq_ignore_ascii_case("lw1") || ext.eq_ignore_ascii_case("lbl"))
 }
