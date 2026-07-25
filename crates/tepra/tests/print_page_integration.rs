@@ -49,6 +49,12 @@ async fn print_page_renders_with_no_templates() {
     assert_eq!(response.status(), StatusCode::OK);
     let html = body_html(response.into_body()).await;
     assert!(html.contains("Print"), "page must render; got:\n{html}");
+    // Regression: the sidebar must expose a reachable link to /ui/print,
+    // otherwise the page renders but has no navigation entry point.
+    assert!(
+        html.contains("href=\"/ui/print\""),
+        "sidebar must link to /ui/print; got:\n{html}"
+    );
 }
 
 #[tokio::test]
