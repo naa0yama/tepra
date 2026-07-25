@@ -6,7 +6,10 @@
 use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
-use tepra_core::dto::template::ImportFrameItem;
+use tepra_core::dto::{
+    job::{DensityParam, ErrorMessageParam, PrintParameter},
+    template::ImportFrameItem,
+};
 
 /// One `{title, value}` pair supplied by the caller for a single tape (label).
 // WHY-NOT: rename to `Field` — ambiguous outside this module; callers already
@@ -153,5 +156,68 @@ fn pad_signed(n: i64, pad: u8) -> String {
         format!("-{:0pad$}", n.unsigned_abs())
     } else {
         format!("{n:0pad$}")
+    }
+}
+
+/// Per-request overrides for [`PrintParameter`] fields; `None` keeps the
+/// SDK default (see [`merge_print_parameter`]).
+// WHY-NOT: rename to `Overrides` — matches spec's `MergePrintRequest` field
+// naming and disambiguates from other override types outside this module.
+#[allow(clippy::module_name_repetitions)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, utoipa::ToSchema)]
+#[serde(default, rename_all = "camelCase")]
+pub struct MergePrintOverrides {
+    /// Number of print copies (1-999).
+    pub copies: Option<u32>,
+    /// Overrides `DensityParam.value` (mode stays 1 = specified density).
+    pub density: Option<i32>,
+    /// 1=not cut, 2=each label, 3=after job.
+    pub tape_cut: Option<u32>,
+    /// 1=no half-cut, 2=half-cut.
+    pub half_cut: Option<u32>,
+    /// 1=continuous (joined labels), 2=continuous (separated labels).
+    pub half_cut_separate: Option<u32>,
+    /// 1=high, 2=low, 3=middle.
+    pub print_speed: Option<u32>,
+    /// Left/right margin in 0.1mm units.
+    pub margin_left_right: Option<u32>,
+}
+
+/// Builds a [`PrintParameter`] from SDK-default wire values, applying `overrides`.
+///
+/// Defaults mirror `tepraprint.js`'s `defaultPrintParameter` (:656-) mapped
+/// through `tepraprint_getWebApiPrintParameter` to REST wire values.
+///
+/// Pure function: no I/O.
+// WHY-NOT: rename to `parameter` — matches sibling `build_merge_csv` /
+// `expand_serial` naming convention within this module.
+#[allow(clippy::module_name_repetitions)]
+#[must_use]
+pub fn merge_print_parameter(overrides: &MergePrintOverrides) -> PrintParameter {
+    PrintParameter {
+        copies: overrides.copies.unwrap_or(1),
+        tape_cut: overrides.tape_cut.unwrap_or(2),
+        half_cut: overrides.half_cut.unwrap_or(2),
+        print_speed: overrides.print_speed.unwrap_or(1),
+        density: DensityParam {
+            mode: 1,
+            value: overrides.density.unwrap_or(0),
+        },
+        tape_id: 262,
+        priority_cut_setting: 1,
+        half_cut_separate: overrides.half_cut_separate.unwrap_or(1),
+        margin_left_right: overrides.margin_left_right.unwrap_or(0),
+        display_tape_width: 2,
+        error_message: ErrorMessageParam {
+            mode: 2,
+            file_output: 0,
+            file_path: String::new(),
+        },
+        display_transfer_tape: 2,
+        display_print_setting: 2,
+        cut_title: 0,
+        kana_zen: 0,
+        display_print_preview: 1,
+        stretch_image: 0,
     }
 }
