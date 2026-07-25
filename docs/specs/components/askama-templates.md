@@ -11,6 +11,7 @@ crates/tepra/templates/
     dashboard.html      # L1 shell (base layout)
   pages/
     index.html          # Printer list page (GET /ui/)
+    print.html          # Print job page (GET /ui/print) with printer panel + polling
     api.html            # API Reference page (GET /ui/api)
   partials/
     job_card.html              # HTMX job-status polling card (GET /ui/jobs/{printer}/{id})
@@ -18,11 +19,13 @@ crates/tepra/templates/
     endpoint_entry.html        # Per-endpoint collapse accordion macro (used by api.html)
     try_it_out.html            # Per-endpoint "Try it out" form macro (used by api.html)
     property_table.html        # Request/response/param property table macro (used by api.html)
+    merge_printer_panel.html   # Printer status display (online/offline, tape, margin) for print page (GET /ui/print/{printer}/panel)
   components/
     alert.html          # Reusable alert macros
     sidebar.html        # Drawer sidebar nav (logo + section menu)
     breadcrumbs.html    # Navbar breadcrumb trail
     theme_toggle.html   # Navbar corporate/business theme swap control
+    printer_refresh_toggle.html # Navbar auto-refresh toggle for printer status polling
 ```
 
 ## Template Roles
@@ -57,6 +60,25 @@ Extends `shells/dashboard.html`. Bound to `IndexTemplate` in `views.rs`.
 - Each card performs `hx-get="/ui/printers/{printer}/status-card"` on load and swaps into the card body
 - Renders `components::error_alert` when `error: Option<String>` is set
 - Empty-state hero when `printers` is empty
+
+### pages/print.html
+
+Extends `shells/dashboard.html`. Bound to `PrintTemplate` in `views.rs`.
+
+- Print job submission and status tracking for label printers
+- Printer selection (`<select id="printer-info-select">`) with manual refresh button (`#printer-refresh-btn`)
+  - Select is in a DaisyUI `join` layout with a refresh button (SVG icon, square button class)
+  - Button calls `loadPrinterPanel(currentPrinter)` on click to immediately fetch updated status
+- Printer info panel (`#printer-info-panel`, target for `GET /ui/print/{printer}/panel`):
+  - Shows online/offline status, tape width/kind, and margin (via `merge_printer_panel.html`)
+  - Auto-refresh behavior: when the navbar printer-refresh-toggle (`#printer-refresh-toggle`) is ON,
+    the print page polls this endpoint every 5s via JavaScript `setInterval`, updating status in real-time
+  - Polling stops when toggle is OFF or printer is unselected (`clearInterval`)
+  - Global toggle state is persisted to `localStorage` via the dashboard shell's toggle-persistence script
+- Job cards (`#job-{job_id}`) — inline job progress for submitted print jobs
+- Submit form with template selection, frame settings, and submit button (`#print-submit-btn`)
+  - Success redirects to a job-confirmation view with the job ID and start time
+  - Errors display in a toast (`#toast-container`)
 
 ### pages/api.html
 
@@ -209,11 +231,26 @@ Macro file: `{% macro theme_toggle() %}`.
   persistence is wired by the inline scripts in `shells/dashboard.html`, not by
   this component
 
+### components/printer_refresh_toggle.html
+
+Macro file: `{% macro printer_refresh_toggle() %}`.
+
+- Navbar auto-refresh control for printer status polling on the print page
+- Renders a labeled toggle with refresh SVG icon, "Auto-refresh" text (sm+ screens),
+  and `toggle-primary` DaisyUI styling
+- Checkbox `id="printer-refresh-toggle"`, `class="toggle"` for JS targeting
+- Tooltip (`title="Auto-refresh printer status every 5s"`) explains the 5s interval
+- Persistence is wired by inline scripts in `shells/dashboard.html` (localStorage key:
+  `PRINTER_AUTOREFRESH_KEY`), similar to theme toggle pattern
+- Only has functional effect on `pages/print.html` (controls `setInterval` for
+  `GET /ui/print/{printer}/panel` polling); other pages just preserve the setting
+
 ## Rust Bindings (`crates/tepra/src/views.rs`)
 
 | Struct                      | Template path                       |
 | --------------------------- | ----------------------------------- |
 | `IndexTemplate`             | `pages/index.html`                  |
+| `PrintPageTemplate`         | `pages/print.html`                  |
 | `PrinterStatusCardTemplate` | `partials/printer_status_card.html` |
 | `JobCardTemplate`           | `partials/job_card.html`            |
 | `ApiDocsTemplate`           | `pages/api.html`                    |
