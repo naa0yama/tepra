@@ -426,6 +426,11 @@
             cancelPrint();
             return;
           }
+          const printerSelect = document.getElementById("printer-info-select");
+          if (!printerSelect || !printerSelect.value) {
+            printerSelect?.reportValidity();
+            return;
+          }
           if (localStorage.getItem(SKIP_CONFIRM_KEY) === "true") {
             submitPrint();
             return;
