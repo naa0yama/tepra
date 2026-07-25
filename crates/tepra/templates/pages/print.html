@@ -146,9 +146,7 @@
       });
 
       // WHY-NOT: server-side printer <option> render — mirrors api.html's
-      // client-side fetch of /api/printer; the frames pane (and its printer
-      // select) is swapped in after the initial page load, so this must
-      // re-run on every htmx swap rather than once at page load.
+      // client-side fetch of /api/printer.
       function populatePrinterSelects(root) {
         fetch("/api/printer")
           .then((res) => {

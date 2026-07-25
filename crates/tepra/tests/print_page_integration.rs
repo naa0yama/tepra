@@ -17,7 +17,11 @@ use tepra_core::{
         mock::{MockCall, MockTepraClient},
         traits::TepraClient,
     },
-    dto::{enums::ImportFrameAttribute, job::PrintResponse, template::ImportFrameItem},
+    dto::{
+        enums::ImportFrameAttribute,
+        job::{JobProgressResponse, PrintResponse},
+        template::ImportFrameItem,
+    },
     error::TepraError,
 };
 use tower::ServiceExt;
@@ -242,4 +246,57 @@ async fn print_submit_renders_error_banner_on_upstream_failure() {
         html.contains("alert-error"),
         "upstream failure must render an error banner; got:\n{html}"
     );
+}
+
+#[tokio::test]
+async fn job_cancel_renders_canceled_job_card_on_success() {
+    let dir = tempfile::tempdir().unwrap();
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_job_control(Ok(()));
+    mock.push_job_progress(Ok(JobProgressResponse {
+        data_progress: 0,
+        page_number: 0,
+        total_page_count: 0,
+        job_end: true,
+        canceled: true,
+        status_error: 0,
+    }));
+
+    let response = make_app(mock, dir.path().to_path_buf())
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/ui/jobs/PR-001/42/cancel")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+    assert!(
+        html.contains("Canceled"),
+        "canceled job card must reflect canceled state; got:\n{html}"
+    );
+}
+
+#[tokio::test]
+async fn job_cancel_returns_bad_gateway_on_job_control_failure() {
+    let dir = tempfile::tempdir().unwrap();
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_job_control(Err(TepraError::Creator { errcode: 500 }));
+
+    let response = make_app(mock, dir.path().to_path_buf())
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/ui/jobs/PR-001/42/cancel")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
 }

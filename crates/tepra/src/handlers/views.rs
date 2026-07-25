@@ -150,11 +150,10 @@ pub async fn job_cancel(
         return Err(StatusCode::BAD_GATEWAY);
     }
 
-    let resp = state
-        .client
-        .job_progress(&printer_name, job_id)
-        .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    let resp = state.client.job_progress(&printer_name, job_id).await.map_err(|err| {
+        warn!(printer_name = %printer_name, job_id, error = %err, "cancel succeeded but job-card refetch failed");
+        StatusCode::BAD_GATEWAY
+    })?;
 
     let progress = if resp.job_end || resp.canceled {
         None
