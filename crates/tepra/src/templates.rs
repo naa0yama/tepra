@@ -64,3 +64,26 @@ fn is_template(path: &Path) -> bool {
     path.extension()
         .is_some_and(|ext| ext.eq_ignore_ascii_case("lw1") || ext.eq_ignore_ascii_case("lbl"))
 }
+
+/// Resolves `rel` under `dir`, rejecting paths that escape it (traversal).
+///
+/// Missing files and traversal attempts both surface as an error so callers
+/// can uniformly report "not found" without distinguishing the two cases.
+///
+/// # Errors
+/// Returns an error if `dir` or the resolved file cannot be canonicalized, or
+/// if the resolved path falls outside `dir`.
+pub fn resolve_template_path(dir: &Path, rel: &str) -> anyhow::Result<PathBuf> {
+    let root = dir
+        .canonicalize()
+        .with_context(|| format!("template directory not found: {}", dir.display()))?;
+    let resolved = dir
+        .join(rel)
+        .canonicalize()
+        .with_context(|| format!("template not found: {rel}"))?;
+    anyhow::ensure!(
+        resolved.starts_with(&root),
+        "template path escapes template directory: {rel}"
+    );
+    Ok(resolved)
+}

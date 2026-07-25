@@ -35,6 +35,7 @@ async-trait = "0.1.89"
 clap = { version = "4.6.1", default-features = false, features = ["color", "derive", "error-context", "help", "std", "suggestions", "usage"] }
 
 ## Data
+base64 = "0.22.1"
 encoding_rs = "0.8.35"
 reqwest = { version = "0.13.4", default-features = false, features = ["blocking", "json", "multipart", "rustls", "stream"] }
 rustls = { version = "0.23.41", default-features = false, features = ["ring", "std", "tls12"] }

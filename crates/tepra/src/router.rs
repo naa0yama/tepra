@@ -11,7 +11,7 @@ use axum::{
 use tepra_core::client::traits::TepraClient;
 
 use crate::{
-    handlers::{jobs, openapi, printers, templates, views},
+    handlers::{jobs, merge_print, openapi, printers, templates, views},
     state::AppState,
 };
 
@@ -50,7 +50,21 @@ pub fn build_templates_router(state: AppState) -> Router {
             "/api/printer/template/importframe",
             post(templates::import_frame),
         )
-        .route("/api/templates", get(templates::list_template_files))
+        .route("/api/rest/templates", get(templates::list_template_files))
+        .route(
+            "/api/rest/templates/preview",
+            get(templates::template_preview),
+        )
+        .with_state(state)
+}
+
+/// Build the merge-print API router (`POST /api/rest/merge-print/{printer}`).
+pub fn build_merge_router(state: AppState) -> Router {
+    Router::new()
+        .route(
+            "/api/rest/merge-print/{printer}",
+            post(merge_print::merge_print_handler),
+        )
         .with_state(state)
 }
 

@@ -14,7 +14,7 @@ pub struct AppState {
     pub client: Arc<dyn TepraClient>,
     /// Per-printer actor registry (lazy spawn on first use).
     pub registry: Arc<PrinterRegistry>,
-    /// Directory that holds label template files served by `GET /api/templates`.
+    /// Directory that holds label template files served by `GET /api/rest/templates`.
     pub template_dir: PathBuf,
     /// `OTel` metric instruments. `None` when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset.
     meters: Option<Arc<Meters>>,

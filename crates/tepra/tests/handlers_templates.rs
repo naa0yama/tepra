@@ -117,7 +117,7 @@ async fn test_import_frame_client_error_returns_502() {
 }
 
 // ---------------------------------------------------------------------------
-// 2. GET /api/templates
+// 2. GET /api/rest/templates
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -129,7 +129,7 @@ async fn test_list_template_files_returns_200_with_lbl_files() {
     let response = make_app(mock, dir.path().to_owned())
         .oneshot(
             Request::builder()
-                .uri("/api/templates")
+                .uri("/api/rest/templates")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -151,7 +151,7 @@ async fn test_list_template_files_empty_dir_returns_empty_array() {
     let response = make_app(mock, dir.path().to_owned())
         .oneshot(
             Request::builder()
-                .uri("/api/templates")
+                .uri("/api/rest/templates")
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -172,7 +172,7 @@ async fn test_list_template_files_missing_dir_returns_500() {
     let response = make_app(mock, missing)
         .oneshot(
             Request::builder()
-                .uri("/api/templates")
+                .uri("/api/rest/templates")
                 .body(Body::empty())
                 .unwrap(),
         )

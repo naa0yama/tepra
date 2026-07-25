@@ -3,6 +3,7 @@
 use axum::http::StatusCode;
 
 pub mod jobs;
+pub mod merge_print;
 pub mod openapi;
 pub mod printers;
 pub mod templates;

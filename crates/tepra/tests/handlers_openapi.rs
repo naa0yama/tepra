@@ -55,7 +55,7 @@ async fn test_openapi_json_returns_200_valid_document() {
         "/api/printer/job/info/{name}",
         "/api/printer/job/control/{name}",
         "/api/printer/template/importframe",
-        "/api/templates",
+        "/api/rest/templates",
     ] {
         assert!(paths.contains_key(path), "missing path: {path}");
     }

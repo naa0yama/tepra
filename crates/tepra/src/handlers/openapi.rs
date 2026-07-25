@@ -7,7 +7,7 @@ use tepra_core::dto::{job, printer, template};
 use tracing::{Span, instrument};
 use utoipa::{OpenApi, openapi::OpenApi as OpenApiDoc};
 
-use super::{jobs, printers, templates};
+use super::{jobs, merge_print, printers, templates};
 use crate::templates::TemplateEntry;
 
 /// `OpenAPI` document aggregating every `/api/*` handler.
@@ -28,6 +28,8 @@ use crate::templates::TemplateEntry;
         jobs::job_control,
         templates::import_frame,
         templates::list_template_files,
+        templates::template_preview,
+        merge_print::merge_print_handler,
     ),
     components(schemas(
         printer::PrinterListItem,
@@ -46,11 +48,13 @@ use crate::templates::TemplateEntry;
         template::ImportFrameRequest,
         template::ImportFrameItem,
         TemplateEntry,
+        merge_print::MergePrintRequest,
     )),
     tags(
         (name = "printer", description = "Printer discovery and status"),
         (name = "job", description = "Print job lifecycle"),
         (name = "template", description = "Template file handling"),
+        (name = "merge-print", description = "Merge-print orchestration (template + CSV data)"),
     ),
 )]
 #[derive(Debug)]

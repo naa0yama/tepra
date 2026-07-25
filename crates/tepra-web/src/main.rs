@@ -64,6 +64,7 @@ async fn main() -> anyhow::Result<()> {
             let router = tepra::router::build_router(client)
                 .merge(tepra::router::build_jobs_router(state.clone()))
                 .merge(tepra::router::build_templates_router(state.clone()))
+                .merge(tepra::router::build_merge_router(state.clone()))
                 .merge(tepra::router::build_ui_router(state))
                 .merge(tepra_web::assets::router())
                 .layer(axum::middleware::from_fn_with_state(
