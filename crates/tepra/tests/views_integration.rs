@@ -124,8 +124,8 @@ async fn error_banner_contains_full_product_name() {
 
 // ---------------------------------------------------------------------------
 // 4. sidebar_renders_nav_structure
-//    The dashboard sidebar must show all four nav sections with the printers
-//    item active and the three unimplemented items disabled + "Coming soon" badge.
+//    The dashboard sidebar must show all nav sections with the printers
+//    item active and the unimplemented item disabled + "Coming soon" badge.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -141,10 +141,16 @@ async fn sidebar_renders_nav_structure() {
     assert_eq!(response.status(), StatusCode::OK);
     let html = body_html(response.into_body()).await;
 
-    for label in ["TEPRA Creator", "Printers", "Jobs", "Templates", "Settings"] {
+    for label in ["TEPRA Creator", "Printers", "Jobs"] {
         assert!(
             html.contains(label),
             "sidebar must render nav label {label:?}; got:\n{html}"
+        );
+    }
+    for label in ["Templates", "Settings"] {
+        assert!(
+            !html.contains(label),
+            "sidebar must not render removed nav label {label:?}; got:\n{html}"
         );
     }
     assert!(
