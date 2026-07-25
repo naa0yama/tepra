@@ -12,7 +12,10 @@ use axum::{
 };
 use opentelemetry_semantic_conventions::attribute as semconv;
 use serde::Deserialize;
-use tepra_core::dto::tape_label::{tape_id_label, tape_kind_label};
+use tepra_core::dto::{
+    tape_label::{tape_id_label, tape_kind_label},
+    template::GetMarginRequest,
+};
 use tracing::{Span, instrument, warn};
 use utoipa::OpenApi as _;
 
@@ -24,8 +27,8 @@ use crate::{
     state::AppState,
     views::{
         ApiDocsTemplate, Breadcrumb, ErrorAlertTemplate, HtmlTemplate, IndexTemplate,
-        JobCardTemplate, MergeFramesTemplate, NAV_API, NAV_PRINT, NAV_PRINTERS, PrintPageTemplate,
-        PrinterStatusCardTemplate, build_endpoint_views,
+        JobCardTemplate, MergeFramesTemplate, MergePrinterPanelTemplate, NAV_API, NAV_PRINT,
+        NAV_PRINTERS, PrintPageTemplate, PrinterStatusCardTemplate, build_endpoint_views,
     },
 };
 
@@ -154,6 +157,107 @@ pub async fn status_card(
         tape_width,
         tape_kind,
         error,
+    })
+}
+
+/// Formats a 0.1mm-unit margin value (`GetMarginResponse` field) as a
+/// human-readable millimeter string (e.g. `1.5mm`).
+fn format_margin_mm(tenths_mm: u32) -> String {
+    format!("{:.1}mm", f64::from(tenths_mm) / 10.0)
+}
+
+/// `GET /ui/print/{printer}/panel` — HTMX printer info panel partial for the
+/// merge-print page, lazy-loaded when the printer selector card changes.
+///
+/// Aggregates `onlinestatus` + `lwstatus` + `getmargin` (no template, so the
+/// margin reflects the tape alone) into a single read-only view.
+#[instrument(
+    name = "handler.print_printer_panel",
+    skip_all,
+    fields(
+        http.request.method = "GET",
+        http.route = "/ui/print/{printer}/panel",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+        printer.name = %name,
+    )
+)]
+pub async fn print_printer_panel(
+    Path(name): Path<String>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let online_result = state.client.online_status(&name).await;
+    let lw_result = state.client.lw_status(&name).await;
+
+    let (online, tape_id, tape_width, tape_kind, status_error) = match (online_result, lw_result) {
+        (Ok(online_resp), Ok(lw_resp)) => (
+            online_resp.online,
+            Some(lw_resp.tape_id),
+            tape_id_label(lw_resp.tape_id),
+            tape_kind_label(lw_resp.tape_kind),
+            None,
+        ),
+        (online_result, lw_result) => {
+            if let Err(err) = &online_result {
+                warn!(printer_name = %name, error = %err, "failed to fetch online status");
+            }
+            if let Err(err) = &lw_result {
+                warn!(printer_name = %name, error = %err, "failed to fetch lw status");
+            }
+            (
+                false,
+                None,
+                String::new(),
+                "不明",
+                Some(CREATOR_API_ERROR.to_owned()),
+            )
+        }
+    };
+
+    let (margin_top, margin_bottom, margin_left_right, margin_error) = match tape_id {
+        Some(tape_id) => {
+            let margin_result = state
+                .client
+                .get_margin(
+                    &name,
+                    GetMarginRequest {
+                        tape_id,
+                        template_file: None,
+                    },
+                )
+                .await;
+            match margin_result {
+                Ok(margin) => (
+                    format_margin_mm(margin.top),
+                    format_margin_mm(margin.bottom),
+                    format_margin_mm(margin.left_right),
+                    None,
+                ),
+                Err(err) => {
+                    warn!(printer_name = %name, error = %err, "failed to fetch margin");
+                    (
+                        String::new(),
+                        String::new(),
+                        String::new(),
+                        Some(CREATOR_API_ERROR.to_owned()),
+                    )
+                }
+            }
+        }
+        None => (String::new(), String::new(), String::new(), None),
+    };
+
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
+    HtmlTemplate(MergePrinterPanelTemplate {
+        printer_name: name,
+        online,
+        tape_width,
+        tape_kind,
+        margin_top,
+        margin_bottom,
+        margin_left_right,
+        status_error,
+        margin_error,
     })
 }
 

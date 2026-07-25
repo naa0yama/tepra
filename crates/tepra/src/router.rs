@@ -79,5 +79,6 @@ pub fn build_ui_router(state: AppState) -> Router {
         .route("/ui/print", get(views::print_page))
         .route("/ui/print/frames", get(views::print_frames))
         .route("/ui/print/{printer}", post(views::print_submit))
+        .route("/ui/print/{printer}/panel", get(views::print_printer_panel))
         .with_state(state)
 }

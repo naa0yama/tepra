@@ -99,6 +99,38 @@ pub struct PrinterStatusCardTemplate {
 }
 
 // ---------------------------------------------------------------------------
+// Merge-print printer info panel (HTMX lazy-load target)
+// ---------------------------------------------------------------------------
+
+/// Context for the merge-print printer info panel partial
+/// (`GET /ui/print/{printer}/panel`).
+#[derive(Debug, Template)]
+#[template(path = "partials/merge_printer_panel.html")]
+pub struct MergePrinterPanelTemplate {
+    /// Printer identifier.
+    pub printer_name: String,
+    /// Whether the printer is currently reachable.
+    pub online: bool,
+    /// Loaded tape width label (e.g. `"12mm"`), from `tape_id_label`.
+    pub tape_width: String,
+    /// Loaded tape kind label (e.g. `"標準ラベル"`), from `tape_kind_label`.
+    pub tape_kind: &'static str,
+    /// Top margin, pre-formatted (e.g. `"1.5mm"`); empty when unavailable.
+    pub margin_top: String,
+    /// Bottom margin, pre-formatted (e.g. `"1.5mm"`); empty when unavailable.
+    pub margin_bottom: String,
+    /// Left/right margin, pre-formatted (e.g. `"1.5mm"`); empty when unavailable.
+    pub margin_left_right: String,
+    /// Creator API error message when `onlinestatus`/`lwstatus` failed;
+    /// independent of `margin_error` so a margin-only failure does not hide
+    /// the online badge or tape info.
+    pub status_error: Option<String>,
+    /// Creator API error message when `getmargin` failed; independent of
+    /// `status_error`.
+    pub margin_error: Option<String>,
+}
+
+// ---------------------------------------------------------------------------
 // Merge-print UI page
 // ---------------------------------------------------------------------------
 
