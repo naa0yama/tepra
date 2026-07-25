@@ -2423,6 +2423,7 @@ dependencies = [
  "async-trait",
  "axum",
  "dashmap",
+ "encoding_rs",
  "insta",
  "opentelemetry-semantic-conventions",
  "opentelemetry_sdk",
