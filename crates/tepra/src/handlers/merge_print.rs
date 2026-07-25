@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use tepra_core::{
     dto::{
         job::{FilePayload, PrintFiles, PrintRequest, PrintResponse},
-        template::ImportFrameRequest,
+        template::{ImportFrameItem, ImportFrameRequest},
     },
     error::TepraError,
 };
@@ -65,11 +65,20 @@ pub(crate) enum MergePrintError {
 }
 
 impl MergePrintError {
-    const fn status(&self) -> StatusCode {
+    pub(crate) const fn status(&self) -> StatusCode {
         match self {
             Self::TemplateNotFound(_) => StatusCode::NOT_FOUND,
             Self::BadRequest(_) => StatusCode::BAD_REQUEST,
             Self::Upstream(_) => StatusCode::BAD_GATEWAY,
+        }
+    }
+}
+
+impl std::fmt::Display for MergePrintError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TemplateNotFound(e) | Self::BadRequest(e) => write!(f, "{e}"),
+            Self::Upstream(e) => write!(f, "{e}"),
         }
     }
 }
@@ -138,21 +147,23 @@ pub async fn merge_print_handler(
     })
 }
 
-/// Shared orchestration: template read → `import_frame` → CSV build → `print`.
+/// Reads `template_rel` under the configured template directory and calls
+/// `import_frame` on it, returning both the encoded file payload (reused for
+/// the print request) and the extracted frame list.
 ///
-/// Extracted so the `/ui/print` form handler can reuse the same logic.
-pub(crate) async fn merge_print(
+/// Extracted so the `/ui/print/frames` handler can reuse the same logic
+/// without re-reading the template a second time in `merge_print`.
+pub(crate) async fn fetch_template_and_frames(
     state: &AppState,
-    printer: &str,
-    req: MergePrintRequest,
-) -> Result<PrintResponse, MergePrintError> {
-    let template_path = resolve_template_path(&state.template_dir, &req.template)
+    template_rel: &str,
+) -> Result<(FilePayload, Vec<ImportFrameItem>), MergePrintError> {
+    let template_path = resolve_template_path(&state.template_dir, template_rel)
         .map_err(MergePrintError::TemplateNotFound)?;
     let read_result = std::fs::read(&template_path)
         .with_context(|| format!("failed to read template: {}", template_path.display()));
     let template_bytes = read_result.map_err(MergePrintError::TemplateNotFound)?;
     let file_name = template_path.file_name().map_or_else(
-        || req.template.clone(),
+        || template_rel.to_owned(),
         |n| n.to_string_lossy().into_owned(),
     );
     let template_file = FilePayload {
@@ -167,6 +178,19 @@ pub(crate) async fn merge_print(
         })
         .await
         .map_err(MergePrintError::Upstream)?;
+
+    Ok((template_file, frames))
+}
+
+/// Shared orchestration: template read → `import_frame` → CSV build → `print`.
+///
+/// Extracted so the `/ui/print` form handler can reuse the same logic.
+pub(crate) async fn merge_print(
+    state: &AppState,
+    printer: &str,
+    req: MergePrintRequest,
+) -> Result<PrintResponse, MergePrintError> {
+    let (template_file, frames) = fetch_template_and_frames(state, &req.template).await?;
 
     let rows = merge_rows_with_serial(req.rows, req.serial.as_ref())
         .map_err(MergePrintError::BadRequest)?;

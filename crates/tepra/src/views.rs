@@ -99,6 +99,54 @@ pub struct PrinterStatusCardTemplate {
 }
 
 // ---------------------------------------------------------------------------
+// Merge-print UI page
+// ---------------------------------------------------------------------------
+
+/// Sidebar section key for the merge-print page (`nav_active` field below).
+///
+/// Not yet matched by `templates/components/sidebar.html` — the page is not
+/// linked from the sidebar until a later task, so this key currently never
+/// highlights a nav item.
+pub const NAV_PRINT: &str = "print";
+
+/// Context for the merge-print page (`GET /ui/print`).
+#[derive(Debug, Template)]
+#[template(path = "pages/print.html")]
+pub struct PrintPageTemplate {
+    /// Active sidebar section key (`shells/dashboard.html`).
+    pub nav_active: String,
+    /// Navbar breadcrumb trail (`shells/dashboard.html`).
+    pub breadcrumbs: Vec<Breadcrumb>,
+    /// Template files available for selection, from `list_templates`.
+    pub templates: Vec<crate::templates::TemplateEntry>,
+    /// Template directory read error, if any.
+    pub error: Option<String>,
+}
+
+/// Context for the frame-table + print-settings-form partial
+/// (`GET /ui/print/frames?template=<rel>`).
+#[derive(Debug, Template)]
+#[template(path = "partials/merge_frames.html")]
+pub struct MergeFramesTemplate {
+    /// Template path (relative to the template directory) the frames were
+    /// extracted from; echoed back as a hidden form field for submit.
+    pub template: String,
+    /// Import frames extracted from the template, in column order.
+    pub frames: Vec<tepra_core::dto::template::ImportFrameItem>,
+    /// Set when the template could not be read or `import_frame` failed.
+    pub error: Option<String>,
+}
+
+/// Context for a standalone error banner partial, reused by the merge-print
+/// HTMX/fetch handlers to report a failure inline without a full page reload.
+#[derive(Debug, Template)]
+#[template(path = "partials/error_alert.html")]
+pub struct ErrorAlertTemplate {
+    /// Human-readable error message.
+    pub message: String,
+}
+
+// ---------------------------------------------------------------------------
 // API reference page
 // ---------------------------------------------------------------------------
 

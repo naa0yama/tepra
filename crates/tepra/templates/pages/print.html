@@ -1,0 +1,260 @@
+{# templates/pages/print.html #}
+{% extends "shells/dashboard.html" %}
+{% import "components/alert.html" as components %}
+
+{% block title %}Print{% endblock %}
+
+{% block body %}
+  {% if let Some(e) = error %}
+    {{ components::error_alert(message=e) }}
+  {% endif %}
+
+  <h1 class="text-2xl font-bold mb-4">Print</h1>
+
+  <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-4">
+    <div class="card bg-base-100 shadow p-4">
+      <label class="form-control">
+        <div class="label"><span class="label-text">Template</span></div>
+        <select id="template-select" class="select select-bordered w-full">
+          <option value="" disabled selected>Select template…</option>
+          {% for t in templates %}
+            <option value="{{ t.path }}">{{ t.path }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div id="template-preview-pane" class="mt-4">
+        {% include "partials/merge_preview.html" %}
+      </div>
+    </div>
+
+    <div id="print-frames-pane" class="card bg-base-100 shadow p-4">
+      <div class="opacity-50 text-sm">Select a template to load frames.</div>
+    </div>
+  </div>
+
+  <dialog id="print-confirm-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Confirm print</h3>
+      <p class="py-2">Send this job to the printer?</p>
+      <div class="modal-action">
+        <button type="button" class="btn" id="print-confirm-no">No</button>
+        <button type="button" class="btn btn-primary" id="print-confirm-yes">Yes</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    (() => {
+      const SKIP_CONFIRM_KEY = "printSkipConfirm";
+      const templateSelect = document.getElementById("template-select");
+      const framesPane = document.getElementById("print-frames-pane");
+      const previewImg = () => document.getElementById("template-preview");
+      const previewPlaceholder = () => document.getElementById("template-preview-placeholder");
+
+      function loadPreview(templatePath) {
+        const img = previewImg();
+        const placeholder = previewPlaceholder();
+        if (!img || !placeholder) {
+          return;
+        }
+        img.src = `/api/rest/templates/preview?path=${encodeURIComponent(templatePath)}`;
+        img.classList.remove("hidden");
+        placeholder.classList.add("hidden");
+      }
+
+      function loadFrames(templatePath) {
+        htmx.ajax("GET", `/ui/print/frames?template=${encodeURIComponent(templatePath)}`, {
+          target: "#print-frames-pane",
+          swap: "innerHTML",
+        });
+      }
+
+      templateSelect?.addEventListener("change", () => {
+        const value = templateSelect.value;
+        if (!value) {
+          return;
+        }
+        loadPreview(value);
+        loadFrames(value);
+      });
+
+      // WHY-NOT: server-side printer <option> render — mirrors api.html's
+      // client-side fetch of /api/printer; the frames pane (and its printer
+      // select) is swapped in after the initial page load, so this must
+      // re-run on every htmx swap rather than once at page load.
+      function populatePrinterSelects() {
+        fetch("/api/printer")
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}`);
+            }
+            return res.json();
+          })
+          .then((printers) => {
+            if (!Array.isArray(printers) || printers.length === 0) {
+              throw new Error("empty printer list");
+            }
+            document.querySelectorAll("[data-printer-select]").forEach((select) => {
+              select.innerHTML = "";
+              const placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.disabled = true;
+              placeholder.selected = true;
+              placeholder.textContent = "Select printer…";
+              select.appendChild(placeholder);
+              printers.forEach((printer) => {
+                const option = document.createElement("option");
+                option.value = printer.printerName;
+                option.textContent = printer.printerName;
+                select.appendChild(option);
+              });
+            });
+          })
+          .catch(() => {
+            /* leave the select empty; the required attribute blocks submit */
+          });
+      }
+
+      document.body.addEventListener("htmx:afterSwap", (evt) => {
+        if (evt.detail.target?.id !== "print-frames-pane") {
+          return;
+        }
+        populatePrinterSelects();
+        wireFramesForm();
+      });
+
+      function readNumberOrUndefined(el) {
+        if (!el || el.value === "") {
+          return undefined;
+        }
+        const n = Number(el.value);
+        return Number.isNaN(n) ? undefined : n;
+      }
+
+      function collectRows() {
+        return Array.from(document.querySelectorAll("#rows-tbody tr")).map((row) =>
+          Array.from(row.querySelectorAll("[data-field-title]")).map((input) => ({
+            title: input.dataset.fieldTitle,
+            value: input.value,
+          })),
+        );
+      }
+
+      function collectSerial() {
+        const enabled = document.getElementById("serial-enable");
+        if (!enabled?.checked) {
+          return undefined;
+        }
+        return {
+          title: document.getElementById("serial-title")?.value ?? "",
+          start: readNumberOrUndefined(document.getElementById("serial-start")) ?? 0,
+          count: readNumberOrUndefined(document.getElementById("serial-count")) ?? 1,
+          step: readNumberOrUndefined(document.getElementById("serial-step")) ?? 1,
+          pad: readNumberOrUndefined(document.getElementById("serial-pad")) ?? 0,
+        };
+      }
+
+      function collectOverrides() {
+        return {
+          copies: readNumberOrUndefined(document.getElementById("print-copies")),
+          density: readNumberOrUndefined(document.getElementById("setting-density")),
+          tapeCut: readNumberOrUndefined(document.getElementById("setting-tape-cut")),
+          halfCut: readNumberOrUndefined(document.getElementById("setting-half-cut")),
+          halfCutSeparate: readNumberOrUndefined(document.getElementById("setting-half-cut-separate")),
+          printSpeed: readNumberOrUndefined(document.getElementById("setting-print-speed")),
+          marginLeftRight: readNumberOrUndefined(document.getElementById("setting-margin-left-right")),
+        };
+      }
+
+      function submitPrint() {
+        const form = document.getElementById("print-form");
+        const printer = document.getElementById("print-printer-select")?.value;
+        const result = document.getElementById("print-result");
+        if (!form || !printer || !result) {
+          return;
+        }
+        const body = {
+          template: form.dataset.template,
+          rows: collectRows(),
+          serial: collectSerial(),
+          ...collectOverrides(),
+        };
+        fetch(`/ui/print/${encodeURIComponent(printer)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then((res) => res.text())
+          .then((html) => {
+            result.innerHTML = html;
+          })
+          .catch((err) => {
+            result.textContent = String(err);
+          });
+      }
+
+      // WHY-NOT: rebind on every htmx:afterSwap — form/modal listeners must
+      // be attached again each time the frames partial (and its <form>) is
+      // replaced, since the previous DOM nodes (and their listeners) are gone.
+      function wireFramesForm() {
+        const form = document.getElementById("print-form");
+        const addRowButton = document.getElementById("add-row-button");
+        const serialEnable = document.getElementById("serial-enable");
+        const serialFields = document.getElementById("serial-fields");
+        const skipConfirm = document.getElementById("print-confirm-skip");
+
+        if (skipConfirm) {
+          skipConfirm.checked = localStorage.getItem(SKIP_CONFIRM_KEY) === "true";
+          skipConfirm.addEventListener("change", () => {
+            localStorage.setItem(SKIP_CONFIRM_KEY, skipConfirm.checked ? "true" : "false");
+          });
+        }
+
+        serialEnable?.addEventListener("change", () => {
+          serialFields?.classList.toggle("hidden", !serialEnable.checked);
+        });
+
+        addRowButton?.addEventListener("click", () => {
+          const tbody = document.getElementById("rows-tbody");
+          const firstRow = tbody?.querySelector("tr");
+          if (!tbody || !firstRow) {
+            return;
+          }
+          const clone = firstRow.cloneNode(true);
+          clone.querySelectorAll("input").forEach((input) => {
+            input.value = "";
+          });
+          const index = tbody.querySelectorAll("tr").length + 1;
+          clone.querySelector("td")?.replaceChildren(document.createTextNode(String(index)));
+          tbody.appendChild(clone);
+        });
+
+        form?.addEventListener("click", (evt) => {
+          if (evt.target.closest("[data-remove-row]")) {
+            const tbody = document.getElementById("rows-tbody");
+            if (tbody && tbody.querySelectorAll("tr").length > 1) {
+              evt.target.closest("tr")?.remove();
+            }
+          }
+        });
+
+        form?.addEventListener("submit", (evt) => {
+          evt.preventDefault();
+          if (localStorage.getItem(SKIP_CONFIRM_KEY) === "true") {
+            submitPrint();
+            return;
+          }
+          document.getElementById("print-confirm-modal")?.showModal();
+        });
+      }
+
+      document.getElementById("print-confirm-yes")?.addEventListener("click", () => {
+        document.getElementById("print-confirm-modal")?.close();
+        submitPrint();
+      });
+      document.getElementById("print-confirm-no")?.addEventListener("click", () => {
+        document.getElementById("print-confirm-modal")?.close();
+      });
+    })();
+  </script>
+{% endblock %}

@@ -1,0 +1,8 @@
+{# templates/partials/merge_preview.html #}
+{# Static placeholder for the LEFT-pane preview slot; the actual BMP image is
+   loaded client-side via <img src="/api/rest/templates/preview?path=..."> in
+   pages/print.html, since that endpoint returns raw binary, not HTML. #}
+<div id="template-preview-placeholder" class="opacity-50 text-sm">
+  Select a template to preview.
+</div>
+<img id="template-preview" class="border border-base-300 rounded max-w-full mt-2 hidden" alt="Template preview" />

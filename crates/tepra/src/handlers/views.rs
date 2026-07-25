@@ -5,21 +5,27 @@
 )]
 
 use axum::{
-    extract::{Path, State},
+    Json,
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
 };
 use opentelemetry_semantic_conventions::attribute as semconv;
+use serde::Deserialize;
 use tepra_core::dto::tape_label::{tape_id_label, tape_kind_label};
 use tracing::{Span, instrument, warn};
 use utoipa::OpenApi as _;
 
 use crate::{
-    handlers::openapi::ApiDoc,
+    handlers::{
+        merge_print::{MergePrintRequest, fetch_template_and_frames, merge_print},
+        openapi::ApiDoc,
+    },
     state::AppState,
     views::{
-        ApiDocsTemplate, Breadcrumb, HtmlTemplate, IndexTemplate, JobCardTemplate, NAV_API,
-        NAV_PRINTERS, PrinterStatusCardTemplate, build_endpoint_views,
+        ApiDocsTemplate, Breadcrumb, ErrorAlertTemplate, HtmlTemplate, IndexTemplate,
+        JobCardTemplate, MergeFramesTemplate, NAV_API, NAV_PRINT, NAV_PRINTERS, PrintPageTemplate,
+        PrinterStatusCardTemplate, build_endpoint_views,
     },
 };
 
@@ -179,4 +185,124 @@ pub async fn api_docs() -> impl IntoResponse {
         endpoints,
         error,
     })
+}
+
+/// `GET /ui/print` — merge-print page: template picker, frame table,
+/// print-settings form.
+#[instrument(
+    name = "handler.print_page",
+    skip_all,
+    fields(
+        http.request.method = "GET",
+        http.route = "/ui/print",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+    )
+)]
+pub async fn print_page(State(state): State<AppState>) -> impl IntoResponse {
+    let (templates, error) = crate::templates::list_templates(&state.template_dir)
+        .map_or_else(|e| (vec![], Some(e.to_string())), |items| (items, None));
+
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
+    HtmlTemplate(PrintPageTemplate {
+        nav_active: NAV_PRINT.to_owned(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "Print".into(),
+            href: None,
+        }],
+        templates,
+        error,
+    })
+}
+
+/// Query parameters for `GET /ui/print/frames`.
+#[derive(Debug, Deserialize)]
+pub struct PrintFramesQuery {
+    /// Template path relative to the configured template directory.
+    pub template: String,
+}
+
+/// `GET /ui/print/frames?template=<rel>` — HTMX frame-table + print-settings
+/// form partial, lazy-loaded when the template selector changes.
+#[instrument(
+    name = "handler.print_frames",
+    skip_all,
+    fields(
+        http.request.method = "GET",
+        http.route = "/ui/print/frames",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+        tepra.template_path = %q.template,
+    )
+)]
+pub async fn print_frames(
+    State(state): State<AppState>,
+    Query(q): Query<PrintFramesQuery>,
+) -> impl IntoResponse {
+    let (frames, error) = match fetch_template_and_frames(&state, &q.template).await {
+        Ok((_, frames)) => (frames, None),
+        Err(e) => (vec![], Some(e.to_string())),
+    };
+
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
+    HtmlTemplate(MergeFramesTemplate {
+        template: q.template,
+        frames,
+        error,
+    })
+}
+
+/// `POST /ui/print/{printer}` — submit the merge-print form.
+///
+/// Reuses the same `merge_print` orchestration as the REST API and returns
+/// the job-card partial on success (or an error banner partial on failure).
+#[instrument(
+    name = "handler.print_submit",
+    skip_all,
+    fields(
+        http.request.method = "POST",
+        http.route = "/ui/print/{printer}",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+        tepra.template_path = tracing::field::Empty,
+        tepra.row_count = tracing::field::Empty,
+    )
+)]
+pub async fn print_submit(
+    State(state): State<AppState>,
+    Path(printer): Path<String>,
+    Json(req): Json<MergePrintRequest>,
+) -> impl IntoResponse {
+    Span::current().record("tepra.template_path", req.template.as_str());
+    Span::current().record(
+        "tepra.row_count",
+        i64::try_from(req.rows.len()).unwrap_or(i64::MAX),
+    );
+    match merge_print(&state, &printer, req).await {
+        Ok(resp) => {
+            Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
+            HtmlTemplate(JobCardTemplate {
+                printer_name: printer,
+                job_id: resp.jobid,
+                job_end: false,
+                canceled: false,
+                progress: None,
+            })
+            .into_response()
+        }
+        Err(e) => {
+            warn!(error = %e, "merge-print submit failed");
+            // WHY-NOT: record the actual wire status (always 200) — this
+            // records the semantic outcome for observability; the response
+            // itself stays 200 so htmx can swap the error partial into the DOM.
+            Span::current().record(
+                semconv::HTTP_RESPONSE_STATUS_CODE,
+                i64::from(e.status().as_u16()),
+            );
+            HtmlTemplate(ErrorAlertTemplate {
+                message: e.to_string(),
+            })
+            .into_response()
+        }
+    }
 }
