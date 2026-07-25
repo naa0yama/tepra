@@ -36,7 +36,14 @@
     <div class="card bg-base-100 shadow p-4">
       <label class="form-control">
         <div class="label"><span class="label-text">Printer</span></div>
-        <select id="printer-info-select" data-printer-select class="select select-bordered w-full" required></select>
+        <div class="join w-full">
+          <select id="printer-info-select" data-printer-select class="select select-bordered join-item w-full" required></select>
+          <button type="button" id="printer-refresh-btn" class="btn btn-square join-item" aria-label="Refresh printer status now" title="Refresh now">
+            <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+          </button>
+        </div>
       </label>
       <div id="printer-info-panel" class="mt-4">
         <div class="opacity-50 text-sm">Select a printer to view status.</div>
@@ -208,6 +215,10 @@
       const printerSelectEl = document.getElementById("printer-info-select");
       let currentPrinter = printerSelectEl?.value || "";
       let refreshIntervalId = null;
+
+      document.getElementById("printer-refresh-btn")?.addEventListener("click", () => {
+        loadPrinterPanel(currentPrinter);
+      });
 
       // WHY-NOT: htmx `hx-trigger="every 5s"` — see spec, dynamic on/off
       // control needs attribute swapping + htmx.process(); setInterval is
