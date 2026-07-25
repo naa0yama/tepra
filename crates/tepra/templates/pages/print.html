@@ -263,6 +263,13 @@
         if (!btn) {
           return;
         }
+        // Skip DOM writes when already in this mode: textContent's setter
+        // always replaces the Text node, which re-triggers the frames-pane
+        // MutationObserver even for an identical string, causing an
+        // infinite reflectJobState <-> observer loop otherwise.
+        if (btn.dataset.mode === "print") {
+          return;
+        }
         btn.textContent = "Print";
         btn.classList.remove("btn-error");
         btn.classList.add("btn-primary");
@@ -273,6 +280,11 @@
         activeJob = { printer, jobId };
         const btn = document.getElementById("print-submit-btn");
         if (!btn) {
+          return;
+        }
+        // See setPrintMode: skip DOM writes when already in this mode to
+        // avoid re-triggering the observer.
+        if (btn.dataset.mode === "cancel") {
           return;
         }
         btn.textContent = "Cancel";
