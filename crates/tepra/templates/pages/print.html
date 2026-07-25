@@ -42,6 +42,10 @@
         <div class="opacity-50 text-sm">Select a printer to view status.</div>
       </div>
 
+      <div id="print-result" class="mt-4">
+        <div class="opacity-50 text-sm">印刷ジョブなし</div>
+      </div>
+
       <div class="divider"></div>
 
       <label class="form-control">
@@ -313,13 +317,14 @@
       // hx-swap="outerHTML" every 1s; on that self-swap evt.detail.target
       // does not point at the new terminal card, so the Print/Cancel button
       // never reflects job completion. A MutationObserver on the fixed
-      // #print-frames-pane container fires on any childList mutation
-      // regardless of htmx's event-dispatch quirks. #print-result itself
-      // can't be observed directly — it's inside the htmx-swapped partial
-      // and does not exist in the DOM until a template is selected.
-      const framesPane = document.getElementById("print-frames-pane");
-      if (framesPane) {
-        new MutationObserver(() => reflectJobState(framesPane)).observe(framesPane, {
+      // #print-result container (now a static slot present since page
+      // load) fires on any childList mutation regardless of htmx's
+      // event-dispatch quirks, and — unlike #print-frames-pane — never
+      // overlaps #print-submit-btn's subtree, so setPrintMode/setCancelMode
+      // writes can't re-trigger it.
+      const resultSlot = document.getElementById("print-result");
+      if (resultSlot) {
+        new MutationObserver(() => reflectJobState(resultSlot)).observe(resultSlot, {
           childList: true,
           subtree: true,
         });
