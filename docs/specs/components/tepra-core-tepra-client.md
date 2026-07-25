@@ -20,6 +20,8 @@
 - `job_info(name, jobid)` — `GET /api/printer/job/info/{name}?jobid=N`
 - `job_control(name, req)` — `POST /api/printer/job/control/{name}`
 - `import_frame(req)` — `POST /api/printer/template/importframe`
+  ( res item shape: `ImportFrameItem { column, title, attribute }` —
+  詳細は「Merge-print orchestration」節参照 )
 - `get_margin(name, req)` — `POST /api/printer/getmargin/{name}`
 
 `async_trait` を使用。 `Arc<dyn TepraClient>` で `AppState` に注入。
@@ -42,6 +44,59 @@
     `cutflag` は Rust の `Display` ( `"true"` / `"false"` ) でエンコード、
     JS `Boolean.toString()` 互換
   - 影響: `MockCall::Tapefeed(String, bool)` も同じ shape
+
+## Merge-print orchestration ( `tepra` crate )
+
+`.lw1` テンプレートに CSV データを流し込んで印刷する `POST
+/api/rest/merge-print/{printer}` ( `tepra-router.md` 参照 ) を支える型と純粋関数。
+`tepra-core` の DTO ではなく `crates/tepra/src/merge.rs` /
+`crates/tepra/src/handlers/merge_print.rs` に置く ( orchestration とその型は
+web crate の関心事、`TepraClient` trait とは別レイヤ )。
+
+### 型
+
+- `MergePrintRequest { template: String, rows: Vec<Vec<MergeField>>, serial:
+  Option<SerialSpec>, #[serde(flatten)] overrides: MergePrintOverrides }`
+  ( `handlers/merge_print.rs` ) — `rows` の外側 = テープ ( ラベル ) 単位、
+  内側 = そのテープの `{title, value}` フィールド配列
+- `MergeField { title: String, value: String }` ( `merge.rs` ) — `title` は
+  `ImportFrameItem::title` と一致する列タイトル ( 画面表示ヘッダ )
+- `SerialSpec { title, start: i64, count: u32, step: i64, pad: u8 }`
+  ( `merge.rs` ) — 連番生成スペック。ネイティブ WebAPI が無いため
+  `expand_serial` がサーバ側で流し込み行を生成する
+- `MergePrintOverrides` ( `merge.rs` ) — `copies` / `density` / `tape_cut` /
+  `half_cut` / `half_cut_separate` / `print_speed` / `margin_left_right` を
+  すべて `Option` で保持、未指定は wire 既定 ( `merge_print_parameter` 参照 )
+
+### 純粋関数 ( I/O 無し、単体テスト対象 )
+
+- `build_merge_csv(frames: &[ImportFrameItem], rows: &[Vec<MergeField>],
+  encoding: CsvEncoding) -> anyhow::Result<Vec<u8>>` — `frames` の `column`
+  順でヘッダ無し RFC4180 CSV を組み立てる。値は各行 ( テープ ) の `title` で
+  該当枠を引いて解決 ( 欠損 → 空 )。`frames` の重複 `title`、または行内の
+  未知/重複 `title` は `Err` ( handler で 400 に写像 )。`CsvEncoding::{Utf8,
+  ShiftJis}` ( `ShiftJis` は `encoding_rs` の CP932、既定は `Utf8` )
+- `expand_serial(spec: &SerialSpec) -> Vec<MergeField>` — `start` から `step`
+  刻みで `count` 個、`pad` 桁 0 埋めした値を `title` の `MergeField` として生成
+- `merge_print_parameter(overrides: &MergePrintOverrides) -> PrintParameter`
+  — SDK `defaultPrintParameter` ( `tepraprint.js` ) 由来の wire 既定値に
+  `overrides` を適用して `PrintParameter` を構築
+
+### DTO 是正: `ImportFrameItem`
+
+`crates/tepra-core/src/dto/template.rs` の `ImportFrameItem` は
+`{ column: String, title: String, attribute: ImportFrameAttribute }` が正
+( 旧 `id`/`width`/`height` は一次ソース `tepraprint.js` の importframe レスポンス
+と不一致だったため是正済み )。`column` はセル参照 ( `A1`/`B2` 等、CSV↔枠の
+バインドキー )、`title` は Creator 作成画面で入力した列タイトル ( UI 表示用 )。
+両者は別物で、`build_merge_csv` は `title` で解決し `column` 順で出力する。
+
+### Lister 是正: `.lw1` テンプレート列挙
+
+`crates/tepra/src/templates.rs` の一覧関数は `is_lbl` ( `.lbl` のみ判定 ) から
+`is_template` に改名し、`.lw1` / `.lbl` を case-insensitive で受理するよう
+是正済み ( 実テンプレファイルの拡張子は `.lw1` だが旧実装は `.lbl` のみを
+対象としており、`GET /api/rest/templates` に対象テンプレが出てこなかった )。
 
 ## OpenAPI スキーマ導出 ( `schema` feature )
 

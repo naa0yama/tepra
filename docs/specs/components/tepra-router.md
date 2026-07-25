@@ -1,8 +1,8 @@
 # tepra Router
 
-`crates/tepra/src/router.rs` が公開する Axum router 群。 全 13 endpoint
-の TEPRA Creator `WebAPI` facade と HTML UI を 4 つの builder に分割して
-合成する。
+`crates/tepra/src/router.rs` が公開する Axum router 群。 TEPRA Creator
+`WebAPI` facade (全 13 endpoint) と、プログラム独自 REST・HTML UI を
+5 つの builder に分割して合成する。
 
 ## Router builders
 
@@ -26,19 +26,47 @@
   - `POST /api/printer/job/control/{name}` — pause / resume / cancel
 - `build_templates_router(state)` — テンプレートファイル系
   - `POST /api/printer/template/importframe` — フレーム抽出
-  - `GET /api/templates` — `template_dir` 配下の列挙
+  - `GET /api/rest/templates` — `template_dir` 配下の列挙 ( 旧 `GET /api/templates`
+    から `/api/rest/` 名前空間へ移設。公式 Creator WebAPI facade
+    (`/api/printer/*`) とプログラム独自 REST の path prefix 分離のため )
+  - `GET /api/rest/templates/preview` — `.lw1` 先頭 BMP プレビュー切出
+    ( `?path=<rel>`、`template_dir` 配下に正規化して path traversal 防止、
+    無回転 ( テープ印刷方向と一致 ) の元 BMP を `image/bmp` で返す )
+- `build_merge_router(state)` — 流し込み印刷 ( merge print )
+  - state: `AppState`
+  - `POST /api/rest/merge-print/{printer}` — テンプレ + CSV 流し込み印刷の
+    orchestration ( テンプレ読込 → `import_frame` → CSV 組立 → `print` )。
+    req: `MergePrintRequest { template, rows: Vec<Vec<MergeField>>,
+    serial: Option<SerialSpec>, #[serde(flatten)] overrides:
+    MergePrintOverrides }` ( `rows` の外側 = テープ単位、内側 =
+    `{title, value}` フィールド配列 )。res: 既存 `PrintResponse { result,
+    jobid }`。テンプレ未存在 → 404、未知/重複 `title` または `rows`/`serial`
+    件数不整合 → 400、Creator エラー → 502。型・純粋関数の詳細は
+    `tepra-core-tepra-client.md` の「Merge-print orchestration」節を参照
 - `build_ui_router(state)` — HTML UI ( Askama + HTMX )
   - `GET /` — `Redirect::permanent("/ui/")` ( ルートリダイレクト )
   - `GET /ui/` — index
   - `GET /ui/printers/{name}/status-card` — ステータスカード ( HTMX lazy-load 対象 )
   - `GET /ui/jobs/{printer}/{job_id}` — ジョブカード ( 1s polling 対象 )
+  - `POST /ui/jobs/{printer}/{job_id}/cancel` — ジョブキャンセル
+    ( `job_control(control=3)` → `job_progress` 再取得 → `JobCardTemplate`
+    描画。raw API `POST /api/printer/job/control/{name}` は JSON body 前提で
+    htmx の form-enc submit と噛み合わないため UI 専用 route として新設 )
   - `GET /ui/api` — API リファレンスページ ( `openapi.json` を in-process で
     view-model 化し DaisyUI accordion で描画。Try it out は既存 `/api/*` route を
     再利用 )
+  - `GET /ui/print` — 流し込み印刷ページ ( テンプレプレビュー + テープ入力 +
+    printer 情報パネル )
+  - `GET /ui/print/frames` — テープ入力 partial ( テンプレ選択で htmx swap、
+    importframe 由来の frame 一覧を返す )
+  - `POST /ui/print/{printer}` — 印刷送信 ( 共有 `merge_print()` orchestration
+    を呼び出し `JobCardTemplate` を返す )
+  - `GET /ui/print/{printer}/panel` — printer 情報パネル ( onlinestatus +
+    lwstatus + getmargin を集約 )
 
 ## 合成方法
 
-`crates/tepra-web/src/main.rs` で 4 router を `.merge()` で結合し、
+`crates/tepra-web/src/main.rs` で 5 router を `.merge()` で結合し、
 1 つの axum app として `tokio::net::TcpListener` に bind。
 
 ## AppState

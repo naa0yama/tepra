@@ -75,9 +75,37 @@ Extends `shells/dashboard.html`. Bound to `PrintTemplate` in `views.rs`.
     the print page polls this endpoint every 5s via JavaScript `setInterval`, updating status in real-time
   - Polling stops when toggle is OFF or printer is unselected (`clearInterval`)
   - Global toggle state is persisted to `localStorage` via the dashboard shell's toggle-persistence script
-- Job cards (`#job-{job_id}`) — inline job progress for submitted print jobs
+- Print job progress — fixed slot (`#print-result`), placed between the printer info
+  panel and the copies/advanced settings in the right card. Always present from
+  first page load, showing a muted placeholder ("印刷ジョブなし") when no job is
+  active; job submission swaps only this slot's contents (`result.innerHTML = html`),
+  so the page never grows vertically to reveal progress. Replaces the earlier
+  approach of an inline `#job-{job_id}` card appended inside the template/frames pane
+  - After the swap, `submitPrint()`/`cancelPrint()` call `htmx.process(result)` so the
+    freshly-inserted `job_card.html`'s `hx-trigger="every 1s"` polling attribute is
+    activated by htmx (raw `innerHTML` assignment does not auto-wire htmx attributes)
+  - A `MutationObserver` watches `#print-result` (not `#print-frames-pane`) for
+    `childList`/`subtree` mutations and calls `reflectJobState()` to morph the
+    Print/Cancel button. Retargeting away from `#print-frames-pane` is deliberate:
+    `#print-submit-btn` lives in that pane, so `setPrintMode`/`setCancelMode`'s
+    `textContent` writes used to re-trigger the observer there (loop risk); `#print-result`
+    is a static slot present since page load and never overlaps the button's subtree
+- Print/Cancel button morph (`#print-submit-btn`): on submit success the button
+  switches from "Print" (`btn-primary`) to "Cancel" (`btn-error`, `data-mode="cancel"`);
+  clicking it while in cancel mode posts to `POST /ui/jobs/{printer}/{job_id}/cancel`
+  and swaps the response into `#print-result` the same way as submit. `reflectJobState()`
+  reads the terminal job card's `data-terminal`/`data-printer` attributes (see
+  `partials/job_card.html` below) to decide whether to morph to cancel mode (job running)
+  or back to print mode (job reached a terminal state)
+- Tape input: template selection loads `partials/merge_frames.html` via
+  `GET /ui/print/frames`, rendering one nested `data-tape-card` per tape (label) inside
+  `#tapes-container`. Each card holds one `data-field-title` input per import frame,
+  in API column order. `+ Add tape` clones the first card (`data-tape-card`) and clears
+  its inputs; `collectRows()` — the DOM contract the submit body depends on — walks
+  `#tapes-container [data-tape-card]`, and within each card `[data-field-title]`, building
+  the `rows: Vec<Vec<MergeField>>` submit shape (outer = tape, inner = `{title, value}`
+  from `dataset.fieldTitle` / `.value`)
 - Submit form with template selection, frame settings, and submit button (`#print-submit-btn`)
-  - Success redirects to a job-confirmation view with the job ID and start time
   - Errors display in a toast (`#toast-container`)
 
 ### pages/api.html
@@ -185,6 +213,9 @@ Standalone partial, not extending any shell. Bound to `PrinterStatusCardTemplate
 Standalone partial, not extending any shell. Bound to `JobCardTemplate`.
 
 - `<div id="job-{job_id}">` — HTMX target for OOB swaps
+- `data-terminal="true"|"false"` (job_end‖canceled) and `data-printer="{printer_name}"` —
+  read by `pages/print.html`'s `reflectJobState()` to morph the Print/Cancel button
+  without depending on htmx's self-poll swap event (see `pages/print.html` above)
 - Polls `GET /ui/jobs/{printer}/{job_id}` every 1 s while job is in-flight
 - Stops polling when `job_end=true` or `canceled=true` (removes `hx-trigger`)
 - States: waiting (no progress), in-progress (percent), completed, cancelled
