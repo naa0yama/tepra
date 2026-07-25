@@ -34,6 +34,11 @@ impl<T: Template> IntoResponse for HtmlTemplate<T> {
 /// (`{% if active == "printers" %}`).
 pub const NAV_PRINTERS: &str = "printers";
 
+/// App version for the sidebar footer, baked from Cargo at compile time.
+pub const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
+/// Git short hash (7 chars) baked by build.rs; `unknown` if git is unavailable.
+pub const GIT_HASH: &str = env!("GIT_HASH");
+
 /// One entry in a navbar breadcrumb trail (`shells/dashboard.html`).
 #[derive(Debug, Clone)]
 pub struct Breadcrumb {

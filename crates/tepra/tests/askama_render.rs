@@ -40,7 +40,9 @@ fn test_index_render_empty_printers() {
     };
     let html = tmpl.render().unwrap();
     assert!(html.contains("<!DOCTYPE html") || html.contains("<html"));
-    insta::assert_snapshot!("index_empty", html);
+    insta::with_settings!({filters => vec![(r"v\d+\.\d+\.\d+ \([0-9a-f]{7,}\)", "v[VERSION] ([HASH])")]}, {
+        insta::assert_snapshot!("index_empty", html);
+    });
 }
 
 #[test]
@@ -57,7 +59,9 @@ fn test_index_render_multiple_printers() {
     let html = tmpl.render().unwrap();
     assert!(html.contains("PT-P710BT"));
     assert!(html.contains("QL-800"));
-    insta::assert_snapshot!("index_two_printers", html);
+    insta::with_settings!({filters => vec![(r"v\d+\.\d+\.\d+ \([0-9a-f]{7,}\)", "v[VERSION] ([HASH])")]}, {
+        insta::assert_snapshot!("index_two_printers", html);
+    });
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +196,9 @@ fn test_api_docs_render_lists_endpoints() {
     assert!(html.contains(r"badge badge-outline w-16 justify-center badge-warning"));
     assert!(html.contains(r"badge badge-outline badge-error badge-sm"));
 
-    insta::assert_snapshot!("api_docs_two_endpoints", html);
+    insta::with_settings!({filters => vec![(r"v\d+\.\d+\.\d+ \([0-9a-f]{7,}\)", "v[VERSION] ([HASH])")]}, {
+        insta::assert_snapshot!("api_docs_two_endpoints", html);
+    });
 }
 
 #[test]
@@ -643,5 +649,7 @@ fn test_api_docs_render_empty_endpoints() {
     };
     let html = tmpl.render().unwrap();
     assert!(html.contains("No endpoints found"));
-    insta::assert_snapshot!("api_docs_empty", html);
+    insta::with_settings!({filters => vec![(r"v\d+\.\d+\.\d+ \([0-9a-f]{7,}\)", "v[VERSION] ([HASH])")]}, {
+        insta::assert_snapshot!("api_docs_empty", html);
+    });
 }

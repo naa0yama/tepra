@@ -307,6 +307,7 @@ expression: html
       <svg class="size-8" aria-hidden="true"><use href="#icon-printer"/></svg>
       <span class="text-base font-semibold">TEPRA Creator</span>
     </a>
+    <span class="text-xs text-base-content/60">v[VERSION] ([HASH])</span>
     <span class="text-xs text-base-content/60">
       Created by <a href="https://github.com/naa0yama" class="link link-hover" target="_blank" rel="noopener noreferrer">naa0yama</a>
     </span>
