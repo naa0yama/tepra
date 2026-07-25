@@ -15,6 +15,7 @@ crates/tepra/templates/
   partials/
     job_card.html              # HTMX job-status polling card (GET /ui/jobs/{printer}/{id})
     printer_status_card.html   # HTMX lazy-loaded printer status card (GET /ui/printers/{name}/status-card)
+    endpoint_entry.html        # Per-endpoint collapse accordion macro (used by api.html)
     try_it_out.html            # Per-endpoint "Try it out" form macro (used by api.html)
     property_table.html        # Request/response/param property table macro (used by api.html)
   components/
@@ -64,22 +65,16 @@ Extends `shells/dashboard.html`. Bound to `ApiDocsTemplate` in `views.rs`.
 - Swagger-UI-like reference for the built-in `/api/*` HTTP API, rendered from
   the code-derived `openapi.json` (view-model built in-process by
   `build_endpoint_views`, not fetched client-side)
-- One DaisyUI accordion (`collapse`) per endpoint, showing `method` + `path` +
-  `summary`
-- The `method` badge is a `badge badge-outline` pill (outline ring, not a
-  filled block) colour-coded per method — GET / POST are visually distinct by
-  ring colour rather than fill — and fixed-width (`w-16 justify-center`) so the
-  3-char `GET` and 4-char `POST` badges align to the same box size
-- Request / response / path-param shapes render as **property tables**
-  (`property_table.html` macro) from the structured view-model fields
-  (`params` / `request_properties` / `response_properties`), one row per field
-  with name / type / required / description. The raw JSON schemas
-  (`request_schema_json` / `response_schema_json` / `sample_json`) are kept in
-  a `<details>` "Raw JSON schema" / "Sample response" disclosure, expanded by
-  default (`open`) so they are visible as soon as the endpoint accordion is
-  opened — collapsible for readers who want to fold them away again
-- Embeds the `try_it_out` macro per endpoint for live execution against the
-  running server's own `/api/*` routes
+- Organizes endpoints into two sections:
+  - **公式 Creator WebAPI** — official facade endpoints (`/api/printer/*`),
+    where `is_custom == false`
+  - **プログラム独自 REST** — program-specific helper endpoints (`/api/rest/*`),
+    where `is_custom == true`
+  - Section grouping is driven by the `is_custom` field in `EndpointView`,
+    set by checking if the path starts with `/api/rest/` (no additional
+    metadata required in `openapi.json`)
+- Each section renders a DaisyUI accordion (`join join-vertical`) with the
+  endpoint entries rendered via the `endpoint_entry` macro
 - Printer-name dropdown population (inline `<script>`, IIFE-scoped): on load,
   a single client-side `fetch("/api/printer")` fills every
   `[data-printer-select]` `<option>` with the connected printer names, so the
@@ -104,10 +99,24 @@ Extends `shells/dashboard.html`. Bound to `ApiDocsTemplate` in `views.rs`.
     leave the gate stuck open
   - Non-destructive forms pass the guard untouched and execute directly
 
+### partials/endpoint_entry.html
+
+Macro file: `{% macro endpoint_entry(endpoint, index) %}`. Imported by
+`pages/api.html`; not a standalone page.
+
+- Renders a single endpoint as a DaisyUI collapse accordion (`join-item`)
+  with collapse-arrow
+- Collapse title: `method` badge (GET/POST colour-coded, fixed width) +
+  `path` code + `summary` + `destructive` badge if applicable
+- Collapse content: property tables (Parameters, Request body, Response body) +
+  raw JSON schema disclosures (`<details>`, expanded by default) + `try_it_out`
+  macro for live execution
+
 ### partials/try_it_out.html
 
 Macro file: `{% macro try_it_out(endpoint, index) %}`. Imported by
-`pages/api.html`; not a standalone page.
+`endpoint_entry.html` (which is in turn imported by `pages/api.html`); not
+a standalone page.
 
 - Builds one execution form per endpoint from an `EndpointView`
 - `path_params` (extracted from `{...}` path segments) render as required
@@ -234,6 +243,11 @@ plain data carriers (`name`, `type_name`, `required: bool`,
 `$ref` via `resolve_ref`)
 inside `build_endpoint_views`, which keeps the seam unit-testable against a
 fixture `openapi.json` (`views.rs` tests).
+`EndpointView` also carries `is_custom: bool` — `true` for program-specific
+REST helpers (`/api/rest/*`), `false` for the official Creator `WebAPI` facade
+(`/api/printer/*`). This field drives the two-section grouping in
+`pages/api.html`, determined by checking if the endpoint's `path` starts with
+the `CUSTOM_PATH_PREFIX` constant (`"/api/rest/"`).
 `Breadcrumb` is a plain data carrier (not an `askama::Template`):
 
 ```rust

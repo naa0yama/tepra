@@ -253,6 +253,10 @@ pub struct EndpointView {
     /// `data-path-param` marker — htmx serializes them into the GET query
     /// string, whereas path params are substituted into `{...}` placeholders.
     pub query_params: Vec<ParamView>,
+    /// `true` for program-specific REST helpers (`/api/rest/*`); `false` for
+    /// the official Creator `WebAPI` facade (`/api/printer/*`). Drives the
+    /// two-section grouping in `pages/api.html`.
+    pub is_custom: bool,
 }
 
 /// Context for the API reference page (`GET /ui/api`).
@@ -277,6 +281,14 @@ fn is_destructive_path(path: &str) -> bool {
     DESTRUCTIVE_PATH_MARKERS
         .iter()
         .any(|marker| path.contains(marker))
+}
+
+/// Path prefix for program-specific REST helpers, distinct from the
+/// official Creator `WebAPI` facade (`/api/printer/*`).
+const CUSTOM_PATH_PREFIX: &str = "/api/rest/";
+
+fn is_custom_path(path: &str) -> bool {
+    path.starts_with(CUSTOM_PATH_PREFIX)
 }
 
 /// Extract `{name}`-style path parameter names, in declaration order
@@ -566,6 +578,7 @@ pub fn build_endpoint_views(openapi: &Value) -> Vec<EndpointView> {
                 is_destructive: is_destructive_path(path),
                 path_params: extract_path_params(path),
                 query_params,
+                is_custom: is_custom_path(path),
             });
         }
     }
@@ -652,6 +665,14 @@ mod tests {
                         "200": {"description": "OK"}
                     }
                 }
+            },
+            "/api/rest/templates": {
+                "get": {
+                    "summary": "List template files",
+                    "responses": {
+                        "200": {"description": "OK"}
+                    }
+                }
             }
         })
     }
@@ -704,7 +725,21 @@ mod tests {
     #[test]
     fn build_endpoint_views_enumerates_every_operation() {
         let endpoints = build_endpoint_views(&fixture_openapi());
-        assert_eq!(endpoints.len(), 5);
+        assert_eq!(endpoints.len(), 6);
+    }
+
+    #[test]
+    fn build_endpoint_views_flags_custom_paths() {
+        let endpoints = build_endpoint_views(&fixture_openapi());
+
+        let custom = endpoints
+            .iter()
+            .find(|e| e.path == "/api/rest/templates")
+            .unwrap();
+        assert!(custom.is_custom);
+
+        let official = endpoints.iter().find(|e| e.path == "/api/printer").unwrap();
+        assert!(!official.is_custom);
     }
 
     #[test]

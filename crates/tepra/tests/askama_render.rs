@@ -134,10 +134,11 @@ fn test_api_docs_render_lists_endpoints() {
                 is_destructive: false,
                 path_params: vec![],
                 query_params: vec![],
+                is_custom: false,
             },
             EndpointView {
                 method: "POST".into(),
-                path: "/api/printer/print/{name}".into(),
+                path: "/api/rest/print/{name}".into(),
                 summary: "Print a label".into(),
                 params: vec![],
                 request_properties: vec![],
@@ -148,6 +149,7 @@ fn test_api_docs_render_lists_endpoints() {
                 is_destructive: true,
                 path_params: vec!["name".into()],
                 query_params: vec![],
+                is_custom: true,
             },
         ],
         error: None,
@@ -155,10 +157,20 @@ fn test_api_docs_render_lists_endpoints() {
     let html = tmpl.render().unwrap();
 
     assert!(html.contains("/api/printer"));
-    assert!(html.contains("/api/printer/print/{name}"));
+    assert!(html.contains("/api/rest/print/{name}"));
     assert!(html.contains("List printers"));
     assert!(html.contains("Print a label"));
     assert!(html.contains("destructive"));
+
+    // The non-custom GET endpoint renders under the official section
+    // header, the custom POST endpoint under the program-specific one —
+    // this is what `is_custom` actually gates in the template.
+    let official_idx = html.find("公式 Creator WebAPI").unwrap();
+    let custom_idx = html.find("プログラム独自 REST").unwrap();
+    let get_idx = html.find("/api/printer<").unwrap();
+    let post_idx = html.find("/api/rest/print/{name}").unwrap();
+    assert!(official_idx < get_idx && get_idx < custom_idx);
+    assert!(custom_idx < post_idx);
 
     // Both the non-destructive `GET /api/printer` and the destructive
     // `print` endpoint get a Try it out form (execute button + result
@@ -219,6 +231,7 @@ fn api_docs_renders_property_table_when_endpoint_declares_properties() {
             is_destructive: true,
             path_params: vec!["name".into()],
             query_params: vec![],
+            is_custom: false,
         }],
         error: None,
     };
@@ -257,6 +270,7 @@ fn api_docs_renders_placeholder_when_property_has_no_description() {
             is_destructive: true,
             path_params: vec!["name".into()],
             query_params: vec![],
+            is_custom: false,
         }],
         error: None,
     };
@@ -296,6 +310,7 @@ fn api_docs_places_raw_json_after_property_table_when_endpoint_declares_properti
             is_destructive: true,
             path_params: vec!["name".into()],
             query_params: vec![],
+            is_custom: false,
         }],
         error: None,
     };
@@ -329,6 +344,7 @@ fn api_docs_omits_property_table_when_endpoint_declares_no_properties() {
             is_destructive: false,
             path_params: vec![],
             query_params: vec![],
+            is_custom: false,
         }],
         error: None,
     };
@@ -360,6 +376,7 @@ fn api_docs_non_destructive_form_has_no_destructive_gate_marker() {
             is_destructive: false,
             path_params: vec![],
             query_params: vec![],
+            is_custom: false,
         }],
         error: None,
     };
@@ -386,6 +403,7 @@ fn destructive_endpoint_view() -> EndpointView {
         is_destructive: true,
         path_params: vec!["name".into()],
         query_params: vec![],
+        is_custom: false,
     }
 }
 
@@ -450,6 +468,7 @@ fn api_docs_renders_path_param_input_when_endpoint_has_path_param() {
             is_destructive: false,
             path_params: vec!["name".into()],
             query_params: vec![],
+            is_custom: false,
         }],
         error: None,
     };
@@ -479,6 +498,7 @@ fn api_docs_renders_name_path_param_as_select_when_param_is_printer_name() {
             is_destructive: false,
             path_params: vec!["name".into()],
             query_params: vec![],
+            is_custom: false,
         }],
         error: None,
     };
@@ -509,6 +529,7 @@ fn api_docs_renders_non_name_path_param_as_text_input_when_param_is_not_printer_
             is_destructive: false,
             path_params: vec!["jobid".into()],
             query_params: vec![],
+            is_custom: false,
         }],
         error: None,
     };
@@ -546,6 +567,7 @@ fn api_docs_renders_query_param_input_without_path_param_marker() {
                 required: true,
                 description: Some("Creator API job identifier.".into()),
             }],
+            is_custom: false,
         }],
         error: None,
     };
@@ -578,6 +600,7 @@ fn api_docs_uses_json_submit_when_endpoint_has_request_body() {
             is_destructive: false,
             path_params: vec!["name".into()],
             query_params: vec![],
+            is_custom: false,
         }],
         error: None,
     };
