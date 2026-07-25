@@ -2,6 +2,7 @@
 {% import "components/sidebar.html" as chrome %}
 {% import "components/breadcrumbs.html" as chrome_breadcrumbs %}
 {% import "components/theme_toggle.html" as theme %}
+{% import "components/printer_refresh_toggle.html" as refresh %}
 <!doctype html>
 <html lang="ja" data-theme="corporate">
 <head>
@@ -17,6 +18,10 @@
     // order, not a module import.
     const THEME_STORAGE_KEY = "theme";
     const THEME_DARK = "business";
+    // Page-scoped (not IIFE-local) for the same reason as THEME_STORAGE_KEY:
+    // pages/print.html reads this to decide its initial polling state before
+    // the body-end <script> below has set the checkbox's `checked` property.
+    const PRINTER_AUTOREFRESH_KEY = "printerAutoRefresh";
     (() => {
       if (localStorage.getItem(THEME_STORAGE_KEY) === THEME_DARK) {
         document.documentElement.setAttribute("data-theme", THEME_DARK);
@@ -44,6 +49,7 @@
           </label>
         </div>
         {{ chrome_breadcrumbs::breadcrumbs(items=breadcrumbs) }}
+        {{ refresh::printer_refresh_toggle() }}
         {{ theme::theme_toggle() }}
       </div>
 
@@ -71,6 +77,15 @@
       toggle.checked = localStorage.getItem(THEME_STORAGE_KEY) === toggle.value;
       toggle.addEventListener("change", () => {
         localStorage.setItem(THEME_STORAGE_KEY, toggle.checked ? toggle.value : "corporate");
+      });
+    })();
+
+    (() => {
+      const toggle = document.getElementById("printer-refresh-toggle");
+      if (!toggle) return;
+      toggle.checked = localStorage.getItem(PRINTER_AUTOREFRESH_KEY) === "true";
+      toggle.addEventListener("change", () => {
+        localStorage.setItem(PRINTER_AUTOREFRESH_KEY, toggle.checked ? "true" : "false");
       });
     })();
   </script>

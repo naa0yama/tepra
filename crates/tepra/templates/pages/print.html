@@ -205,8 +205,51 @@
         });
       }
 
-      document.getElementById("printer-info-select")?.addEventListener("change", (evt) => {
-        loadPrinterPanel(evt.target.value);
+      const printerSelectEl = document.getElementById("printer-info-select");
+      let currentPrinter = printerSelectEl?.value || "";
+      let refreshIntervalId = null;
+
+      // WHY-NOT: htmx `hx-trigger="every 5s"` — see spec, dynamic on/off
+      // control needs attribute swapping + htmx.process(); setInterval is
+      // simpler to start/stop.
+      function stopAutoRefresh() {
+        if (refreshIntervalId !== null) {
+          clearInterval(refreshIntervalId);
+          refreshIntervalId = null;
+        }
+      }
+
+      function startAutoRefresh() {
+        stopAutoRefresh();
+        if (!currentPrinter) {
+          return;
+        }
+        refreshIntervalId = setInterval(() => loadPrinterPanel(currentPrinter), 5000);
+      }
+
+      const refreshToggle = document.getElementById("printer-refresh-toggle");
+      refreshToggle?.addEventListener("change", () => {
+        if (refreshToggle.checked) {
+          startAutoRefresh();
+        } else {
+          stopAutoRefresh();
+        }
+      });
+
+      // WHY-NOT: refreshToggle.checked — this script runs inside the body
+      // block of shells/dashboard.html, before the body-end script that
+      // restores the checkbox's checked state from localStorage, so the
+      // checkbox itself is still unchecked here.
+      if (localStorage.getItem(PRINTER_AUTOREFRESH_KEY) === "true") {
+        startAutoRefresh();
+      }
+
+      printerSelectEl?.addEventListener("change", (evt) => {
+        currentPrinter = evt.target.value;
+        loadPrinterPanel(currentPrinter);
+        if (refreshToggle?.checked) {
+          startAutoRefresh();
+        }
       });
 
       // Populate the printer selector card on initial page load — it is

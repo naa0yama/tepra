@@ -1,0 +1,8 @@
+{# templates/components/printer_refresh_toggle.html #}
+{# Global auto-refresh switch. Persistence to `localStorage` is wired by
+   the inline script in `shells/dashboard.html`, same pattern as
+   `theme_toggle.html`. When ON, `pages/print.html` polls the printer info
+   panel every 5s; other pages just keep the setting without side effects. #}
+{% macro printer_refresh_toggle() %}
+<input type="checkbox" id="printer-refresh-toggle" class="toggle toggle-sm flex-none mr-2" aria-label="Toggle auto-refresh">
+{% endmacro %}
