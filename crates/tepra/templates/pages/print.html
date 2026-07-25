@@ -278,9 +278,10 @@
       }
 
       // Reflects the job card's data-terminal/data-printer markers onto the
-      // Print/Cancel button — called after both htmx-driven polling swaps
-      // (root === the job card itself) and manual fetch inserts (root ===
-      // #print-result, containing the job card as a child).
+      // Print/Cancel button — called after manual fetch inserts (root ===
+      // #print-result, containing the job card as a child) and via the
+      // MutationObserver below (root === #print-result, always, since the
+      // observer watches that fixed container rather than an event target).
       function reflectJobState(root) {
         const el = root?.matches?.("[data-terminal]") ? root : root?.querySelector?.("[data-terminal]");
         if (!el) {
@@ -294,9 +295,19 @@
         setCancelMode(el.dataset.printer, jobId);
       }
 
-      document.body.addEventListener("htmx:afterSwap", (evt) => {
-        reflectJobState(evt.detail.target);
-      });
+      // WHY-NOT: htmx:afterSwap body listener — job_card self-polls via
+      // hx-swap="outerHTML" every 1s; on that self-swap evt.detail.target
+      // does not point at the new terminal card, so the Print/Cancel button
+      // never reflects job completion. A MutationObserver on the fixed
+      // #print-result container fires on any childList mutation regardless
+      // of htmx's event-dispatch quirks.
+      const printResult = document.getElementById("print-result");
+      if (printResult) {
+        new MutationObserver(() => reflectJobState(printResult)).observe(printResult, {
+          childList: true,
+          subtree: true,
+        });
+      }
 
       function submitPrint() {
         const form = document.getElementById("print-form");
