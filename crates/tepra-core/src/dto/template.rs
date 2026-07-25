@@ -27,14 +27,12 @@ pub struct ImportFrameRequest {
 #[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ImportFrameItem {
-    /// Import frame index within the template.
-    pub id: u32,
+    /// Cell reference (e.g. "A1"/"B2") — CSV↔frame binding key.
+    pub column: String,
+    /// User-facing column title from the Creator creation screen (display header).
+    pub title: String,
     /// Import frame content type (see `TepraPrintImportFrameAttribute`).
     pub attribute: ImportFrameAttribute,
-    /// Import frame width.
-    pub width: u32,
-    /// Import frame height.
-    pub height: u32,
 }
 
 // ---------------------------------------------------------------------------

@@ -53,10 +53,9 @@ async fn body_json(body: axum::body::Body) -> Value {
 async fn test_import_frame_returns_200_with_items() {
     let mock = Arc::new(MockTepraClient::new());
     mock.push_import_frame(Ok(vec![ImportFrameItem {
-        id: 1,
+        column: "A1".into(),
+        title: "Name".into(),
         attribute: ImportFrameAttribute::Text,
-        width: 100,
-        height: 50,
     }]));
 
     let req_body = serde_json::to_vec(&ImportFrameRequest {
@@ -83,8 +82,8 @@ async fn test_import_frame_returns_200_with_items() {
     let json = body_json(response.into_body()).await;
     let items = json.as_array().unwrap();
     assert_eq!(items.len(), 1);
-    assert_eq!(items[0]["id"], 1u32);
-    assert_eq!(items[0]["width"], 100u32);
+    assert_eq!(items[0]["column"], "A1");
+    assert_eq!(items[0]["title"], "Name");
 }
 
 #[tokio::test]
