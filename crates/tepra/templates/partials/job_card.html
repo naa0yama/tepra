@@ -1,5 +1,7 @@
 {# templates/partials/job_card.html #}
 <div id="job-{{ job_id }}"
+  data-printer="{{ printer_name }}"
+  data-terminal="{% if job_end || canceled %}true{% else %}false{% endif %}"
 {% if !job_end && !canceled %}
   hx-get="/ui/jobs/{{ printer_name }}/{{ job_id }}"
   hx-trigger="every 1s"

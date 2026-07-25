@@ -4,6 +4,8 @@ expression: html
 ---
 
 <div id="job-1"
+  data-printer="PT-P710BT"
+  data-terminal="false"
 
   hx-get="/ui/jobs/PT-P710BT/1"
   hx-trigger="every 1s"

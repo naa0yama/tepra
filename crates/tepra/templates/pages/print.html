@@ -11,24 +11,26 @@
 
   <h1 class="text-2xl font-bold mb-4">Print</h1>
 
-  <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr_320px] gap-4">
-    <div class="card bg-base-100 shadow p-4">
-      <label class="form-control">
-        <div class="label"><span class="label-text">Template</span></div>
-        <select id="template-select" class="select select-bordered w-full">
-          <option value="" disabled selected>Select template…</option>
-          {% for t in templates %}
-            <option value="{{ t.path }}">{{ t.path }}</option>
-          {% endfor %}
-        </select>
-      </label>
-      <div id="template-preview-pane" class="mt-4">
-        {% include "partials/merge_preview.html" %}
+  <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+    <div class="flex flex-col gap-4">
+      <div class="card bg-base-100 shadow p-4">
+        <label class="form-control">
+          <div class="label"><span class="label-text">Template</span></div>
+          <select id="template-select" class="select select-bordered w-full">
+            <option value="" disabled selected>Select template…</option>
+            {% for t in templates %}
+              <option value="{{ t.path }}">{{ t.path }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div id="template-preview-pane" class="mt-4">
+          {% include "partials/merge_preview.html" %}
+        </div>
       </div>
-    </div>
 
-    <div id="print-frames-pane" class="card bg-base-100 shadow p-4">
-      <div class="opacity-50 text-sm">Select a template to load frames.</div>
+      <div id="print-frames-pane" class="card bg-base-100 shadow p-4">
+        <div class="opacity-50 text-sm">Select a template to load frames.</div>
+      </div>
     </div>
 
     <div class="card bg-base-100 shadow p-4">
@@ -38,6 +40,62 @@
       </label>
       <div id="printer-info-panel" class="mt-4">
         <div class="opacity-50 text-sm">Select a printer to view status.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <label class="form-control">
+        <div class="label"><span class="label-text">Copies</span></div>
+        <input type="number" min="1" max="999" value="1" class="input input-bordered w-full" id="print-copies" />
+      </label>
+
+      <div class="collapse collapse-arrow border border-base-300 bg-base-200 mt-2">
+        <input type="checkbox" aria-label="Advanced print settings" />
+        <div class="collapse-title font-semibold">Advanced print settings</div>
+        <div class="collapse-content grid grid-cols-1 gap-2 w-full min-w-0">
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Density</span></div>
+            <input type="number" min="-5" max="5" class="input input-bordered input-sm w-full" id="setting-density" />
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Print speed</span></div>
+            <select class="select select-bordered select-sm w-full" id="setting-print-speed">
+              <option value="">(default)</option>
+              <option value="1">High</option>
+              <option value="2">Low</option>
+              <option value="3">Middle</option>
+            </select>
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Tape cut</span></div>
+            <select class="select select-bordered select-sm w-full" id="setting-tape-cut">
+              <option value="">(default)</option>
+              <option value="1">Not cut</option>
+              <option value="2">Each label</option>
+              <option value="3">After job</option>
+            </select>
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Half cut</span></div>
+            <select class="select select-bordered select-sm w-full" id="setting-half-cut">
+              <option value="">(default)</option>
+              <option value="1">No half-cut</option>
+              <option value="2">Half-cut</option>
+            </select>
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Half cut separate</span></div>
+            <select class="select select-bordered select-sm w-full" id="setting-half-cut-separate">
+              <option value="">(default)</option>
+              <option value="1">Continuous (joined)</option>
+              <option value="2">Continuous (separated)</option>
+            </select>
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Margin left/right (0.1mm)</span></div>
+            <input type="number" min="0" class="input input-bordered input-sm w-full" id="setting-margin-left-right" />
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -57,7 +115,6 @@
     (() => {
       const SKIP_CONFIRM_KEY = "printSkipConfirm";
       const templateSelect = document.getElementById("template-select");
-      const framesPane = document.getElementById("print-frames-pane");
       const previewImg = () => document.getElementById("template-preview");
       const previewPlaceholder = () => document.getElementById("template-preview-placeholder");
 
@@ -129,10 +186,6 @@
         if (evt.detail.target?.id !== "print-frames-pane") {
           return;
         }
-        // WHY-NOT: populatePrinterSelects() (document-wide) — would also
-        // reset #printer-info-select outside the frames pane, silently
-        // clearing the user's already-selected printer info panel.
-        populatePrinterSelects(framesPane);
         wireFramesForm();
       });
 
@@ -164,8 +217,8 @@
       }
 
       function collectRows() {
-        return Array.from(document.querySelectorAll("#rows-tbody tr")).map((row) =>
-          Array.from(row.querySelectorAll("[data-field-title]")).map((input) => ({
+        return Array.from(document.querySelectorAll("#tapes-container [data-tape-card]")).map((card) =>
+          Array.from(card.querySelectorAll("[data-field-title]")).map((input) => ({
             title: input.dataset.fieldTitle,
             value: input.value,
           })),
@@ -198,9 +251,58 @@
         };
       }
 
+      // Active job the Print button morphs into a Cancel control for; null
+      // once the job reaches a terminal state (job_end or canceled).
+      let activeJob = null;
+
+      function setPrintMode() {
+        activeJob = null;
+        const btn = document.getElementById("print-submit-btn");
+        if (!btn) {
+          return;
+        }
+        btn.textContent = "Print";
+        btn.classList.remove("btn-error");
+        btn.classList.add("btn-primary");
+        btn.dataset.mode = "print";
+      }
+
+      function setCancelMode(printer, jobId) {
+        activeJob = { printer, jobId };
+        const btn = document.getElementById("print-submit-btn");
+        if (!btn) {
+          return;
+        }
+        btn.textContent = "Cancel";
+        btn.classList.remove("btn-primary");
+        btn.classList.add("btn-error");
+        btn.dataset.mode = "cancel";
+      }
+
+      // Reflects the job card's data-terminal/data-printer markers onto the
+      // Print/Cancel button — called after both htmx-driven polling swaps
+      // (root === the job card itself) and manual fetch inserts (root ===
+      // #print-result, containing the job card as a child).
+      function reflectJobState(root) {
+        const el = root?.matches?.("[data-terminal]") ? root : root?.querySelector?.("[data-terminal]");
+        if (!el) {
+          return;
+        }
+        if (el.dataset.terminal === "true") {
+          setPrintMode();
+          return;
+        }
+        const jobId = el.id.replace(/^job-/, "");
+        setCancelMode(el.dataset.printer, jobId);
+      }
+
+      document.body.addEventListener("htmx:afterSwap", (evt) => {
+        reflectJobState(evt.detail.target);
+      });
+
       function submitPrint() {
         const form = document.getElementById("print-form");
-        const printer = document.getElementById("print-printer-select")?.value;
+        const printer = document.getElementById("printer-info-select")?.value;
         const result = document.getElementById("print-result");
         if (!form || !printer || !result) {
           return;
@@ -219,6 +321,27 @@
           .then((res) => res.text())
           .then((html) => {
             result.innerHTML = html;
+            htmx.process(result);
+            reflectJobState(result);
+          })
+          .catch((err) => {
+            result.textContent = String(err);
+          });
+      }
+
+      function cancelPrint() {
+        const result = document.getElementById("print-result");
+        if (!activeJob || !result) {
+          return;
+        }
+        fetch(`/ui/jobs/${encodeURIComponent(activeJob.printer)}/${encodeURIComponent(activeJob.jobId)}/cancel`, {
+          method: "POST",
+        })
+          .then((res) => res.text())
+          .then((html) => {
+            result.innerHTML = html;
+            htmx.process(result);
+            reflectJobState(result);
           })
           .catch((err) => {
             result.textContent = String(err);
@@ -247,31 +370,39 @@
         });
 
         addRowButton?.addEventListener("click", () => {
-          const tbody = document.getElementById("rows-tbody");
-          const firstRow = tbody?.querySelector("tr");
-          if (!tbody || !firstRow) {
+          const container = document.getElementById("tapes-container");
+          const firstCard = container?.querySelector("[data-tape-card]");
+          if (!container || !firstCard) {
             return;
           }
-          const clone = firstRow.cloneNode(true);
+          const clone = firstCard.cloneNode(true);
           clone.querySelectorAll("input").forEach((input) => {
             input.value = "";
           });
-          const index = tbody.querySelectorAll("tr").length + 1;
-          clone.querySelector("td")?.replaceChildren(document.createTextNode(String(index)));
-          tbody.appendChild(clone);
+          const index = container.querySelectorAll("[data-tape-card]").length + 1;
+          const label = clone.querySelector("[data-tape-label]");
+          if (label) {
+            label.textContent = `Tape ${index}`;
+          }
+          container.appendChild(clone);
         });
 
         form?.addEventListener("click", (evt) => {
-          if (evt.target.closest("[data-remove-row]")) {
-            const tbody = document.getElementById("rows-tbody");
-            if (tbody && tbody.querySelectorAll("tr").length > 1) {
-              evt.target.closest("tr")?.remove();
+          if (evt.target.closest("[data-remove-tape]")) {
+            const container = document.getElementById("tapes-container");
+            if (container && container.querySelectorAll("[data-tape-card]").length > 1) {
+              evt.target.closest("[data-tape-card]")?.remove();
             }
           }
         });
 
         form?.addEventListener("submit", (evt) => {
           evt.preventDefault();
+          const submitBtn = document.getElementById("print-submit-btn");
+          if (submitBtn?.dataset.mode === "cancel") {
+            cancelPrint();
+            return;
+          }
           if (localStorage.getItem(SKIP_CONFIRM_KEY) === "true") {
             submitPrint();
             return;

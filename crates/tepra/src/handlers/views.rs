@@ -13,6 +13,7 @@ use axum::{
 use opentelemetry_semantic_conventions::attribute as semconv;
 use serde::Deserialize;
 use tepra_core::dto::{
+    job::JobControlRequest,
     tape_label::{tape_id_label, tape_kind_label},
     template::GetMarginRequest,
 };
@@ -83,6 +84,72 @@ pub async fn job_card(
     Path((printer_name, job_id)): Path<(String, u64)>,
     State(state): State<AppState>,
 ) -> Result<impl IntoResponse, StatusCode> {
+    let resp = state
+        .client
+        .job_progress(&printer_name, job_id)
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    let progress = if resp.job_end || resp.canceled {
+        None
+    } else {
+        Some(resp.data_progress)
+    };
+
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
+    Ok(HtmlTemplate(JobCardTemplate {
+        printer_name,
+        job_id,
+        job_end: resp.job_end,
+        canceled: resp.canceled,
+        progress,
+    }))
+}
+
+/// Creator API control code for `job_control` requesting job cancellation.
+const JOB_CONTROL_CANCEL: u32 = 3;
+
+/// `POST /ui/jobs/{printer}/{job_id}/cancel` — HTMX cancel-and-refresh
+/// partial: sends a cancel control command, then re-renders the job-card
+/// partial reflecting the resulting state.
+///
+/// # Errors
+///
+/// Returns `502 Bad Gateway` when the Creator API client fails.
+#[instrument(
+    name = "handler.job_cancel",
+    skip_all,
+    fields(
+        http.request.method = "POST",
+        http.route = "/ui/jobs/{printer}/{job_id}/cancel",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+        tepra.printer = tracing::field::Empty,
+        tepra.job_id = tracing::field::Empty,
+    )
+)]
+pub async fn job_cancel(
+    Path((printer_name, job_id)): Path<(String, u64)>,
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, StatusCode> {
+    Span::current().record("tepra.printer", printer_name.as_str());
+    Span::current().record("tepra.job_id", job_id);
+
+    if let Err(err) = state
+        .client
+        .job_control(
+            &printer_name,
+            JobControlRequest {
+                jobid: job_id,
+                control: JOB_CONTROL_CANCEL,
+            },
+        )
+        .await
+    {
+        warn!(printer_name = %printer_name, job_id, error = %err, "job cancel failed");
+        return Err(StatusCode::BAD_GATEWAY);
+    }
+
     let resp = state
         .client
         .job_progress(&printer_name, job_id)
