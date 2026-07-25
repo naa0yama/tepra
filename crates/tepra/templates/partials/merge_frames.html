@@ -13,12 +13,10 @@
           <span class="font-semibold text-sm" data-tape-label>Tape 1</span>
           <button type="button" class="btn btn-xs btn-error" data-remove-tape>Remove</button>
         </div>
-        <div class="flex flex-col gap-2">
+        <div class="grid grid-cols-[max-content_1fr] items-center gap-x-3 gap-y-2">
           {% for f in frames %}
-            <label class="form-control">
-              <div class="label py-1"><span class="label-text">{{ f.title }}</span></div>
-              <input type="text" class="input input-sm input-bordered w-full" data-field-title="{{ f.title }}" />
-            </label>
+            <span class="label-text">{{ f.title }}</span>
+            <input type="text" class="input input-sm input-bordered w-full" data-field-title="{{ f.title }}" />
           {% endfor %}
         </div>
       </div>
