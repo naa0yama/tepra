@@ -9,7 +9,9 @@ fn test_defaults_match_sdk_wire_mapping() {
     assert_eq!(param.copies, 1);
     assert_eq!(param.tape_cut, 2);
     assert_eq!(param.half_cut, 2);
-    assert_eq!(param.print_speed, 1);
+    // WHY-NOT: SDK wire default 1 (High) — print_speed default intentionally
+    // overridden to 2 (Low) as the safer baseline for unattended print jobs.
+    assert_eq!(param.print_speed, 2);
     assert_eq!(param.density.mode, 1);
     assert_eq!(param.density.value, 0);
     assert_eq!(param.tape_id, 262);

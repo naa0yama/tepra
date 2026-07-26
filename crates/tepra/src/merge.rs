@@ -198,7 +198,7 @@ pub fn merge_print_parameter(overrides: &MergePrintOverrides) -> PrintParameter 
         copies: overrides.copies.unwrap_or(1),
         tape_cut: overrides.tape_cut.unwrap_or(2),
         half_cut: overrides.half_cut.unwrap_or(2),
-        print_speed: overrides.print_speed.unwrap_or(1),
+        print_speed: overrides.print_speed.unwrap_or(2),
         density: DensityParam {
             mode: 1,
             value: overrides.density.unwrap_or(0),
