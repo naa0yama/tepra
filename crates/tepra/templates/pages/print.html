@@ -118,7 +118,7 @@
       </div>
 
       <div class="collapse collapse-arrow border border-base-300 bg-base-200 mt-2">
-        <input type="checkbox" aria-label="REST API curl sample" />
+        <input type="checkbox" id="rest-curl-toggle" aria-label="REST API curl sample" />
         <div class="collapse-title font-semibold">REST API curl sample</div>
         <div class="collapse-content w-full min-w-0">
           <p class="text-sm opacity-70 mb-2">Equivalent REST request for the current template &amp; settings.</p>
@@ -221,12 +221,16 @@
         const origin = window.location.origin;
         const printer = document.getElementById("printer-info-select")?.value || "{printer}";
         const url = `${origin}/api/rest/merge-print/${encodeURIComponent(printer)}`;
-        // Static example body — shows the MergePrintRequest shape (template + rows + overrides).
+        // Mirror submitPrint()'s body exactly so curl reproduces the form's request.
+        const template =
+          document.getElementById("print-form")?.dataset.template ||
+          document.getElementById("template-select")?.value ||
+          "";
         const body = {
-          template: "templates/sample.lbx",
-          rows: [[{ title: "name", value: "Alice" }]],
-          copies: 1,
-          printSpeed: 2,
+          template,
+          rows: collectRows(),
+          serial: collectSerial(),
+          ...collectOverrides(),
         };
         const json = JSON.stringify(body, null, 2);
         code.textContent =
@@ -303,6 +307,14 @@
         }
       });
       document.getElementById("printer-info-select")?.addEventListener("change", renderCurlSample);
+
+      // Recompute the curl sample when the user opens the REST collapse, so it
+      // reflects the current template/rows/settings rather than a stale render.
+      document.getElementById("rest-curl-toggle")?.addEventListener("change", (evt) => {
+        if (evt.target.checked) {
+          renderCurlSample();
+        }
+      });
 
       // Populate the printer selector card on initial page load — it is
       // static markup (not swapped in via htmx), so it needs its own call
