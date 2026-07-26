@@ -107,6 +107,14 @@ Extends `shells/dashboard.html`. Bound to `PrintTemplate` in `views.rs`.
   from `dataset.fieldTitle` / `.value`)
 - Submit form with template selection, frame settings, and submit button (`#print-submit-btn`)
   - Errors display in a toast (`#toast-container`)
+- REST curl sample panel: collapsible section showing a live `curl` command that reflects
+  current template and print settings; copy button syncs command to clipboard; updates
+  automatically as user changes template or configuration values
+- Template frame loading: spinner element displayed while `GET /ui/print/frames` completes;
+  remains visible during frame DOM processing
+- Advanced settings toggles: two new checkboxes below standard print settings
+  - Hide tape-width confirmation (controlled by `display_tape_width` override; show when value = 2)
+  - Hide print-setting confirmation (controlled by `display_print_setting` override; show when value = 2)
 
 ### pages/api.html
 
@@ -237,9 +245,9 @@ Macro file: `{% macro sidebar(active) %}`.
 - Renders the `drawer-side` content: a clickable logo link (`<a href="/ui/">`,
   printer-mark icon + "TEPRA Creator") followed by a separate DaisyUI `menu`
   list
-- Menu items: Printers (linked), Jobs / Templates (`menu-disabled`, no `href`,
-  "Coming soon" badge), API (linked, `href="/ui/api"`, between Templates and
-  Settings), Settings (`menu-disabled`) — unimplemented sections never 404
+- Menu items (in render order): Printers (linked, `href="/ui/"`),
+  Print (linked, `href="/ui/print"`), Jobs (`menu-disabled`, "Coming soon"
+  badge), API (linked, `href="/ui/api"`) — Templates and Settings items removed
 - `active` (from `nav_active`) marks the current item with `menu-active` +
   `aria-current="page"`
 
@@ -288,6 +296,12 @@ Macro file: `{% macro printer_refresh_toggle() %}`.
 
 All implement `askama::Template` and are wrapped in `HtmlTemplate<T>` for
 axum `IntoResponse` compatibility.
+
+Compile-time constants injected into templates:
+
+- `APP_VERSION` — application version string from `Cargo.toml` version field
+- `GIT_HASH` — 7-character git short hash from `build.rs`; displays alongside version
+  in sidebar footer as `v{APP_VERSION} ({GIT_HASH})`
 
 `IndexTemplate` and `ApiDocsTemplate` both carry
 `nav_active: String` (sidebar active section, `components/sidebar.html`) and

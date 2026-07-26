@@ -65,8 +65,13 @@ web crate の関心事、`TepraClient` trait とは別レイヤ )。
   ( `merge.rs` ) — 連番生成スペック。ネイティブ WebAPI が無いため
   `expand_serial` がサーバ側で流し込み行を生成する
 - `MergePrintOverrides` ( `merge.rs` ) — `copies` / `density` / `tape_cut` /
-  `half_cut` / `half_cut_separate` / `print_speed` / `margin_left_right` を
-  すべて `Option` で保持、未指定は wire 既定 ( `merge_print_parameter` 参照 )
+  `half_cut` / `half_cut_separate` / `print_speed` / `margin_left_right` /
+  `display_tape_width` / `display_print_setting` をすべて `Option` で保持、
+  未指定は wire 既定 ( `merge_print_parameter` 参照 )
+  - `display_tape_width` ( Option<u32> ): 2 = 確認ダイアログ表示、1 = 非表示
+  - `display_print_setting` ( Option<u32> ): 2 = 確認ダイアログ表示、1 = 非表示;
+    また `display_transfer_tape` 表示制御も担当
+  - `print_speed` サーバ側既定値: 1 (High) → 2 (Low) に変更
 
 ### 純粋関数 ( I/O 無し、単体テスト対象 )
 
