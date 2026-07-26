@@ -9,6 +9,11 @@ use axum::{
 };
 use serde_json::Value;
 
+use crate::{
+    jobs::{JobOutcome, JobRecord},
+    merge::MergeField,
+};
+
 /// Newtype that renders an askama template as an HTML response.
 ///
 /// Required because askama 0.13+ removed framework integration crates.
@@ -590,6 +595,88 @@ pub fn build_endpoint_views(openapi: &Value) -> Vec<EndpointView> {
     endpoints
 }
 
+// ---------------------------------------------------------------------------
+// Jobs history page
+// ---------------------------------------------------------------------------
+
+/// Sidebar section key for the jobs history page (`nav_active` field below).
+///
+/// Matched by string equality in `templates/components/sidebar.html`
+/// (`{% if active == "jobs" %}`).
+pub const NAV_JOBS: &str = "jobs";
+
+/// One job entry rendered by `pages/jobs.html`, flattened from a
+/// [`JobRecord`] so the template never needs to pattern-match [`JobOutcome`].
+#[derive(Debug, Clone)]
+pub struct JobEntryView {
+    /// Internal monotonic record ID (distinct from the Creator API `jobid`).
+    pub record_id: u64,
+    /// Printer name the job was submitted to.
+    pub printer: String,
+    /// Template path used, for list display.
+    pub template: String,
+    /// Submission time, epoch seconds (UTC); formatted client-side via `data-epoch`.
+    pub submitted_at: u64,
+    /// `"accepted"` or `"failed"`, matching [`JobOutcome::label`].
+    pub outcome_label: &'static str,
+    /// `jobid={id}` for accepted jobs, the upstream error message for failed ones.
+    pub outcome_detail: String,
+    /// Creator API `jobid`, present only for accepted jobs; drives the
+    /// live-progress lazy-load and the reprint link's `?from=` target.
+    pub job_id: Option<u64>,
+    /// Tape parameters submitted with the job, one entry per tape (label).
+    pub rows: Vec<Vec<MergeField>>,
+}
+
+/// Build one [`JobEntryView`] from a stored [`JobRecord`], pre-flattening
+/// its [`JobOutcome`] so `partials/job_entry.html` only deals with plain
+/// fields.
+fn job_entry_view(record: JobRecord) -> JobEntryView {
+    let (outcome_label, outcome_detail, job_id) = match record.outcome {
+        JobOutcome::Accepted { jobid } => ("accepted", format!("jobid={jobid}"), Some(jobid)),
+        JobOutcome::Failed { message } => ("failed", message, None),
+    };
+    JobEntryView {
+        record_id: record.record_id,
+        printer: record.printer,
+        template: record.template,
+        submitted_at: record.submitted_at,
+        outcome_label,
+        outcome_detail,
+        job_id,
+        rows: record.request.rows,
+    }
+}
+
+/// Build the [`JobEntryView`] list for one page of `JobStore::page`'s result.
+// WHY-NOT: renaming to drop the module-name repetition — matches the
+// existing `build_endpoint_views` naming convention for view-model builders.
+#[allow(clippy::module_name_repetitions)]
+#[must_use]
+pub fn build_job_entry_views(records: Vec<JobRecord>) -> Vec<JobEntryView> {
+    records.into_iter().map(job_entry_view).collect()
+}
+
+/// Context for the jobs history page (`GET /ui/jobs?page=N`).
+#[derive(Debug, Template)]
+#[template(path = "pages/jobs.html")]
+pub struct JobsPageTemplate {
+    /// Active sidebar section key (`shells/dashboard.html`).
+    pub nav_active: String,
+    /// Navbar breadcrumb trail (`shells/dashboard.html`).
+    pub breadcrumbs: Vec<Breadcrumb>,
+    /// One entry per job on the current page, newest first.
+    pub jobs: Vec<JobEntryView>,
+    /// Current page number (1-indexed).
+    pub page: usize,
+    /// Total record count across all pages.
+    pub total: usize,
+    /// Page size (`DEFAULT_PAGE_SIZE`).
+    pub page_size: usize,
+    /// Total number of pages, at least 1.
+    pub total_pages: usize,
+}
+
 #[cfg(test)]
 mod tests {
     #![allow(clippy::unwrap_used)]
@@ -1062,5 +1149,48 @@ mod tests {
             warning_code.description.as_deref(),
             Some("Non-fatal warning code; absent on success.")
         );
+    }
+
+    fn job_record(outcome: JobOutcome) -> JobRecord {
+        JobRecord {
+            record_id: 1,
+            printer: "printer1".to_owned(),
+            submitted_at: 1_000,
+            template: "label.lw1".to_owned(),
+            request: crate::handlers::merge_print::MergePrintRequest::default(),
+            outcome,
+        }
+    }
+
+    #[test]
+    fn job_entry_view_flattens_accepted_outcome() {
+        let view = job_entry_view(job_record(JobOutcome::Accepted { jobid: 42 }));
+        assert_eq!(view.outcome_label, "accepted");
+        assert_eq!(view.outcome_detail, "jobid=42");
+        assert_eq!(view.job_id, Some(42));
+    }
+
+    #[test]
+    fn job_entry_view_flattens_failed_outcome() {
+        let view = job_entry_view(job_record(JobOutcome::Failed {
+            message: "boom".to_owned(),
+        }));
+        assert_eq!(view.outcome_label, "failed");
+        assert_eq!(view.outcome_detail, "boom");
+        assert_eq!(view.job_id, None);
+    }
+
+    #[test]
+    fn build_job_entry_views_preserves_order() {
+        let records = vec![
+            job_record(JobOutcome::Accepted { jobid: 1 }),
+            job_record(JobOutcome::Failed {
+                message: "err".to_owned(),
+            }),
+        ];
+        let views = build_job_entry_views(records);
+        assert_eq!(views.len(), 2);
+        assert_eq!(views.first().unwrap().outcome_label, "accepted");
+        assert_eq!(views.get(1).unwrap().outcome_label, "failed");
     }
 }

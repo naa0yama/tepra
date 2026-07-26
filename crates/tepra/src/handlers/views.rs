@@ -17,7 +17,7 @@ use tepra_core::dto::{
     tape_label::{tape_id_label, tape_kind_label},
     template::GetMarginRequest,
 };
-use tracing::{Span, instrument, warn};
+use tracing::{Span, debug, instrument, warn};
 use utoipa::OpenApi as _;
 
 use crate::{
@@ -25,11 +25,13 @@ use crate::{
         merge_print::{MergePrintRequest, fetch_template_and_frames, merge_print},
         openapi::ApiDoc,
     },
+    jobs::DEFAULT_PAGE_SIZE,
     state::AppState,
     views::{
         ApiDocsTemplate, Breadcrumb, ErrorAlertTemplate, HtmlTemplate, IndexTemplate,
-        JobCardTemplate, MergeFramesTemplate, MergePrinterPanelTemplate, NAV_API, NAV_PRINT,
-        NAV_PRINTERS, PrintPageTemplate, PrinterStatusCardTemplate, build_endpoint_views,
+        JobCardTemplate, JobsPageTemplate, MergeFramesTemplate, MergePrinterPanelTemplate, NAV_API,
+        NAV_JOBS, NAV_PRINT, NAV_PRINTERS, PrintPageTemplate, PrinterStatusCardTemplate,
+        build_endpoint_views, build_job_entry_views,
     },
 };
 
@@ -169,6 +171,52 @@ pub async fn job_cancel(
         canceled: resp.canceled,
         progress,
     }))
+}
+
+/// Query parameters for `GET /ui/jobs`.
+#[derive(Debug, Deserialize)]
+pub struct JobsIndexQuery {
+    /// Page number, 1-indexed; defaults to 1 when unspecified.
+    pub page: Option<usize>,
+}
+
+/// `GET /ui/jobs?page=N` — print job history list, newest first.
+#[instrument(
+    name = "handler.jobs_index",
+    skip_all,
+    fields(
+        http.request.method = "GET",
+        http.route = "/ui/jobs",
+        http.response.status_code = tracing::field::Empty,
+        url.scheme = tracing::field::Empty,
+        jobs.count = tracing::field::Empty,
+    )
+)]
+pub async fn jobs_index(
+    State(state): State<AppState>,
+    Query(q): Query<JobsIndexQuery>,
+) -> impl IntoResponse {
+    let page = q.page.unwrap_or(1);
+    let (records, total) = state.jobs.page(page, DEFAULT_PAGE_SIZE);
+    let jobs = build_job_entry_views(records);
+    let total_pages = total.div_ceil(DEFAULT_PAGE_SIZE).max(1);
+
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
+    Span::current().record("jobs.count", jobs.len());
+    debug!(count = jobs.len(), page, "jobs index rendered");
+
+    HtmlTemplate(JobsPageTemplate {
+        nav_active: NAV_JOBS.to_owned(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "Jobs".into(),
+            href: None,
+        }],
+        jobs,
+        page,
+        total,
+        page_size: DEFAULT_PAGE_SIZE,
+        total_pages,
+    })
 }
 
 /// `GET /ui/printers/{name}/status-card` — HTMX printer status-card partial.

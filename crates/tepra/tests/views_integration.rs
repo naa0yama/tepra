@@ -125,7 +125,7 @@ async fn error_banner_contains_full_product_name() {
 // ---------------------------------------------------------------------------
 // 4. sidebar_renders_nav_structure
 //    The dashboard sidebar must show all nav sections with the printers
-//    item active and the unimplemented item disabled + "Coming soon" badge.
+//    item active; all sections are implemented, so none is disabled.
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
@@ -158,12 +158,8 @@ async fn sidebar_renders_nav_structure() {
         "printers item must be marked active; got:\n{html}"
     );
     assert!(
-        html.contains("menu-disabled"),
-        "unimplemented items must be disabled; got:\n{html}"
-    );
-    assert!(
-        html.contains("Coming soon"),
-        "unimplemented items must show a Coming soon badge; got:\n{html}"
+        !html.contains("menu-disabled"),
+        "all nav sections are implemented; none should render disabled; got:\n{html}"
     );
 }
 

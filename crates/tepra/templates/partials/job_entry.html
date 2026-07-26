@@ -1,0 +1,48 @@
+{# templates/partials/job_entry.html #}
+{% macro job_entry(job) %}
+  <div class="collapse collapse-arrow join-item border border-base-300 bg-base-100">
+    <input type="checkbox" aria-label="Job #{{ job.record_id }} ({{ job.printer }}, {{ job.template }})" />
+    <div class="collapse-title flex flex-wrap items-center gap-3">
+      <span class="badge badge-outline">{{ job.printer }}</span>
+      <code class="font-mono text-sm">{{ job.template }}</code>
+      <span class="opacity-70 text-sm" data-epoch="{{ job.submitted_at }}"></span>
+      {% if job.outcome_label == "accepted" %}
+        <span class="badge badge-success badge-sm">accepted</span>
+      {% else %}
+        <span class="badge badge-error badge-sm">failed</span>
+      {% endif %}
+    </div>
+    <div class="collapse-content flex flex-col gap-3">
+      {% for row in job.rows %}
+        <div>
+          <h3 class="font-semibold text-sm mb-1">Tape {{ loop.index }}</h3>
+          <div class="overflow-x-auto">
+            <table class="table table-sm">
+              <thead>
+                <tr><th>Title</th><th>Value</th></tr>
+              </thead>
+              <tbody>
+                {% for field in row %}
+                  <tr><td><code>{{ field.title }}</code></td><td>{{ field.value }}</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      {% endfor %}
+
+      {% if job.outcome_label == "accepted" %}
+        <p class="text-sm">{{ job.outcome_detail }}</p>
+        {% if let Some(job_id) = job.job_id %}
+          <div hx-get="/ui/jobs/{{ job.printer }}/{{ job_id }}" hx-trigger="load" hx-swap="innerHTML">
+            <span class="loading loading-spinner loading-sm"></span>
+          </div>
+        {% endif %}
+      {% else %}
+        <p class="text-sm text-error">{{ job.outcome_detail }}</p>
+      {% endif %}
+
+      <a href="/ui/print?from={{ job.record_id }}" class="btn btn-sm btn-outline self-start">Re-print</a>
+    </div>
+  </div>
+{% endmacro %}

@@ -1,0 +1,40 @@
+{# templates/pages/jobs.html #}
+{% extends "shells/dashboard.html" %}
+{% import "partials/job_entry.html" as entry %}
+{% import "partials/pagination.html" as pagination %}
+
+{% block title %}Jobs{% endblock %}
+
+{% block body %}
+  <h1 class="text-2xl font-bold mb-4">Jobs</h1>
+
+  {% if jobs.is_empty() %}
+    <div class="hero min-h-64">
+      <div class="hero-content text-center">
+        <div class="max-w-md">
+          <h2 class="text-xl font-semibold mt-4">No jobs yet</h2>
+        </div>
+      </div>
+    </div>
+  {% else %}
+    <div class="join join-vertical w-full mb-4">
+      {% for job in jobs %}
+        {{ entry::job_entry(job=job) }}
+      {% endfor %}
+    </div>
+
+    {{ pagination::pagination(page=page, total_pages=total_pages) }}
+  {% endif %}
+
+  <script>
+    (() => {
+      document.querySelectorAll("[data-epoch]").forEach((el) => {
+        const epoch = Number(el.dataset.epoch);
+        if (Number.isNaN(epoch)) {
+          return;
+        }
+        el.textContent = new Date(epoch * 1000).toLocaleString();
+      });
+    })();
+  </script>
+{% endblock %}

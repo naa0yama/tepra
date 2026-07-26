@@ -18,9 +18,12 @@
 )]
 
 use askama::Template as _;
-use tepra::views::{
-    ApiDocsTemplate, Breadcrumb, EndpointView, IndexTemplate, JobCardTemplate, ParamView,
-    PropertyView,
+use tepra::{
+    merge::MergeField,
+    views::{
+        ApiDocsTemplate, Breadcrumb, EndpointView, IndexTemplate, JobCardTemplate, JobEntryView,
+        JobsPageTemplate, ParamView, PropertyView,
+    },
 };
 
 /// Snapshot `html` under `name`, masking the version/hash footer so
@@ -652,4 +655,127 @@ fn test_api_docs_render_empty_endpoints() {
     let html = tmpl.render().unwrap();
     assert!(html.contains("No endpoints found"));
     assert_snapshot_version_masked("api_docs_empty", &html);
+}
+
+// ---------------------------------------------------------------------------
+// JobsPageTemplate
+// ---------------------------------------------------------------------------
+
+fn accepted_job_entry() -> JobEntryView {
+    JobEntryView {
+        record_id: 2,
+        printer: "PT-P710BT".into(),
+        template: "label.lw1".into(),
+        submitted_at: 1_700_000_100,
+        outcome_label: "accepted",
+        outcome_detail: "jobid=42".into(),
+        job_id: Some(42),
+        rows: vec![vec![MergeField {
+            title: "Name".into(),
+            value: "Alice".into(),
+        }]],
+    }
+}
+
+fn failed_job_entry() -> JobEntryView {
+    JobEntryView {
+        record_id: 1,
+        printer: "QL-800".into(),
+        template: "label.lw2".into(),
+        submitted_at: 1_700_000_000,
+        outcome_label: "failed",
+        outcome_detail: "printer offline".into(),
+        job_id: None,
+        rows: vec![],
+    }
+}
+
+#[test]
+fn test_jobs_render_empty() {
+    let tmpl = JobsPageTemplate {
+        nav_active: "jobs".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "Jobs".into(),
+            href: None,
+        }],
+        jobs: vec![],
+        page: 1,
+        total: 0,
+        page_size: 20,
+        total_pages: 1,
+    };
+    let html = tmpl.render().unwrap();
+    assert!(html.contains("No jobs yet"));
+    assert_snapshot_version_masked("jobs_empty", &html);
+}
+
+#[test]
+fn test_jobs_render_mixed_outcomes() {
+    let tmpl = JobsPageTemplate {
+        nav_active: "jobs".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "Jobs".into(),
+            href: None,
+        }],
+        jobs: vec![accepted_job_entry(), failed_job_entry()],
+        page: 1,
+        total: 2,
+        page_size: 20,
+        total_pages: 1,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains("PT-P710BT"));
+    assert!(html.contains("QL-800"));
+    assert!(html.contains("badge-success"));
+    assert!(html.contains("badge-error"));
+    assert!(html.contains("jobid=42"));
+    assert!(html.contains("printer offline"));
+    // No pagination controls when only one page exists.
+    assert!(!html.contains(r#"class="join""#));
+
+    assert_snapshot_version_masked("jobs_mixed_outcomes", &html);
+}
+
+#[test]
+fn test_jobs_render_pagination_multiple_pages() {
+    let tmpl = JobsPageTemplate {
+        nav_active: "jobs".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "Jobs".into(),
+            href: None,
+        }],
+        jobs: vec![accepted_job_entry()],
+        page: 2,
+        total: 30,
+        page_size: 20,
+        total_pages: 2,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains(r#"href="/ui/jobs?page=1""#));
+    // Current page number carries aria-current, the previous link does not.
+    assert!(html.contains(r">2</a>"));
+    assert!(!html.contains("btn-disabled\" aria-hidden=\"true\">&laquo;"));
+
+    assert_snapshot_version_masked("jobs_pagination_multiple_pages", &html);
+}
+
+#[test]
+fn test_jobs_render_marks_sidebar_active() {
+    let tmpl = JobsPageTemplate {
+        nav_active: "jobs".into(),
+        breadcrumbs: vec![Breadcrumb {
+            label: "Jobs".into(),
+            href: None,
+        }],
+        jobs: vec![],
+        page: 1,
+        total: 0,
+        page_size: 20,
+        total_pages: 1,
+    };
+    let html = tmpl.render().unwrap();
+
+    assert!(html.contains(r#"href="/ui/jobs" class="menu-active" aria-current="page""#));
 }
