@@ -450,6 +450,9 @@ pub async fn print_page(
         .map_or_else(String::new, |r| r.template.clone());
     let template_mismatch =
         record.is_some() && !templates.iter().any(|t| t.path == selected_template);
+    let selected_printer = record
+        .as_ref()
+        .map_or_else(String::new, |r| r.printer.clone());
 
     // Best-effort: on a template lookup failure (missing file, unreadable,
     // or import_frame error) the tape cards render with no columns rather
@@ -477,6 +480,7 @@ pub async fn print_page(
         prefill,
         selected_template,
         template_mismatch,
+        selected_printer,
         tapes,
         serial,
         overrides,

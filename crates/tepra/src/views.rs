@@ -173,6 +173,11 @@ pub struct PrintPageTemplate {
     /// `true` when `selected_template` is absent from `templates` — shows
     /// a mismatch banner; best-effort fill still applies (task point E).
     pub template_mismatch: bool,
+    /// Reprint source printer name; empty when not prefilled. Read by
+    /// `populatePrinterSelects()` (client JS) to mark the matching
+    /// `#printer-info-select` `<option>` selected after it rebuilds
+    /// `innerHTML` from the fetched `/api/printer` list.
+    pub selected_printer: String,
     /// Tape cards for the inline frames form; see [`build_tapes_view`].
     pub tapes: Vec<Vec<FrameFieldView>>,
     /// Serial section prefill for the inline frames form.

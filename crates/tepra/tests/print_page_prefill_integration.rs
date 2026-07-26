@@ -93,6 +93,43 @@ async fn print_page_prefills_rows_from_job_record() {
 }
 
 #[tokio::test]
+async fn print_page_prefills_printer_from_job_record() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("label.lw1"), b"dummy template bytes").unwrap();
+
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_import_frame(Ok(vec![ImportFrameItem {
+        column: "A1".into(),
+        title: "Name".into(),
+        attribute: ImportFrameAttribute::Text,
+    }]));
+
+    let state = AppState::new_with_template_dir(mock, dir.path().to_path_buf());
+    let record_id = state.jobs.record(
+        "printer1".to_owned(),
+        "label.lw1".to_owned(),
+        MergePrintRequest {
+            template: "label.lw1".to_owned(),
+            rows: vec![vec![MergeField {
+                title: "Name".to_owned(),
+                value: "Alice".to_owned(),
+            }]],
+            serial: None,
+            overrides: MergePrintOverrides::default(),
+        },
+        JobOutcome::Accepted { jobid: 1 },
+        0,
+    );
+
+    let html = get(make_app(state), &format!("/ui/print?from={record_id}")).await;
+
+    assert!(
+        html.contains(r#"data-selected-printer="printer1""#),
+        "printer-info-select must carry the record's printer for client-side reselection; got:\n{html}"
+    );
+}
+
+#[tokio::test]
 async fn print_page_prefills_serial_enabled_from_job_record() {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("label.lw1"), b"dummy template bytes").unwrap();

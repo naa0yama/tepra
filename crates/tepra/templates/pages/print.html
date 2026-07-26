@@ -59,7 +59,7 @@
       <label class="form-control">
         <div class="label"><span class="label-text">Printer</span></div>
         <div class="join w-full">
-          <select id="printer-info-select" data-printer-select class="select select-bordered join-item w-full" required></select>
+          <select id="printer-info-select" data-printer-select data-selected-printer="{{ selected_printer }}" class="select select-bordered join-item w-full" required></select>
           <button type="button" id="printer-refresh-btn" class="btn btn-square join-item" aria-label="Refresh printer status now" title="Refresh now">
             <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -212,19 +212,36 @@
               throw new Error("empty printer list");
             }
             (root ?? document).querySelectorAll("[data-printer-select]").forEach((select) => {
+              const selectedPrinter = select.dataset.selectedPrinter || "";
               select.innerHTML = "";
               const placeholder = document.createElement("option");
               placeholder.value = "";
               placeholder.disabled = true;
-              placeholder.selected = true;
               placeholder.textContent = "Select printer…";
               select.appendChild(placeholder);
+              let matched = false;
               printers.forEach((printer) => {
                 const option = document.createElement("option");
                 option.value = printer.printerName;
                 option.textContent = printer.printerName;
+                if (printer.printerName === selectedPrinter) {
+                  option.selected = true;
+                  matched = true;
+                }
                 select.appendChild(option);
               });
+              // WHY-NOT: placeholder.selected = true unconditionally — a
+              // server-side selectedPrinter must win once matched, since
+              // innerHTML was just rebuilt and any prior selection is gone.
+              placeholder.selected = !matched;
+              // WHY-NOT: reimplementing currentPrinter/loadPrinterPanel here —
+              // setting option.selected programmatically does not fire
+              // "change", so dispatch it to run #printer-info-select's own
+              // change listener (currentPrinter tracking, loadPrinterPanel,
+              // conditional startAutoRefresh) the same way a manual pick would.
+              if (matched) {
+                select.dispatchEvent(new Event("change"));
+              }
             });
             renderCurlSample();
           })
@@ -643,6 +660,13 @@
       // do it here instead.
       if (document.getElementById("print-form")) {
         wireFramesForm();
+        // WHY-NOT: rely on <select> "change" — server-side `selected` on
+        // #template-select's <option> renders the template pre-chosen but
+        // does not fire "change", so loadPreview() (normally wired to that
+        // event) would otherwise never run on reprint.
+        if (templateSelect?.value) {
+          loadPreview(templateSelect.value);
+        }
       }
     })();
   </script>
