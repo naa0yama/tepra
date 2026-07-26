@@ -31,7 +31,7 @@ use tracing::{Span, instrument};
 use crate::{
     merge::{
         CsvEncoding, MergeField, MergePrintOverrides, SerialSpec, build_merge_csv, expand_serial,
-        merge_print_parameter,
+        merge_print_parameter, sort_frames_by_column,
     },
     state::AppState,
     templates::resolve_template_path,
@@ -171,13 +171,17 @@ pub(crate) async fn fetch_template_and_frames(
         base64_str: STANDARD.encode(&template_bytes),
     };
 
-    let frames = state
+    let mut frames = state
         .client
         .import_frame(ImportFrameRequest {
             template_file: template_file.clone(),
         })
         .await
         .map_err(MergePrintError::Upstream)?;
+    // import_frame's array order need not match cell reference order; the
+    // printer binds CSV columns to frames by cell reference, so normalize
+    // here once for both CSV assembly and UI rendering downstream.
+    sort_frames_by_column(&mut frames);
 
     Ok((template_file, frames))
 }

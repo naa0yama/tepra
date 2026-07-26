@@ -76,11 +76,25 @@ web crate の関心事、`TepraClient` trait とは別レイヤ )。
 ### 純粋関数 ( I/O 無し、単体テスト対象 )
 
 - `build_merge_csv(frames: &[ImportFrameItem], rows: &[Vec<MergeField>],
-  encoding: CsvEncoding) -> anyhow::Result<Vec<u8>>` — `frames` の `column`
-  順でヘッダ無し RFC4180 CSV を組み立てる。値は各行 ( テープ ) の `title` で
-  該当枠を引いて解決 ( 欠損 → 空 )。`frames` の重複 `title`、または行内の
-  未知/重複 `title` は `Err` ( handler で 400 に写像 )。`CsvEncoding::{Utf8,
-  ShiftJis}` ( `ShiftJis` は `encoding_rs` の CP932、既定は `Utf8` )
+  encoding: CsvEncoding) -> anyhow::Result<Vec<u8>>` — 与えられた `frames`
+  の配列順そのままでヘッダ無し RFC4180 CSV を組み立てる ( 順序保存、自身では
+  ソートしない )。呼び出し側 ( `fetch_template_and_frames` ) が `frames` を
+  事前に `column` セル参照順へ正規化して渡す契約。値は各行 ( テープ ) の
+  `title` で該当枠を引いて解決 ( 欠損 → 空 )。`frames` の重複 `title`、または
+  行内の未知/重複 `title` は `Err` ( handler で 400 に写像 )。
+  `CsvEncoding::{Utf8, ShiftJis}` ( `ShiftJis` は `encoding_rs` の CP932、
+  既定は `Utf8` )
+- `parse_cell_ref(cell: &str) -> (u32, u32)` ( `merge.rs` ) — セル参照
+  ( `"A1"` / `"AA10"` 等 ) を `(column_key, row_key)` へ分解。先頭の
+  アルファベット部を base-26 で列キーへ ( A=1, …, Z=26, AA=27, … )、末尾の
+  数字部を行キーへ ( 無ければ 0 )。アルファベット部が無ければ列キー 0
+- `sort_frames_by_column(frames: &mut [ImportFrameItem])` ( `merge.rs` ) —
+  `parse_cell_ref` の `(column_key, row_key)` で `frames` を列メジャー
+  ( 列キー優先、行キー副次 ) に安定ソート。`import_frame` の返却配列順は
+  セル参照順と一致するとは限らないため ( 例: `資産ラベルr1.lw1` )、
+  `fetch_template_and_frames` が `import_frame` 直後にこれを呼び、CSV 組立
+  ( `build_merge_csv` ) と UI 描画 ( `print_frames` ) が同一の正規化済み順序
+  を共有する。前提: テンプレートの列は A から連続 ( 欠番なし )
 - `expand_serial(spec: &SerialSpec) -> Vec<MergeField>` — `start` から `step`
   刻みで `count` 個、`pad` 桁 0 埋めした値を `title` の `MergeField` として生成
 - `merge_print_parameter(overrides: &MergePrintOverrides) -> PrintParameter`

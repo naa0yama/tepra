@@ -104,6 +104,40 @@ pub fn build_merge_csv(
     encode(&text, encoding)
 }
 
+/// Parses a cell reference (e.g. `"A1"`, `"AA10"`, `"B"`) into a
+/// `(column_key, row_key)` tuple for column-major sorting.
+///
+/// The leading alphabetic run is decoded as a base-26 column key (A=1, …,
+/// Z=26, AA=27, …); the trailing numeric run becomes the row key (0 when
+/// absent). A missing alphabetic run yields column key 0.
+#[must_use]
+pub fn parse_cell_ref(cell: &str) -> (u32, u32) {
+    let alpha_len = cell
+        .find(|c: char| !c.is_ascii_alphabetic())
+        .unwrap_or(cell.len());
+    let (alpha, digits) = cell.split_at(alpha_len);
+
+    let column_key = alpha.chars().fold(0_u32, |acc, c| {
+        let digit = u32::from(c.to_ascii_uppercase())
+            .saturating_sub(u32::from(b'A'))
+            .saturating_add(1);
+        acc.saturating_mul(26).saturating_add(digit)
+    });
+    let row_key = digits.parse().unwrap_or(0);
+
+    (column_key, row_key)
+}
+
+/// Sorts `frames` in place by cell-reference column order (column-major:
+/// column key first, row key second), stable for equal keys.
+///
+/// Normalizes `import_frame`'s array order — which need not match cell
+/// reference order — to the order the printer actually binds CSV columns
+/// by, so CSV assembly and UI rendering share one column ordering.
+pub fn sort_frames_by_column(frames: &mut [ImportFrameItem]) {
+    frames.sort_by_key(|frame| parse_cell_ref(&frame.column));
+}
+
 /// Quotes `value` per RFC4180 when it contains a comma, double quote, CR, or LF.
 fn quote_csv_field(value: &str) -> String {
     if value.contains([',', '"', '\r', '\n']) {

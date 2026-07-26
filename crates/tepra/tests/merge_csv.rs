@@ -1,6 +1,10 @@
-//! Unit tests for `build_merge_csv` and `expand_serial`.
+//! Unit tests for `build_merge_csv`, `expand_serial`, and frame column
+//! normalization (`parse_cell_ref` / `sort_frames_by_column`).
 
-use tepra::merge::{CsvEncoding, MergeField, SerialSpec, build_merge_csv, expand_serial};
+use tepra::merge::{
+    CsvEncoding, MergeField, SerialSpec, build_merge_csv, expand_serial, parse_cell_ref,
+    sort_frames_by_column,
+};
 use tepra_core::dto::{enums::ImportFrameAttribute, template::ImportFrameItem};
 
 fn frame(column: &str, title: &str) -> ImportFrameItem {
@@ -80,6 +84,61 @@ fn test_quoting_comma_quote_newline() {
     let csv = build_merge_csv(&frames, &rows, CsvEncoding::Utf8).unwrap();
 
     assert_eq!(String::from_utf8(csv).unwrap(), "\"a,b\"\"c\r\nd\"\r\n");
+}
+
+// ---------------------------------------------------------------------------
+// parse_cell_ref
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_parse_cell_ref_single_letter_no_row() {
+    assert_eq!(parse_cell_ref("A"), (1, 0));
+    assert_eq!(parse_cell_ref("B"), (2, 0));
+    assert_eq!(parse_cell_ref("Z"), (26, 0));
+}
+
+#[test]
+fn test_parse_cell_ref_letter_with_row() {
+    assert_eq!(parse_cell_ref("A1"), (1, 1));
+}
+
+#[test]
+fn test_parse_cell_ref_double_letter() {
+    assert_eq!(parse_cell_ref("AA"), (27, 0));
+    assert_eq!(parse_cell_ref("AA10"), (27, 10));
+}
+
+#[test]
+fn test_parse_cell_ref_empty_string() {
+    assert_eq!(parse_cell_ref(""), (0, 0));
+}
+
+// ---------------------------------------------------------------------------
+// sort_frames_by_column
+// ---------------------------------------------------------------------------
+
+#[test]
+fn test_sort_frames_by_column_reorders_to_cell_reference_order() {
+    let mut frames = vec![frame("B", "username"), frame("A", "URI")];
+
+    sort_frames_by_column(&mut frames);
+
+    assert_eq!(
+        frames.iter().map(|f| f.title.as_str()).collect::<Vec<_>>(),
+        vec!["URI", "username"]
+    );
+}
+
+#[test]
+fn test_sort_frames_by_column_is_stable_for_same_column() {
+    let mut frames = vec![frame("A", "first"), frame("A", "second")];
+
+    sort_frames_by_column(&mut frames);
+
+    assert_eq!(
+        frames.iter().map(|f| f.title.as_str()).collect::<Vec<_>>(),
+        vec!["first", "second"]
+    );
 }
 
 #[test]

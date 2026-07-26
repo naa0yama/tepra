@@ -16,6 +16,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
+use base64::Engine as _;
 use serde_json::{Value, json};
 use tepra::{
     router::{build_merge_router, build_templates_router},
@@ -314,6 +315,73 @@ async fn test_merge_print_serial_expansion_end_to_end() {
     assert_eq!(response.status(), StatusCode::OK);
     let json = body_json(response.into_body()).await;
     assert_eq!(json["jobid"], 7);
+}
+
+#[tokio::test]
+async fn test_merge_print_normalizes_csv_to_cell_reference_column_order() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("label.lw1"), fake_lw1_bytes()).unwrap();
+
+    let mock = Arc::new(MockTepraClient::new());
+    // import_frame returns array order [B/username, A/URI] — reversed vs.
+    // cell reference order — reproducing the 資産ラベルr1.lw1 column-shift bug.
+    mock.push_import_frame(Ok(vec![
+        ImportFrameItem {
+            column: "B".into(),
+            title: "username".into(),
+            attribute: ImportFrameAttribute::Text,
+        },
+        ImportFrameItem {
+            column: "A".into(),
+            title: "URI".into(),
+            attribute: ImportFrameAttribute::Text,
+        },
+    ]));
+    mock.push_print(Ok(PrintResponse {
+        result: 1,
+        jobid: 99,
+    }));
+
+    let req_body = json!({
+        "template": "label.lw1",
+        "rows": [[
+            {"title": "username", "value": "naa0yama"},
+            {"title": "URI", "value": "https://example.com/naa0yama"},
+        ]],
+    });
+
+    let response = merge_app(mock.clone(), dir.path().to_owned())
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rest/merge-print/printer1")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&req_body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let calls = mock.calls();
+    let print_req = calls
+        .iter()
+        .find_map(|call| match call {
+            tepra_core::client::mock::MockCall::Print(_, req) => Some(req),
+            _ => None,
+        })
+        .unwrap();
+    let csv_file = print_req.print_file.csv_file.as_ref().unwrap();
+    let csv_bytes = base64::engine::general_purpose::STANDARD
+        .decode(&csv_file.base64_str)
+        .unwrap();
+    let csv_text = String::from_utf8(csv_bytes).unwrap();
+
+    // Column A (URI) must come before column B (username) in the CSV — the
+    // printer binds CSV columns to frames by cell-reference order, not by
+    // import_frame's array order.
+    assert_eq!(csv_text, "https://example.com/naa0yama,naa0yama\r\n");
 }
 
 // ---------------------------------------------------------------------------

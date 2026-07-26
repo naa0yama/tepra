@@ -35,7 +35,10 @@
 - `build_merge_router(state)` — 流し込み印刷 ( merge print )
   - state: `AppState`
   - `POST /api/rest/merge-print/{printer}` — テンプレ + CSV 流し込み印刷の
-    orchestration ( テンプレ読込 → `import_frame` → CSV 組立 → `print` )。
+    orchestration ( テンプレ読込 → `import_frame` → `sort_frames_by_column`
+    で column セル参照順に正規化 → CSV 組立 → `print` )。正規化は
+    `fetch_template_and_frames` が担い、CSV 組立 ( `merge_print` ) と UI 描画
+    ( `print_frames` ) の両経路が同一の正規化済み順序を共有する。
     req: `MergePrintRequest { template, rows: Vec<Vec<MergeField>>,
     serial: Option<SerialSpec>, #[serde(flatten)] overrides:
     MergePrintOverrides }` ( `rows` の外側 = テープ単位、内側 =
