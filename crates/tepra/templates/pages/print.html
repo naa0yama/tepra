@@ -108,6 +108,15 @@
           </label>
         </div>
       </div>
+
+      <div class="collapse collapse-arrow border border-base-300 bg-base-200 mt-2">
+        <input type="checkbox" aria-label="REST API curl sample" />
+        <div class="collapse-title font-semibold">REST API curl sample</div>
+        <div class="collapse-content w-full min-w-0">
+          <p class="text-sm opacity-70 mb-2">Equivalent REST request for the current template &amp; settings.</p>
+          <pre class="text-xs bg-base-300 rounded p-2 overflow-x-auto"><code id="curl-sample"></code></pre>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -189,10 +198,33 @@
                 select.appendChild(option);
               });
             });
+            renderCurlSample();
           })
           .catch(() => {
             /* leave the select empty; the required attribute blocks submit */
           });
+      }
+
+      function renderCurlSample() {
+        const code = document.getElementById("curl-sample");
+        if (!code) {
+          return;
+        }
+        const origin = window.location.origin;
+        const printer = document.getElementById("printer-info-select")?.value || "{printer}";
+        const url = `${origin}/api/rest/merge-print/${encodeURIComponent(printer)}`;
+        // Static example body — shows the MergePrintRequest shape (template + rows + overrides).
+        const body = {
+          template: "templates/sample.lbx",
+          rows: [[{ title: "name", value: "Alice" }]],
+          copies: 1,
+          printSpeed: 2,
+        };
+        const json = JSON.stringify(body, null, 2);
+        code.textContent =
+          `curl -X POST '${url}' \\\n` +
+          `  -H 'Content-Type: application/json' \\\n` +
+          `  -d '${json}'`;
       }
 
       document.body.addEventListener("htmx:afterSwap", (evt) => {
@@ -262,11 +294,13 @@
           startAutoRefresh();
         }
       });
+      document.getElementById("printer-info-select")?.addEventListener("change", renderCurlSample);
 
       // Populate the printer selector card on initial page load — it is
       // static markup (not swapped in via htmx), so it needs its own call
       // outside the print-frames-pane afterSwap handler above.
       populatePrinterSelects();
+      renderCurlSample();
 
       function readNumberOrUndefined(el) {
         if (!el || el.value === "") {
