@@ -31,6 +31,17 @@
       <div id="print-frames-pane" class="card bg-base-100 shadow p-4">
         <div class="opacity-50 text-sm">Select a template to load frames.</div>
       </div>
+
+      <div class="card bg-base-100 shadow p-4">
+        <div class="collapse collapse-arrow border border-base-300 bg-base-200">
+          <input type="checkbox" id="rest-curl-toggle" aria-label="REST API curl sample" />
+          <div class="collapse-title font-semibold">REST API curl sample</div>
+          <div class="collapse-content w-full min-w-0">
+            <p class="text-sm opacity-70 mb-2">Equivalent REST request for the current template &amp; settings.</p>
+            <pre class="text-xs bg-base-300 rounded p-2 overflow-x-auto"><code id="curl-sample"></code></pre>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="card bg-base-100 shadow p-4">
@@ -62,6 +73,7 @@
 
       <div class="collapse collapse-arrow border border-base-300 bg-base-200 mt-2">
         <input type="checkbox" aria-label="Advanced print settings" />
+
         <div class="collapse-title font-semibold">Advanced print settings</div>
         <div class="collapse-content grid grid-cols-1 gap-2 w-full min-w-0">
           <label class="form-control w-full min-w-0">
@@ -114,15 +126,6 @@
             <input type="checkbox" class="checkbox checkbox-sm" id="setting-display-print-setting" checked />
             <span class="label-text">Hide print-setting confirmation</span>
           </label>
-        </div>
-      </div>
-
-      <div class="collapse collapse-arrow border border-base-300 bg-base-200 mt-2">
-        <input type="checkbox" id="rest-curl-toggle" aria-label="REST API curl sample" />
-        <div class="collapse-title font-semibold">REST API curl sample</div>
-        <div class="collapse-content w-full min-w-0">
-          <p class="text-sm opacity-70 mb-2">Equivalent REST request for the current template &amp; settings.</p>
-          <pre class="text-xs bg-base-300 rounded p-2 overflow-x-auto"><code id="curl-sample"></code></pre>
         </div>
       </div>
     </div>
