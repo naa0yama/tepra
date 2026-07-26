@@ -31,7 +31,8 @@ use crate::{
         ApiDocsTemplate, Breadcrumb, ErrorAlertTemplate, HtmlTemplate, IndexTemplate,
         JobCardTemplate, JobsPageTemplate, MergeFramesTemplate, MergePrinterPanelTemplate, NAV_API,
         NAV_JOBS, NAV_PRINT, NAV_PRINTERS, PrintPageTemplate, PrinterStatusCardTemplate,
-        build_endpoint_views, build_job_entry_views,
+        build_endpoint_views, build_job_entry_views, build_tapes_view, override_prefill_fields,
+        serial_prefill_fields,
     },
 };
 
@@ -405,8 +406,21 @@ pub async fn api_docs() -> impl IntoResponse {
     })
 }
 
+/// Query parameters for `GET /ui/print`.
+#[derive(Debug, Deserialize)]
+pub struct PrintPageQuery {
+    /// Reprint source: a [`crate::jobs::JobRecord::record_id`] to prefill
+    /// the form from. Missing or unresolvable IDs fall back to the
+    /// traditional empty form.
+    pub from: Option<u64>,
+}
+
 /// `GET /ui/print` — merge-print page: template picker, frame table,
 /// print-settings form.
+///
+/// `?from=<record_id>` prefills the whole form (server-side, no client
+/// hydration) from a previously submitted job, so the unmodified submit JS
+/// (`collectRows`/`collectSerial`/`collectOverrides`) can re-read it as-is.
 #[instrument(
     name = "handler.print_page",
     skip_all,
@@ -415,11 +429,41 @@ pub async fn api_docs() -> impl IntoResponse {
         http.route = "/ui/print",
         http.response.status_code = tracing::field::Empty,
         url.scheme = tracing::field::Empty,
+        tepra.reprint_record_id = tracing::field::Empty,
     )
 )]
-pub async fn print_page(State(state): State<AppState>) -> impl IntoResponse {
+pub async fn print_page(
+    State(state): State<AppState>,
+    Query(q): Query<PrintPageQuery>,
+) -> impl IntoResponse {
     let (templates, error) = crate::templates::list_templates(&state.template_dir)
         .map_or_else(|e| (vec![], Some(e.to_string())), |items| (items, None));
+
+    let record = q.from.and_then(|id| {
+        Span::current().record("tepra.reprint_record_id", id);
+        state.jobs.get(id)
+    });
+
+    let prefill = record.is_some();
+    let selected_template = record
+        .as_ref()
+        .map_or_else(String::new, |r| r.template.clone());
+    let template_mismatch =
+        record.is_some() && !templates.iter().any(|t| t.path == selected_template);
+
+    // Best-effort: on a template lookup failure (missing file, unreadable,
+    // or import_frame error) the tape cards render with no columns rather
+    // than failing the whole page — see task point E, field-level drift
+    // detection is explicitly out of scope.
+    let frames = match &record {
+        Some(r) => fetch_template_and_frames(&state, &r.template)
+            .await
+            .map_or_else(|_| vec![], |(_, frames)| frames),
+        None => vec![],
+    };
+    let tapes = build_tapes_view(&frames, record.as_ref().map(|r| r.request.rows.as_slice()));
+    let serial = serial_prefill_fields(record.as_ref().and_then(|r| r.request.serial.as_ref()));
+    let overrides = override_prefill_fields(record.as_ref().map(|r| &r.request.overrides));
 
     Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
     HtmlTemplate(PrintPageTemplate {
@@ -430,6 +474,12 @@ pub async fn print_page(State(state): State<AppState>) -> impl IntoResponse {
         }],
         templates,
         error,
+        prefill,
+        selected_template,
+        template_mismatch,
+        tapes,
+        serial,
+        overrides,
     })
 }
 
@@ -461,12 +511,16 @@ pub async fn print_frames(
         Ok((_, frames)) => (frames, None),
         Err(e) => (vec![], Some(e.to_string())),
     };
+    let tapes = build_tapes_view(&frames, None);
+    let serial = serial_prefill_fields(None);
 
     Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
     HtmlTemplate(MergeFramesTemplate {
         template: q.template,
         frames,
         error,
+        tapes,
+        serial,
     })
 }
 

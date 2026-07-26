@@ -1,12 +1,16 @@
 {# templates/pages/print.html #}
 {% extends "shells/dashboard.html" %}
 {% import "components/alert.html" as components %}
+{% import "partials/frames_form.html" as frames_form %}
 
 {% block title %}Print{% endblock %}
 
 {% block body %}
   {% if let Some(e) = error %}
     {{ components::error_alert(message=e) }}
+  {% endif %}
+  {% if template_mismatch %}
+    {{ components::error_alert(message="Reprint source template is no longer available; showing a best-effort fill.") }}
   {% endif %}
 
   <h1 class="text-2xl font-bold mb-4">Print</h1>
@@ -17,9 +21,9 @@
         <label class="form-control">
           <div class="label"><span class="label-text">Template</span></div>
           <select id="template-select" class="select select-bordered w-full">
-            <option value="" disabled selected>Select template…</option>
+            <option value="" disabled {% if !prefill %}selected{% endif %}>Select template…</option>
             {% for t in templates %}
-              <option value="{{ t.path }}">{{ t.path }}</option>
+              <option value="{{ t.path }}" {% if t.path == selected_template %}selected{% endif %}>{{ t.path }}</option>
             {% endfor %}
           </select>
         </label>
@@ -29,7 +33,11 @@
       </div>
 
       <div id="print-frames-pane" class="card bg-base-100 shadow p-4">
-        <div class="opacity-50 text-sm">Select a template to load frames.</div>
+        {% if prefill %}
+          {{ frames_form::frames_form(template=selected_template, tapes=tapes, serial=serial) }}
+        {% else %}
+          <div class="opacity-50 text-sm">Select a template to load frames.</div>
+        {% endif %}
       </div>
 
       <div class="card bg-base-100 shadow p-4">
@@ -71,7 +79,7 @@
 
       <label class="form-control">
         <div class="label"><span class="label-text">Copies</span></div>
-        <input type="number" min="1" max="999" value="1" class="input input-bordered w-full" id="print-copies" />
+        <input type="number" min="1" max="999" value="{{ overrides.copies }}" class="input input-bordered w-full" id="print-copies" />
       </label>
 
       <div class="collapse collapse-arrow border border-base-300 bg-base-200 mt-2">
@@ -80,52 +88,52 @@
         <div class="collapse-content grid grid-cols-1 gap-2 w-full min-w-0">
           <label class="form-control w-full min-w-0">
             <div class="label"><span class="label-text">Density</span></div>
-            <input type="number" min="-5" max="5" class="input input-bordered input-sm w-full" id="setting-density" />
+            <input type="number" min="-5" max="5" class="input input-bordered input-sm w-full" id="setting-density" {% if let Some(v) = overrides.density %}value="{{ v }}"{% endif %} />
           </label>
           <label class="form-control w-full min-w-0">
             <div class="label"><span class="label-text">Print speed</span></div>
             <select class="select select-bordered select-sm w-full" id="setting-print-speed">
-              <option value="">Low (default)</option>
-              <option value="1">High</option>
-              <option value="2">Low</option>
-              <option value="3">Middle</option>
+              <option value="" {% if overrides.print_speed == 0 %}selected{% endif %}>Low (default)</option>
+              <option value="1" {% if overrides.print_speed == 1 %}selected{% endif %}>High</option>
+              <option value="2" {% if overrides.print_speed == 2 %}selected{% endif %}>Low</option>
+              <option value="3" {% if overrides.print_speed == 3 %}selected{% endif %}>Middle</option>
             </select>
           </label>
           <label class="form-control w-full min-w-0">
             <div class="label"><span class="label-text">Tape cut</span></div>
             <select class="select select-bordered select-sm w-full" id="setting-tape-cut">
-              <option value="">Each label (default)</option>
-              <option value="1">Not cut</option>
-              <option value="2">Each label</option>
-              <option value="3">After job</option>
+              <option value="" {% if overrides.tape_cut == 0 %}selected{% endif %}>Each label (default)</option>
+              <option value="1" {% if overrides.tape_cut == 1 %}selected{% endif %}>Not cut</option>
+              <option value="2" {% if overrides.tape_cut == 2 %}selected{% endif %}>Each label</option>
+              <option value="3" {% if overrides.tape_cut == 3 %}selected{% endif %}>After job</option>
             </select>
           </label>
           <label class="form-control w-full min-w-0">
             <div class="label"><span class="label-text">Half cut</span></div>
             <select class="select select-bordered select-sm w-full" id="setting-half-cut">
-              <option value="">Half-cut (default)</option>
-              <option value="1">No half-cut</option>
-              <option value="2">Half-cut</option>
+              <option value="" {% if overrides.half_cut == 0 %}selected{% endif %}>Half-cut (default)</option>
+              <option value="1" {% if overrides.half_cut == 1 %}selected{% endif %}>No half-cut</option>
+              <option value="2" {% if overrides.half_cut == 2 %}selected{% endif %}>Half-cut</option>
             </select>
           </label>
           <label class="form-control w-full min-w-0">
             <div class="label"><span class="label-text">Half cut separate</span></div>
             <select class="select select-bordered select-sm w-full" id="setting-half-cut-separate">
-              <option value="">Continuous (joined) (default)</option>
-              <option value="1">Continuous (joined)</option>
-              <option value="2">Continuous (separated)</option>
+              <option value="" {% if overrides.half_cut_separate == 0 %}selected{% endif %}>Continuous (joined) (default)</option>
+              <option value="1" {% if overrides.half_cut_separate == 1 %}selected{% endif %}>Continuous (joined)</option>
+              <option value="2" {% if overrides.half_cut_separate == 2 %}selected{% endif %}>Continuous (separated)</option>
             </select>
           </label>
           <label class="form-control w-full min-w-0">
             <div class="label"><span class="label-text">Margin left/right (0.1mm)</span></div>
-            <input type="number" min="0" class="input input-bordered input-sm w-full" id="setting-margin-left-right" />
+            <input type="number" min="0" class="input input-bordered input-sm w-full" id="setting-margin-left-right" {% if let Some(v) = overrides.margin_left_right %}value="{{ v }}"{% endif %} />
           </label>
           <label class="label cursor-pointer justify-start gap-2">
-            <input type="checkbox" class="checkbox checkbox-sm" id="setting-display-tape-width" checked />
+            <input type="checkbox" class="checkbox checkbox-sm" id="setting-display-tape-width" {% if overrides.display_tape_width_checked %}checked{% endif %} />
             <span class="label-text">Hide tape-width confirmation</span>
           </label>
           <label class="label cursor-pointer justify-start gap-2">
-            <input type="checkbox" class="checkbox checkbox-sm" id="setting-display-print-setting" checked />
+            <input type="checkbox" class="checkbox checkbox-sm" id="setting-display-print-setting" {% if overrides.display_print_setting_checked %}checked{% endif %} />
             <span class="label-text">Hide print-setting confirmation</span>
           </label>
         </div>
@@ -629,6 +637,13 @@
           fallbackCopy();
         }
       });
+
+      // Server-side prefill (?from=<id>) renders #print-frames-pane's <form>
+      // inline on initial load, so no htmx:afterSwap fires to wire it up —
+      // do it here instead.
+      if (document.getElementById("print-form")) {
+        wireFramesForm();
+      }
     })();
   </script>
 {% endblock %}

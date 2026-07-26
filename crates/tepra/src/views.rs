@@ -163,6 +163,86 @@ pub struct PrintPageTemplate {
     pub templates: Vec<crate::templates::TemplateEntry>,
     /// Template directory read error, if any.
     pub error: Option<String>,
+    /// `?from=<id>` resolved to a stored job: render `#print-frames-pane`
+    /// inline (server-side, values populated) instead of the placeholder.
+    pub prefill: bool,
+    /// Reprint source template path; empty when not prefilled. Marks the
+    /// matching `#template-select` `<option>` and is the inline frames
+    /// form's `data-template`.
+    pub selected_template: String,
+    /// `true` when `selected_template` is absent from `templates` — shows
+    /// a mismatch banner; best-effort fill still applies (task point E).
+    pub template_mismatch: bool,
+    /// Tape cards for the inline frames form; see [`build_tapes_view`].
+    pub tapes: Vec<Vec<FrameFieldView>>,
+    /// Serial section prefill for the inline frames form.
+    pub serial: SerialPrefill,
+    /// Right-column print-settings prefill.
+    pub overrides: OverridePrefill,
+}
+
+/// Right-column setting-input prefill for `pages/print.html`.
+#[derive(Debug, Clone)]
+pub struct OverridePrefill {
+    /// `#print-copies` value.
+    pub copies: u32,
+    /// `#setting-density` value; `None` leaves the input blank.
+    pub density: Option<i32>,
+    /// `#setting-tape-cut` selection; `0` = no selection (default option).
+    pub tape_cut: u32,
+    /// `#setting-half-cut` selection; `0` = no selection (default option).
+    pub half_cut: u32,
+    /// `#setting-half-cut-separate` selection; `0` = no selection (default option).
+    pub half_cut_separate: u32,
+    /// `#setting-print-speed` selection; `0` = no selection (default option).
+    pub print_speed: u32,
+    /// `#setting-margin-left-right` value; `None` leaves the input blank.
+    pub margin_left_right: Option<u32>,
+    /// `#setting-display-tape-width` checked state.
+    pub display_tape_width_checked: bool,
+    /// `#setting-display-print-setting` checked state.
+    pub display_print_setting_checked: bool,
+}
+
+impl OverridePrefill {
+    /// Values matching today's hardcoded markup exactly (no prefill).
+    const fn default_form() -> Self {
+        Self {
+            copies: 1,
+            density: None,
+            tape_cut: 0,
+            half_cut: 0,
+            half_cut_separate: 0,
+            print_speed: 0,
+            margin_left_right: None,
+            display_tape_width_checked: true,
+            display_print_setting_checked: true,
+        }
+    }
+}
+
+/// Build [`OverridePrefill`] from a stored job's overrides.
+///
+/// `None` yields [`OverridePrefill::default_form`] exactly, so non-prefill
+/// rendering is unchanged. Applies task point C's checkbox inversion:
+/// `collectOverrides()` sends `displayTapeWidth`/`displayPrintSetting` as
+/// `checked ? 1 : 2`, so an overrides value of `2` unchecks the box; `1` or
+/// unset (matching the markup's current `checked` default) checks it.
+#[must_use]
+pub fn override_prefill_fields(
+    overrides: Option<&crate::merge::MergePrintOverrides>,
+) -> OverridePrefill {
+    overrides.map_or_else(OverridePrefill::default_form, |o| OverridePrefill {
+        copies: o.copies.unwrap_or(1),
+        density: o.density,
+        tape_cut: o.tape_cut.unwrap_or(0),
+        half_cut: o.half_cut.unwrap_or(0),
+        half_cut_separate: o.half_cut_separate.unwrap_or(0),
+        print_speed: o.print_speed.unwrap_or(0),
+        margin_left_right: o.margin_left_right,
+        display_tape_width_checked: o.display_tape_width != Some(2),
+        display_print_setting_checked: o.display_print_setting != Some(2),
+    })
 }
 
 /// Context for the frame-table + print-settings-form partial
@@ -177,6 +257,110 @@ pub struct MergeFramesTemplate {
     pub frames: Vec<tepra_core::dto::template::ImportFrameItem>,
     /// Set when the template could not be read or `import_frame` failed.
     pub error: Option<String>,
+    /// Tape cards to render, one entry per tape; see [`build_tapes_view`].
+    pub tapes: Vec<Vec<FrameFieldView>>,
+    /// Serial-number section prefill; see [`serial_prefill_fields`].
+    pub serial: SerialPrefill,
+}
+
+/// One `{title, value}` cell rendered inside a tape card in
+/// `partials/frames_form.html`.
+#[derive(Debug, Clone)]
+pub struct FrameFieldView {
+    /// Frame column title (`data-field-title` on the rendered input).
+    pub title: String,
+    /// Prefilled value; empty when there is no prefill or the title has no
+    /// match in the stored row (frame-drift best-effort absorption).
+    pub value: String,
+}
+
+/// Build the tape-card rows for `partials/frames_form.html`.
+///
+/// `rows` is `None` (or `Some(&[])`, treated the same way) for the
+/// traditional empty form: renders exactly one tape card with empty-value
+/// fields, so non-prefill output stays byte-identical to before prefill
+/// existed. Otherwise renders one card per submitted row (task point B:
+/// render ALL tapes, not just the first), joining each frame column by
+/// `title` against the row's [`MergeField`]s — unmatched columns render
+/// empty rather than erroring, absorbing frame drift best-effort.
+#[must_use]
+pub fn build_tapes_view(
+    frames: &[tepra_core::dto::template::ImportFrameItem],
+    rows: Option<&[Vec<MergeField>]>,
+) -> Vec<Vec<FrameFieldView>> {
+    rows.filter(|r| !r.is_empty()).map_or_else(
+        || {
+            vec![
+                frames
+                    .iter()
+                    .map(|f| FrameFieldView {
+                        title: f.title.clone(),
+                        value: String::new(),
+                    })
+                    .collect(),
+            ]
+        },
+        |rows| {
+            rows.iter()
+                .map(|row| {
+                    frames
+                        .iter()
+                        .map(|f| FrameFieldView {
+                            title: f.title.clone(),
+                            value: row
+                                .iter()
+                                .find(|field| field.title == f.title)
+                                .map_or_else(String::new, |field| field.value.clone()),
+                        })
+                        .collect()
+                })
+                .collect()
+        },
+    )
+}
+
+/// Flattened serial-number prefill for `partials/frames_form.html`, avoiding
+/// nested `Option` handling in the template.
+#[derive(Debug, Clone)]
+pub struct SerialPrefill {
+    /// Whether `#serial-enable` is checked and `#serial-fields` is visible.
+    pub enabled: bool,
+    /// `#serial-title` selection; empty when disabled.
+    pub title: String,
+    /// `#serial-start` value.
+    pub start: i64,
+    /// `#serial-count` value.
+    pub count: u32,
+    /// `#serial-step` value.
+    pub step: i64,
+    /// `#serial-pad` value.
+    pub pad: u8,
+}
+
+/// Build [`SerialPrefill`] from a stored job's `SerialSpec`.
+///
+/// `None` yields the form's current hardcoded defaults exactly (disabled,
+/// start/count/step = 1, pad = 0), so non-prefill rendering is unchanged.
+#[must_use]
+pub fn serial_prefill_fields(serial: Option<&crate::merge::SerialSpec>) -> SerialPrefill {
+    serial.map_or(
+        SerialPrefill {
+            enabled: false,
+            title: String::new(),
+            start: 1,
+            count: 1,
+            step: 1,
+            pad: 0,
+        },
+        |s| SerialPrefill {
+            enabled: true,
+            title: s.title.clone(),
+            start: s.start,
+            count: s.count,
+            step: s.step,
+            pad: s.pad,
+        },
+    )
 }
 
 /// Context for a standalone error banner partial, reused by the merge-print

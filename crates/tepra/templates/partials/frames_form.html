@@ -1,0 +1,69 @@
+{# templates/partials/frames_form.html #}
+{# Shared #print-form markup for both the standalone `GET /ui/print/frames`
+   partial (partials/merge_frames.html) and the inline server-side prefill
+   render in pages/print.html. `tapes` always has at least one entry (the
+   traditional empty form is one tape with empty-value fields), so this
+   macro never special-cases an empty tape list. #}
+{% macro frames_form(template, tapes, serial) %}
+  <form id="print-form" class="flex flex-col gap-4" data-template="{{ template }}">
+    <input type="hidden" name="template" value="{{ template }}" />
+
+    <div id="tapes-container" class="flex flex-col gap-3">
+      {% for tape in tapes %}
+        <div class="card bg-base-100 border border-base-300 p-3" data-tape-card>
+          <div class="flex items-center justify-between mb-2">
+            <span class="font-semibold text-sm" data-tape-label>Tape {{ loop.index }}</span>
+            <button type="button" class="btn btn-xs btn-error" data-remove-tape>Remove</button>
+          </div>
+          <div class="grid grid-cols-[max-content_1fr] items-center gap-x-3 gap-y-2">
+            {% for f in tape %}
+              <span class="label-text">{{ f.title }}</span>
+              <input type="text" class="input input-sm input-bordered w-full" data-field-title="{{ f.title }}" value="{{ f.value }}" />
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    <button type="button" class="btn btn-sm w-fit" id="add-row-button">+ Add tape</button>
+
+    <div class="card bg-base-100 border border-base-300 p-4">
+      <label class="label cursor-pointer justify-start gap-2">
+        <input type="checkbox" class="checkbox checkbox-sm" id="serial-enable" {% if serial.enabled %}checked{% endif %} />
+        <span class="label-text font-semibold">Serial number</span>
+      </label>
+      <div id="serial-fields" class="grid grid-cols-2 sm:grid-cols-5 gap-2 mt-2{% if !serial.enabled %} hidden{% endif %}">
+        <label class="form-control">
+          <div class="label"><span class="label-text">Title</span></div>
+          <select class="select select-bordered select-sm" id="serial-title">
+            {% for f in tapes[0] %}
+              <option value="{{ f.title }}" {% if f.title == serial.title %}selected{% endif %}>{{ f.title }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="form-control">
+          <div class="label"><span class="label-text">Start</span></div>
+          <input type="number" class="input input-bordered input-sm" id="serial-start" value="{{ serial.start }}" />
+        </label>
+        <label class="form-control">
+          <div class="label"><span class="label-text">Count</span></div>
+          <input type="number" min="1" class="input input-bordered input-sm" id="serial-count" value="{{ serial.count }}" />
+        </label>
+        <label class="form-control">
+          <div class="label"><span class="label-text">Step</span></div>
+          <input type="number" class="input input-bordered input-sm" id="serial-step" value="{{ serial.step }}" />
+        </label>
+        <label class="form-control">
+          <div class="label"><span class="label-text">Pad</span></div>
+          <input type="number" min="0" max="20" class="input input-bordered input-sm" id="serial-pad" value="{{ serial.pad }}" />
+        </label>
+      </div>
+    </div>
+
+    <label class="label cursor-pointer justify-start gap-2">
+      <input type="checkbox" class="checkbox checkbox-sm" id="print-confirm-skip" />
+      <span class="label-text">Skip confirmation before printing</span>
+    </label>
+
+    <button type="submit" class="btn btn-primary w-fit" id="print-submit-btn" data-mode="print">Print</button>
+  </form>
+{% endmacro %}
