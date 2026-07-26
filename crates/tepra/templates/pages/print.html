@@ -546,6 +546,7 @@
             label.textContent = `Tape ${index}`;
           }
           container.appendChild(clone);
+          renderCurlSample();
         });
 
         form?.addEventListener("click", (evt) => {
@@ -553,6 +554,7 @@
             const container = document.getElementById("tapes-container");
             if (container && container.querySelectorAll("[data-tape-card]").length > 1) {
               evt.target.closest("[data-tape-card]")?.remove();
+              renderCurlSample();
             }
           }
         });
@@ -575,6 +577,10 @@
           }
           document.getElementById("print-confirm-modal")?.showModal();
         });
+
+        // Frames just swapped in (template load / row reset); refresh the curl
+        // sample so it reflects the new rows without waiting for an edit.
+        renderCurlSample();
       }
 
       document.getElementById("print-confirm-yes")?.addEventListener("click", () => {
