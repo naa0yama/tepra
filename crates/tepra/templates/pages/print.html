@@ -38,7 +38,10 @@
           <div class="collapse-title font-semibold">REST API curl sample</div>
           <div class="collapse-content w-full min-w-0">
             <p class="text-sm opacity-70 mb-2">Equivalent REST request for the current template &amp; settings.</p>
-            <pre class="text-xs bg-base-300 rounded p-2 overflow-x-auto"><code id="curl-sample"></code></pre>
+            <div class="relative">
+              <button type="button" id="curl-copy-btn" class="btn btn-xs btn-ghost absolute top-1 right-1 z-10" aria-label="Copy curl command">Copy</button>
+              <pre class="text-xs bg-base-300 rounded p-2 overflow-x-auto"><code id="curl-sample"></code></pre>
+            </div>
           </div>
         </div>
       </div>
@@ -580,6 +583,45 @@
       });
       document.getElementById("print-confirm-no")?.addEventListener("click", () => {
         document.getElementById("print-confirm-modal")?.close();
+      });
+
+      document.getElementById("curl-copy-btn")?.addEventListener("click", () => {
+        const code = document.getElementById("curl-sample");
+        const btn = document.getElementById("curl-copy-btn");
+        if (!code || !btn) {
+          return;
+        }
+        const text = code.textContent;
+        const flash = () => {
+          const original = btn.textContent;
+          btn.textContent = "Copied!";
+          setTimeout(() => {
+            btn.textContent = original;
+          }, 1500);
+        };
+        // WHY-NOT: navigator.clipboard.writeText unconditionally — it is
+        // undefined outside a secure context (e.g. the printer UI reached
+        // over plain http://<ip>:3000 on the LAN) and would throw there, so
+        // guard it and fall back to a hidden-textarea execCommand copy.
+        const fallbackCopy = () => {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            document.execCommand("copy");
+            flash();
+          } finally {
+            textarea.remove();
+          }
+        };
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(text).then(flash).catch(fallbackCopy);
+        } else {
+          fallbackCopy();
+        }
       });
     })();
   </script>
