@@ -73,7 +73,6 @@
 
       <div class="collapse collapse-arrow border border-base-300 bg-base-200 mt-2">
         <input type="checkbox" aria-label="Advanced print settings" />
-
         <div class="collapse-title font-semibold">Advanced print settings</div>
         <div class="collapse-content grid grid-cols-1 gap-2 w-full min-w-0">
           <label class="form-control w-full min-w-0">
@@ -161,6 +160,13 @@
       }
 
       function loadFrames(templatePath) {
+        // Show an immediate spinner; the htmx.ajax innerHTML swap below
+        // replaces it once the frames response arrives, so no teardown needed.
+        const pane = document.getElementById("print-frames-pane");
+        if (pane) {
+          pane.innerHTML =
+            '<div class="flex justify-center p-4"><span class="loading loading-spinner loading-md"></span></div>';
+        }
         htmx.ajax("GET", `/ui/print/frames?template=${encodeURIComponent(templatePath)}`, {
           target: "#print-frames-pane",
           swap: "innerHTML",
