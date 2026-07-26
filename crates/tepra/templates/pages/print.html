@@ -331,6 +331,17 @@
       populatePrinterSelects();
       renderCurlSample();
 
+      // Keep the curl sample in sync with ANY request-body field edit. The
+      // body is built from two regions: tape/serial fields in the htmx-swapped
+      // #print-frames-pane form, and copies + Advanced overrides that are
+      // static in the right column. Delegating on document.body catches both
+      // via event bubbling and survives the frames-pane swap without any
+      // rebinding. Bind BOTH events: text/number fields fire input (live
+      // per-keystroke), while the override <select>s and checkboxes fire only
+      // change.
+      document.body.addEventListener("input", renderCurlSample);
+      document.body.addEventListener("change", renderCurlSample);
+
       function readNumberOrUndefined(el) {
         if (!el || el.value === "") {
           return undefined;
