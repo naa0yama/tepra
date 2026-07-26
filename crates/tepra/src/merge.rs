@@ -181,6 +181,10 @@ pub struct MergePrintOverrides {
     pub print_speed: Option<u32>,
     /// Left/right margin in 0.1mm units.
     pub margin_left_right: Option<u32>,
+    /// 2=show tape-width confirmation, 1=hide.
+    pub display_tape_width: Option<u32>,
+    /// 2=show print-setting confirmation (also drives transfer-tape), 1=hide.
+    pub display_print_setting: Option<u32>,
 }
 
 /// Builds a [`PrintParameter`] from SDK-default wire values, applying `overrides`.
@@ -207,14 +211,15 @@ pub fn merge_print_parameter(overrides: &MergePrintOverrides) -> PrintParameter 
         priority_cut_setting: 1,
         half_cut_separate: overrides.half_cut_separate.unwrap_or(1),
         margin_left_right: overrides.margin_left_right.unwrap_or(0),
-        display_tape_width: 2,
+        display_tape_width: overrides.display_tape_width.unwrap_or(1),
         error_message: ErrorMessageParam {
             mode: 2,
             file_output: 0,
             file_path: String::new(),
         },
-        display_transfer_tape: 2,
-        display_print_setting: 2,
+        // WHY-NOT: separate override for transfer_tape — SDK keeps it locked to display_print_setting
+        display_transfer_tape: overrides.display_print_setting.unwrap_or(1),
+        display_print_setting: overrides.display_print_setting.unwrap_or(1),
         cut_title: 0,
         kana_zen: 0,
         display_print_preview: 1,

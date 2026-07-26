@@ -106,6 +106,14 @@
             <div class="label"><span class="label-text">Margin left/right (0.1mm)</span></div>
             <input type="number" min="0" class="input input-bordered input-sm w-full" id="setting-margin-left-right" />
           </label>
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="checkbox" class="checkbox checkbox-sm" id="setting-display-tape-width" checked />
+            <span class="label-text">Hide tape-width confirmation</span>
+          </label>
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="checkbox" class="checkbox checkbox-sm" id="setting-display-print-setting" checked />
+            <span class="label-text">Hide print-setting confirmation</span>
+          </label>
         </div>
       </div>
 
@@ -342,6 +350,8 @@
           halfCutSeparate: readNumberOrUndefined(document.getElementById("setting-half-cut-separate")),
           printSpeed: readNumberOrUndefined(document.getElementById("setting-print-speed")),
           marginLeftRight: readNumberOrUndefined(document.getElementById("setting-margin-left-right")),
+          displayTapeWidth: document.getElementById("setting-display-tape-width")?.checked ? 1 : 2,
+          displayPrintSetting: document.getElementById("setting-display-print-setting")?.checked ? 1 : 2,
         };
       }
 

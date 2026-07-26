@@ -18,12 +18,14 @@ fn test_defaults_match_sdk_wire_mapping() {
     assert_eq!(param.priority_cut_setting, 1);
     assert_eq!(param.half_cut_separate, 1);
     assert_eq!(param.margin_left_right, 0);
-    assert_eq!(param.display_tape_width, 2);
+    // WHY-NOT: SDK shows confirmations by default (2) — product hides them (1) so
+    // unattended prints don't stall on a dialog; error message (mode) stays shown.
+    assert_eq!(param.display_tape_width, 1);
     assert_eq!(param.error_message.mode, 2);
     assert_eq!(param.error_message.file_output, 0);
     assert_eq!(param.error_message.file_path, "");
-    assert_eq!(param.display_transfer_tape, 2);
-    assert_eq!(param.display_print_setting, 2);
+    assert_eq!(param.display_transfer_tape, 1);
+    assert_eq!(param.display_print_setting, 1);
     assert_eq!(param.cut_title, 0);
     assert_eq!(param.kana_zen, 0);
     assert_eq!(param.display_print_preview, 1);
