@@ -141,7 +141,7 @@ async fn sidebar_renders_nav_structure() {
     assert_eq!(response.status(), StatusCode::OK);
     let html = body_html(response.into_body()).await;
 
-    for label in ["TEPRA Creator", "Printers", "Jobs"] {
+    for label in ["Label Creator", "Printers", "Jobs"] {
         assert!(
             html.contains(label),
             "sidebar must render nav label {label:?}; got:\n{html}"

@@ -51,6 +51,9 @@ Base layout used by all page templates via `{% extends %}`:
   collapses to hamburger on mobile
 - Toast container: `#toast-container` (DaisyUI toast, `aria-live="polite"`)
 - Exposes `{% block title %}` and `{% block body %}` blocks
+- `<title>` renders `{% block title %}` (default `Label Creator`) followed by
+  `— Label Creator for TEPRA` (self-identity brand suffix, e.g.
+  `Printers — Label Creator for TEPRA`)
 
 ### pages/index.html
 
@@ -243,8 +246,8 @@ Import with `{% import "components/alert.html" as components %}`.
 Macro file: `{% macro sidebar(active) %}`.
 
 - Renders the `drawer-side` content: a clickable logo link (`<a href="/ui/">`,
-  printer-mark icon + "TEPRA Creator") followed by a separate DaisyUI `menu`
-  list
+  printer-mark icon + "Label Creator" / "for TEPRA" two-line brand label)
+  followed by a separate DaisyUI `menu` list
 - Menu items (in render order): Printers (linked, `href="/ui/"`),
   Print (linked, `href="/ui/print"`), Jobs (`menu-disabled`, "Coming soon"
   badge), API (linked, `href="/ui/api"`) — Templates and Settings items removed
