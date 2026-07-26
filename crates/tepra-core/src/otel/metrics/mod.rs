@@ -12,7 +12,7 @@
 mod process;
 
 #[cfg(feature = "otel")]
-use opentelemetry::metrics::Histogram;
+use opentelemetry::metrics::{Counter, Histogram};
 #[cfg(feature = "otel")]
 use opentelemetry_semantic_conventions::{attribute, metric as semconv};
 
@@ -26,6 +26,7 @@ pub struct Meters {
     // --- Sync instruments ---
     http_request_duration: Histogram<f64>,
     server_request_duration: Histogram<f64>,
+    jobs_recorded: Counter<u64>,
     // --- Observable process metrics (feature = "process-metrics") ---
     // Disabled under Miri: sysinfo calls sysconf(_SC_CLK_TCK) which Miri does not stub.
     #[cfg(all(feature = "process-metrics", not(miri)))]
@@ -71,9 +72,24 @@ impl Meters {
                 .with_unit("s")
                 .with_description("HTTP server request duration (`OTel` HTTP semconv)")
                 .build(),
+            jobs_recorded: meter
+                .u64_counter("tepra_jobs_recorded_total")
+                .with_unit("{job}")
+                .with_description("Print jobs recorded into the in-memory job history, by outcome")
+                .build(),
             #[cfg(all(feature = "process-metrics", not(miri)))]
             _process: process::ProcessMetricHandles::register(&meter),
         }
+    }
+
+    /// Increment the `tepra_jobs_recorded_total` counter for a recorded print job.
+    ///
+    /// `outcome` is a short label (e.g. `"accepted"` or `"failed"`), not a full
+    /// error message — keep cardinality low.
+    pub fn record_job_recorded(&self, outcome: &str) {
+        use opentelemetry::KeyValue;
+        self.jobs_recorded
+            .add(1, &[KeyValue::new("outcome", outcome.to_owned())]);
     }
 
     /// Record an HTTP server request duration with `OTel` HTTP semantic convention attributes.
@@ -161,6 +177,9 @@ impl Meters {
         _error_type: Option<&str>,
     ) {
     }
+
+    /// Increment the jobs-recorded counter (no-op).
+    pub fn record_job_recorded(&self, _outcome: &str) {}
 
     // Each argument maps 1:1 to a semconv attribute; a struct would add indirection with no gain.
     #[allow(clippy::too_many_arguments)]
@@ -277,6 +296,38 @@ mod tests {
             other => panic!("unexpected metric type: {other:?}"),
         };
         assert_eq!(count, 1);
+
+        provider.shutdown().unwrap();
+    }
+
+    #[test]
+    fn record_job_recorded_increments_counter_with_outcome_attribute() {
+        let (provider, exporter) = test_provider();
+        opentelemetry::global::set_meter_provider(provider.clone());
+
+        let meters = super::Meters::new();
+        meters.record_job_recorded("accepted");
+        meters.record_job_recorded("failed");
+
+        provider.force_flush().expect("flush failed");
+
+        let metrics = exporter.get_finished_metrics().expect("no data");
+        let metric = find_metric(&metrics, "tepra_jobs_recorded_total")
+            .expect("tepra_jobs_recorded_total not found");
+
+        let outcomes: Vec<String> = match metric.data() {
+            AggregatedMetrics::U64(MetricData::Sum(sum)) => sum
+                .data_points()
+                .filter_map(|dp| {
+                    dp.attributes()
+                        .find(|kv| kv.key.as_str() == "outcome")
+                        .map(|kv| kv.value.as_str().into_owned())
+                })
+                .collect(),
+            other => panic!("unexpected metric type: {other:?}"),
+        };
+        assert!(outcomes.contains(&"accepted".to_owned()));
+        assert!(outcomes.contains(&"failed".to_owned()));
 
         provider.shutdown().unwrap();
     }

@@ -37,6 +37,16 @@ fn merge_app(client: Arc<dyn TepraClient>, template_dir: PathBuf) -> axum::Route
     build_merge_router(AppState::new_with_template_dir(client, template_dir))
 }
 
+/// Like [`merge_app`], but also returns the `AppState` so tests can inspect
+/// `state.jobs` after the request completes.
+fn merge_app_with_state(
+    client: Arc<dyn TepraClient>,
+    template_dir: PathBuf,
+) -> (axum::Router, AppState) {
+    let state = AppState::new_with_template_dir(client, template_dir);
+    (build_merge_router(state.clone()), state)
+}
+
 fn templates_app(client: Arc<dyn TepraClient>, template_dir: PathBuf) -> axum::Router {
     build_templates_router(AppState::new_with_template_dir(client, template_dir))
 }
@@ -382,6 +392,116 @@ async fn test_merge_print_normalizes_csv_to_cell_reference_column_order() {
     // printer binds CSV columns to frames by cell-reference order, not by
     // import_frame's array order.
     assert_eq!(csv_text, "https://example.com/naa0yama,naa0yama\r\n");
+}
+
+// ---------------------------------------------------------------------------
+// Job history recording (crate::jobs::JobStore)
+// ---------------------------------------------------------------------------
+
+#[tokio::test]
+async fn test_merge_print_success_records_accepted_job() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("label.lw1"), fake_lw1_bytes()).unwrap();
+
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_import_frame(Ok(vec![name_frame()]));
+    mock.push_print(Ok(PrintResponse {
+        result: 1,
+        jobid: 42,
+    }));
+
+    let req_body = json!({
+        "template": "label.lw1",
+        "rows": [[{"title": "Name", "value": "田中"}]],
+    });
+
+    let (app, state) = merge_app_with_state(mock, dir.path().to_owned());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rest/merge-print/printer1")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&req_body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let (records, total) = state.jobs.page(1, 20);
+    assert_eq!(total, 1);
+    let record = &records[0];
+    assert_eq!(record.printer, "printer1");
+    assert_eq!(record.template, "label.lw1");
+    assert_eq!(
+        record.outcome,
+        tepra::jobs::JobOutcome::Accepted { jobid: 42 }
+    );
+}
+
+#[tokio::test]
+async fn test_merge_print_failure_records_failed_job() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("label.lw1"), fake_lw1_bytes()).unwrap();
+
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_import_frame(Ok(vec![name_frame()]));
+    mock.push_print(Err(TepraError::Creator { errcode: 2 }));
+
+    let req_body = json!({
+        "template": "label.lw1",
+        "rows": [[{"title": "Name", "value": "田中"}]],
+    });
+
+    let (app, state) = merge_app_with_state(mock, dir.path().to_owned());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rest/merge-print/printer1")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&req_body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::BAD_GATEWAY);
+
+    let (records, total) = state.jobs.page(1, 20);
+    assert_eq!(total, 1);
+    assert!(matches!(
+        &records[0].outcome,
+        tepra::jobs::JobOutcome::Failed { message } if message.contains("errcode=2")
+    ));
+}
+
+#[tokio::test]
+async fn test_merge_print_missing_template_does_not_record_job() {
+    let dir = tempfile::tempdir().unwrap();
+    let mock = Arc::new(MockTepraClient::new());
+
+    let req_body = json!({
+        "template": "missing.lw1",
+        "rows": [[{"title": "Name", "value": "田中"}]],
+    });
+
+    let (app, state) = merge_app_with_state(mock, dir.path().to_owned());
+    let response = app
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/rest/merge-print/printer1")
+                .header("content-type", "application/json")
+                .body(Body::from(serde_json::to_vec(&req_body).unwrap()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+    let (_, total) = state.jobs.page(1, 20);
+    assert_eq!(total, 0);
 }
 
 // ---------------------------------------------------------------------------

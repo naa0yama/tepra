@@ -29,6 +29,7 @@ use tepra_core::{
 use tracing::{Span, instrument};
 
 use crate::{
+    jobs::JobOutcome,
     merge::{
         CsvEncoding, MergeField, MergePrintOverrides, SerialSpec, build_merge_csv, expand_serial,
         merge_print_parameter, sort_frames_by_column,
@@ -196,7 +197,7 @@ pub(crate) async fn merge_print(
 ) -> Result<PrintResponse, MergePrintError> {
     let (template_file, frames) = fetch_template_and_frames(state, &req.template).await?;
 
-    let rows = merge_rows_with_serial(req.rows, req.serial.as_ref())
+    let rows = merge_rows_with_serial(req.rows.clone(), req.serial.as_ref())
         .map_err(MergePrintError::BadRequest)?;
     if rows.is_empty() {
         return Err(MergePrintError::BadRequest(anyhow::anyhow!(
@@ -223,11 +224,49 @@ pub(crate) async fn merge_print(
         print_parameter: merge_print_parameter(&req.overrides),
     };
 
-    state
+    let submitted_at = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs());
+    let result = state
         .client
         .print(printer, print_request)
         .await
-        .map_err(MergePrintError::Upstream)
+        .map_err(MergePrintError::Upstream);
+
+    record_job(state, printer, &req, submitted_at, &result);
+    result
+}
+
+/// Record `merge_print`'s outcome into `state.jobs`, covering both the UI
+/// print-form and REST paths since both funnel through this one function.
+fn record_job(
+    state: &AppState,
+    printer: &str,
+    req: &MergePrintRequest,
+    submitted_at: u64,
+    result: &Result<PrintResponse, MergePrintError>,
+) {
+    let outcome = match result {
+        Ok(resp) => JobOutcome::Accepted { jobid: resp.jobid },
+        Err(MergePrintError::Upstream(e)) => JobOutcome::Failed {
+            message: e.to_string(),
+        },
+        // Template-not-found / bad-request failures happen before a job
+        // reaches the Creator API — nothing to record as a job submission.
+        Err(MergePrintError::TemplateNotFound(_) | MergePrintError::BadRequest(_)) => return,
+    };
+
+    if let Some(meters) = state.meters() {
+        meters.record_job_recorded(outcome.label());
+    }
+    let record_id = state.jobs.record(
+        printer.to_owned(),
+        req.template.clone(),
+        req.clone(),
+        outcome.clone(),
+        submitted_at,
+    );
+    tracing::info!(record_id, printer = %printer, outcome = %outcome, "job recorded");
 }
 
 /// Combines `rows` (tapes) with a generated `serial` sequence, one serial

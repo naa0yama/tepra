@@ -4,7 +4,7 @@ use std::{path::PathBuf, sync::Arc};
 
 use tepra_core::{client::traits::TepraClient, otel::metrics::Meters};
 
-use crate::actor::registry::PrinterRegistry;
+use crate::{actor::registry::PrinterRegistry, jobs::JobStore};
 
 /// Axum application state: Creator API client + per-printer actor registry.
 #[derive(Clone)]
@@ -16,6 +16,8 @@ pub struct AppState {
     pub registry: Arc<PrinterRegistry>,
     /// Directory that holds label template files served by `GET /api/rest/templates`.
     pub template_dir: PathBuf,
+    /// In-memory print job history (ephemeral, see ADR 0011).
+    pub jobs: Arc<JobStore>,
     /// `OTel` metric instruments. `None` when `OTEL_EXPORTER_OTLP_ENDPOINT` is unset.
     meters: Option<Arc<Meters>>,
 }
@@ -37,6 +39,7 @@ impl AppState {
             client,
             registry,
             template_dir,
+            jobs: Arc::new(JobStore::new()),
             meters: None,
         }
     }
@@ -112,5 +115,12 @@ mod tests {
     fn new_state_has_no_meters() {
         let state = AppState::new(mock_client());
         assert!(state.meters().is_none());
+    }
+
+    #[test]
+    fn new_state_has_empty_job_store() {
+        let state = AppState::new(mock_client());
+        let (_, total) = state.jobs.page(1, 20);
+        assert_eq!(total, 0);
     }
 }

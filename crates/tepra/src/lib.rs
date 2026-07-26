@@ -2,6 +2,7 @@
 
 pub mod actor;
 pub mod handlers;
+pub mod jobs;
 pub mod merge;
 pub mod router;
 pub mod state;
