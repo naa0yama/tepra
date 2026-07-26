@@ -70,9 +70,11 @@ pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
 
 /// `GET /ui/jobs/{printer}/{job_id}` — HTMX job-card partial.
 ///
-/// # Errors
-///
-/// Returns `502 Bad Gateway` when the Creator API client fails.
+/// Degrades to a `200` unavailable-notice partial (instead of a bare error)
+/// when the Creator API progress fetch fails, since HTMX does not swap a
+/// non-2xx response and the `hx-trigger="load"` spinner in `job_entry.html`
+/// would otherwise spin forever for an offline printer or an
+/// expired/discarded job.
 #[instrument(
     name = "handler.job_card",
     skip_all,
@@ -86,12 +88,24 @@ pub async fn index(State(state): State<AppState>) -> impl IntoResponse {
 pub async fn job_card(
     Path((printer_name, job_id)): Path<(String, u64)>,
     State(state): State<AppState>,
-) -> Result<impl IntoResponse, StatusCode> {
-    let resp = state
-        .client
-        .job_progress(&printer_name, job_id)
-        .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+) -> impl IntoResponse {
+    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
+
+    let Ok(resp) = state.client.job_progress(&printer_name, job_id).await else {
+        warn!(
+            printer_name = %printer_name,
+            job_id,
+            "job progress fetch failed; degrading to unavailable notice"
+        );
+        return HtmlTemplate(JobCardTemplate {
+            printer_name,
+            job_id,
+            job_end: true,
+            canceled: false,
+            progress: None,
+            unavailable: true,
+        });
+    };
 
     let progress = if resp.job_end || resp.canceled {
         None
@@ -99,14 +113,14 @@ pub async fn job_card(
         Some(resp.data_progress)
     };
 
-    Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
-    Ok(HtmlTemplate(JobCardTemplate {
+    HtmlTemplate(JobCardTemplate {
         printer_name,
         job_id,
         job_end: resp.job_end,
         canceled: resp.canceled,
         progress,
-    }))
+        unavailable: false,
+    })
 }
 
 /// Creator API control code for `job_control` requesting job cancellation.
@@ -171,6 +185,7 @@ pub async fn job_cancel(
         job_end: resp.job_end,
         canceled: resp.canceled,
         progress,
+        unavailable: false,
     }))
 }
 
@@ -563,6 +578,7 @@ pub async fn print_submit(
                 job_end: false,
                 canceled: false,
                 progress: None,
+                unavailable: false,
             })
             .into_response()
         }

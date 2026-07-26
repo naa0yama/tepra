@@ -7,9 +7,9 @@
       <code class="font-mono text-sm">{{ job.template }}</code>
       <span class="opacity-70 text-sm" data-epoch="{{ job.submitted_at }}"></span>
       {% if job.outcome_label == "accepted" %}
-        <span class="badge badge-success badge-sm">accepted</span>
+        <span class="badge badge-success badge-sm ml-auto">accepted</span>
       {% else %}
-        <span class="badge badge-error badge-sm">failed</span>
+        <span class="badge badge-error badge-sm ml-auto">failed</span>
       {% endif %}
     </div>
     <div class="collapse-content flex flex-col gap-3">

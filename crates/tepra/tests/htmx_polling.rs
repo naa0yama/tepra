@@ -219,11 +219,11 @@ async fn test_job_card_canceled_shows_canceled_text() {
 }
 
 // ---------------------------------------------------------------------------
-// 4. Client error: handler returns non-2xx
+// 4. Client error: handler degrades to a 200 unavailable-notice partial
 // ---------------------------------------------------------------------------
 
 #[tokio::test]
-async fn test_job_card_client_error_returns_non_200() {
+async fn test_job_card_client_error_degrades_to_200_unavailable_notice() {
     use tepra_core::error::TepraError;
 
     let mock = Arc::new(MockTepraClient::new());
@@ -239,10 +239,19 @@ async fn test_job_card_client_error_returns_non_200() {
         .await
         .unwrap();
 
-    assert_ne!(
+    assert_eq!(
         response.status(),
         StatusCode::OK,
-        "client error must not yield 200 OK"
+        "client error must degrade to 200, not a bare error status, so HTMX swaps the partial"
+    );
+    let html = body_html(response.into_body()).await;
+    assert!(
+        !html.contains("hx-trigger"),
+        "unavailable card must NOT keep polling; got:\n{html}"
+    );
+    assert!(
+        html.contains("unavailable"),
+        "unavailable card must show a progress-unavailable notice; got:\n{html}"
     );
 }
 

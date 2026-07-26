@@ -83,6 +83,7 @@ fn test_job_card_in_progress() {
         job_end: false,
         canceled: false,
         progress: Some(42),
+        unavailable: false,
     };
     let html = tmpl.render().unwrap();
     assert!(html.contains("PT-P710BT"));
@@ -99,6 +100,7 @@ fn test_job_card_completed() {
         job_end: true,
         canceled: false,
         progress: Some(100),
+        unavailable: false,
     };
     let html = tmpl.render().unwrap();
     // Polling must stop when job_end=true: no hx-trigger on polling interval
@@ -114,6 +116,7 @@ fn test_job_card_canceled() {
         job_end: true,
         canceled: true,
         progress: None,
+        unavailable: false,
     };
     let html = tmpl.render().unwrap();
     insta::assert_snapshot!("job_card_canceled", html);

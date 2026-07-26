@@ -1,6 +1,5 @@
 ---
 source: crates/tepra/tests/askama_render.rs
-assertion_line: 33
 expression: html
 ---
 
@@ -104,7 +103,7 @@ expression: html
       <code class="font-mono text-sm">label.lw1</code>
       <span class="opacity-70 text-sm" data-epoch="1700000100"></span>
       
-        <span class="badge badge-success badge-sm">accepted</span>
+        <span class="badge badge-success badge-sm ml-auto">accepted</span>
       
     </div>
     <div class="collapse-content flex flex-col gap-3">

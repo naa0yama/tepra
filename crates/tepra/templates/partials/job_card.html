@@ -10,7 +10,9 @@
   class="card bg-base-100 shadow p-4 m-2">
   <p class="font-bold">{{ printer_name }}</p>
   <p>Job #{{ job_id }}</p>
-{% if canceled %}
+{% if unavailable %}
+  <p class="text-warning">Progress unavailable (printer offline or job expired)</p>
+{% else if canceled %}
   <p class="text-error">Canceled</p>
 {% else if job_end %}
   <p class="text-success">Completed</p>

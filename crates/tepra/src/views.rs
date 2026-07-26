@@ -85,6 +85,10 @@ pub struct JobCardTemplate {
     pub canceled: bool,
     /// Print progress percentage (0–100), `None` while queued.
     pub progress: Option<u32>,
+    /// `true` when the Creator API progress fetch failed (offline printer,
+    /// expired/discarded job); renders a notice instead of the bare progress
+    /// state and stops HTMX polling.
+    pub unavailable: bool,
 }
 
 // ---------------------------------------------------------------------------
