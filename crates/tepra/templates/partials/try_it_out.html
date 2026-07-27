@@ -21,7 +21,7 @@
       <label class="input input-sm input-bordered flex items-center gap-2">
         <span class="font-mono">{{ param }}</span>
         {% if param == "name" %}
-          <select name="{{ param }}" data-path-param="{{ param }}" data-printer-select required class="grow">
+          <select name="{{ param }}" data-path-param="{{ param }}" data-printer-select required class="select select-bordered grow">
             <option value="" disabled selected>Loading printers…</option>
           </select>
         {% else %}

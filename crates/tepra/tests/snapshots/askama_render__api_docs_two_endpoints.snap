@@ -224,7 +224,7 @@ expression: html
       <label class="input input-sm input-bordered flex items-center gap-2">
         <span class="font-mono">name</span>
         
-          <select name="name" data-path-param="name" data-printer-select required class="grow">
+          <select name="name" data-path-param="name" data-printer-select required class="select select-bordered grow">
             <option value="" disabled selected>Loading printers…</option>
           </select>
         
