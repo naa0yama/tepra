@@ -9,7 +9,10 @@
       <span class="badge badge-outline w-16 justify-center {% if endpoint.method == "GET" %}badge-info{% else %}badge-warning{% endif %}">
         {{ endpoint.method }}
       </span>
-      <code class="font-mono text-sm">{{ endpoint.path }}</code>
+      <span class="inline-flex items-center gap-1" data-copy-wrapper>
+        <code class="font-mono text-sm" data-copy-source>{{ endpoint.path }}</code>
+        <button type="button" class="btn btn-xs btn-ghost" data-copy-btn aria-label="Copy endpoint path">Copy</button>
+      </span>
       <span class="opacity-70 text-sm">{{ endpoint.summary }}</span>
       {% if endpoint.is_destructive %}
         <span class="badge badge-outline badge-error badge-sm">destructive</span>
@@ -20,22 +23,31 @@
       {{ property_table::property_table(title="Request body", name_header="Field", rows=endpoint.request_properties) }}
       {{ property_table::property_table(title="Response body", name_header="Field", rows=endpoint.response_properties) }}
       {% if let Some(req) = endpoint.request_schema_json %}
-        <details open>
-          <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (request)</summary>
-          <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{{ req }}</pre>
-        </details>
+        <div class="relative" data-copy-wrapper>
+          <details open>
+            <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (request)</summary>
+            <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1" data-copy-source>{{ req }}</pre>
+          </details>
+          <button type="button" class="btn btn-xs btn-ghost absolute top-0 right-0" data-copy-btn aria-label="Copy raw JSON schema (request)">Copy</button>
+        </div>
       {% endif %}
       {% if let Some(res) = endpoint.response_schema_json %}
-        <details open>
-          <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (response)</summary>
-          <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{{ res }}</pre>
-        </details>
+        <div class="relative" data-copy-wrapper>
+          <details open>
+            <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (response)</summary>
+            <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1" data-copy-source>{{ res }}</pre>
+          </details>
+          <button type="button" class="btn btn-xs btn-ghost absolute top-0 right-0" data-copy-btn aria-label="Copy raw JSON schema (response)">Copy</button>
+        </div>
       {% endif %}
       {% if let Some(sample) = endpoint.sample_json %}
-        <details open>
-          <summary class="cursor-pointer text-xs font-semibold opacity-70">Sample response</summary>
-          <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{{ sample }}</pre>
-        </details>
+        <div class="relative" data-copy-wrapper>
+          <details open>
+            <summary class="cursor-pointer text-xs font-semibold opacity-70">Sample response</summary>
+            <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1" data-copy-source>{{ sample }}</pre>
+          </details>
+          <button type="button" class="btn btn-xs btn-ghost absolute top-0 right-0" data-copy-btn aria-label="Copy sample response">Copy</button>
+        </div>
       {% endif %}
       {{ try_it_out::try_it_out(endpoint=endpoint, index=index) }}
     </div>

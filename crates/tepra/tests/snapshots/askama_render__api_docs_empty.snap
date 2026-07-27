@@ -281,6 +281,30 @@ expression: html
         modal?.close();
         pendingDestructiveForm = null;
       });
+
+      // Copy-to-clipboard buttons (endpoint path / raw JSON / sample /
+      // try-it-out result): event delegation since endpoint_entry.html is
+      // rendered per-endpoint and ids would otherwise collide.
+      document.body.addEventListener("click", (evt) => {
+        const button = evt.target.closest("[data-copy-btn]");
+        if (!button) {
+          return;
+        }
+        const source = button.closest("[data-copy-wrapper]")?.querySelector("[data-copy-source]");
+        if (!source) {
+          return;
+        }
+        navigator.clipboard
+          .writeText(source.textContent ?? "")
+          .then(() => {
+            const original = button.textContent;
+            button.textContent = "Copied";
+            window.setTimeout(() => {
+              button.textContent = original;
+            }, 1200);
+          })
+          .catch(() => {});
+      });
     })();
   </script>
 

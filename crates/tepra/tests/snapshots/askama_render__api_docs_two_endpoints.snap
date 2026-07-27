@@ -104,7 +104,10 @@ expression: html
       <span class="badge badge-outline w-16 justify-center badge-info">
         GET
       </span>
-      <code class="font-mono text-sm">/api/printer</code>
+      <span class="inline-flex items-center gap-1" data-copy-wrapper>
+        <code class="font-mono text-sm" data-copy-source>/api/printer</code>
+        <button type="button" class="btn btn-xs btn-ghost" data-copy-btn aria-label="Copy endpoint path">Copy</button>
+      </span>
       <span class="opacity-70 text-sm">List printers</span>
       
     </div>
@@ -120,16 +123,22 @@ expression: html
 
       
       
-        <details open>
-          <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (response)</summary>
-          <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{&#34;type&#34;:&#34;array&#34;}</pre>
-        </details>
+        <div class="relative" data-copy-wrapper>
+          <details open>
+            <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (response)</summary>
+            <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1" data-copy-source>{&#34;type&#34;:&#34;array&#34;}</pre>
+          </details>
+          <button type="button" class="btn btn-xs btn-ghost absolute top-0 right-0" data-copy-btn aria-label="Copy raw JSON schema (response)">Copy</button>
+        </div>
       
       
-        <details open>
-          <summary class="cursor-pointer text-xs font-semibold opacity-70">Sample response</summary>
-          <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">[]</pre>
-        </details>
+        <div class="relative" data-copy-wrapper>
+          <details open>
+            <summary class="cursor-pointer text-xs font-semibold opacity-70">Sample response</summary>
+            <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1" data-copy-source>[]</pre>
+          </details>
+          <button type="button" class="btn btn-xs btn-ghost absolute top-0 right-0" data-copy-btn aria-label="Copy sample response">Copy</button>
+        </div>
       
       
 <div class="mt-2 border-t border-base-300 pt-3">
@@ -155,7 +164,10 @@ expression: html
       <button type="submit" class="btn btn-primary btn-sm self-start">Execute</button>
     
   </form>
-  <pre id="try-it-out-result-1" class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-2"></pre>
+  <div class="relative mt-2" data-copy-wrapper>
+    <pre id="try-it-out-result-1" class="bg-base-200 p-2 rounded text-xs overflow-x-auto" data-copy-source></pre>
+    <button type="button" class="btn btn-xs btn-ghost absolute top-1 right-1" data-copy-btn aria-label="Copy try-it-out result">Copy</button>
+  </div>
 </div>
 
     </div>
@@ -180,7 +192,10 @@ expression: html
       <span class="badge badge-outline w-16 justify-center badge-warning">
         POST
       </span>
-      <code class="font-mono text-sm">/api/rest/print/{name}</code>
+      <span class="inline-flex items-center gap-1" data-copy-wrapper>
+        <code class="font-mono text-sm" data-copy-source>/api/rest/print/{name}</code>
+        <button type="button" class="btn btn-xs btn-ghost" data-copy-btn aria-label="Copy endpoint path">Copy</button>
+      </span>
       <span class="opacity-70 text-sm">Print a label</span>
       
         <span class="badge badge-outline badge-error badge-sm">destructive</span>
@@ -197,10 +212,13 @@ expression: html
   
 
       
-        <details open>
-          <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (request)</summary>
-          <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1">{&#34;type&#34;:&#34;object&#34;}</pre>
-        </details>
+        <div class="relative" data-copy-wrapper>
+          <details open>
+            <summary class="cursor-pointer text-xs font-semibold opacity-70">Raw JSON schema (request)</summary>
+            <pre class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-1" data-copy-source>{&#34;type&#34;:&#34;object&#34;}</pre>
+          </details>
+          <button type="button" class="btn btn-xs btn-ghost absolute top-0 right-0" data-copy-btn aria-label="Copy raw JSON schema (request)">Copy</button>
+        </div>
       
       
       
@@ -245,7 +263,10 @@ expression: html
       <button type="button" class="btn btn-error btn-sm self-start" data-destructive-trigger>Execute</button>
     
   </form>
-  <pre id="try-it-out-result-2" class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-2"></pre>
+  <div class="relative mt-2" data-copy-wrapper>
+    <pre id="try-it-out-result-2" class="bg-base-200 p-2 rounded text-xs overflow-x-auto" data-copy-source></pre>
+    <button type="button" class="btn btn-xs btn-ghost absolute top-1 right-1" data-copy-btn aria-label="Copy try-it-out result">Copy</button>
+  </div>
 </div>
 
     </div>
@@ -448,6 +469,30 @@ expression: html
       document.getElementById("destructive-confirm-cancel")?.addEventListener("click", () => {
         modal?.close();
         pendingDestructiveForm = null;
+      });
+
+      // Copy-to-clipboard buttons (endpoint path / raw JSON / sample /
+      // try-it-out result): event delegation since endpoint_entry.html is
+      // rendered per-endpoint and ids would otherwise collide.
+      document.body.addEventListener("click", (evt) => {
+        const button = evt.target.closest("[data-copy-btn]");
+        if (!button) {
+          return;
+        }
+        const source = button.closest("[data-copy-wrapper]")?.querySelector("[data-copy-source]");
+        if (!source) {
+          return;
+        }
+        navigator.clipboard
+          .writeText(source.textContent ?? "")
+          .then(() => {
+            const original = button.textContent;
+            button.textContent = "Copied";
+            window.setTimeout(() => {
+              button.textContent = original;
+            }, 1200);
+          })
+          .catch(() => {});
       });
     })();
   </script>

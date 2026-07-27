@@ -53,6 +53,9 @@
       <button type="submit" class="btn btn-primary btn-sm self-start">Execute</button>
     {% endif %}
   </form>
-  <pre id="try-it-out-result-{{ index }}" class="bg-base-200 p-2 rounded text-xs overflow-x-auto mt-2"></pre>
+  <div class="relative mt-2" data-copy-wrapper>
+    <pre id="try-it-out-result-{{ index }}" class="bg-base-200 p-2 rounded text-xs overflow-x-auto" data-copy-source></pre>
+    <button type="button" class="btn btn-xs btn-ghost absolute top-1 right-1" data-copy-btn aria-label="Copy try-it-out result">Copy</button>
+  </div>
 </div>
 {% endmacro %}
