@@ -165,6 +165,35 @@ async fn printer_panel_lw_status_404_shows_neutral_busy_notice() {
 }
 
 #[tokio::test]
+async fn printer_panel_offline_lw_status_404_shows_neutral_offline() {
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_online_status(Ok(OnlineStatusResponse { online: false }));
+    mock.push_lw_status(Err(TepraError::Http { status: 404 }));
+
+    let response = make_app(mock)
+        .oneshot(
+            Request::builder()
+                .uri("/ui/print/PR-001/panel")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+    assert!(
+        !html.contains("Cannot connect to TEPRA Creator WebAPI"),
+        "offline 404 must not show the connection-error message; got:\n{html}"
+    );
+    assert!(
+        !html.contains("印刷中はステータスを取得できません"),
+        "offline 404 must not show the busy-printing notice; got:\n{html}"
+    );
+    assert!(html.contains("Offline"), "got:\n{html}");
+}
+
+#[tokio::test]
 async fn printer_panel_lw_status_transport_error_shows_error_state() {
     let mock = Arc::new(MockTepraClient::new());
     mock.push_online_status(Ok(OnlineStatusResponse { online: true }));

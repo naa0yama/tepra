@@ -272,14 +272,14 @@ pub async fn status_card(
             None,
         ),
         (Ok(online_resp), Err(TepraError::Http { status: 404 })) => {
-            debug!(printer_name = %name, "lw status 404 while printer busy printing");
-            (
-                online_resp.online,
-                String::new(),
-                "不明",
-                None,
-                Some(LW_STATUS_BUSY_NOTICE.to_owned()),
-            )
+            let notice = if online_resp.online {
+                debug!(printer_name = %name, "lw status 404 while printer busy printing");
+                Some(LW_STATUS_BUSY_NOTICE.to_owned())
+            } else {
+                debug!(printer_name = %name, "lw status 404 while printer offline");
+                None
+            };
+            (online_resp.online, String::new(), "不明", None, notice)
         }
         (online_result, lw_result) => {
             if let Err(err) = &online_result {
@@ -349,14 +349,20 @@ pub async fn print_printer_panel(
                 None,
             ),
             (Ok(online_resp), Err(TepraError::Http { status: 404 })) => {
-                debug!(printer_name = %name, "lw status 404 while printer busy printing");
+                let notice = if online_resp.online {
+                    debug!(printer_name = %name, "lw status 404 while printer busy printing");
+                    Some(LW_STATUS_BUSY_NOTICE.to_owned())
+                } else {
+                    debug!(printer_name = %name, "lw status 404 while printer offline");
+                    None
+                };
                 (
                     online_resp.online,
                     None,
                     String::new(),
                     "不明",
                     None,
-                    Some(LW_STATUS_BUSY_NOTICE.to_owned()),
+                    notice,
                 )
             }
             (online_result, lw_result) => {
