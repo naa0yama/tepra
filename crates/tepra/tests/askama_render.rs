@@ -179,8 +179,8 @@ fn test_api_docs_render_lists_endpoints() {
     // The non-custom GET endpoint renders under the official section
     // header, the custom POST endpoint under the program-specific one —
     // this is what `is_custom` actually gates in the template.
-    let official_idx = html.find("公式 Creator WebAPI").unwrap();
-    let custom_idx = html.find("プログラム独自 REST").unwrap();
+    let official_idx = html.find("Official Creator WebAPI").unwrap();
+    let custom_idx = html.find("Custom REST helpers").unwrap();
     let get_idx = html.find("/api/printer<").unwrap();
     let post_idx = html.find("/api/rest/print/{name}").unwrap();
     assert!(official_idx < get_idx && get_idx < custom_idx);
