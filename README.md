@@ -1,7 +1,7 @@
 # tepra
 
-![coverage](https://raw.githubusercontent.com/naa0yama/boilerplate-rust/badges/coverage.svg)
-![test execution time](https://raw.githubusercontent.com/naa0yama/boilerplate-rust/badges/time.svg)
+![coverage](https://raw.githubusercontent.com/naa0yama/tepra/badges/coverage.svg)
+![test execution time](https://raw.githubusercontent.com/naa0yama/tepra/badges/time.svg)
 
 TEPRA ラベルプリンター向け REST API + WebUI サーバー
 
@@ -9,6 +9,8 @@ TEPRA ラベルプリンター向け REST API + WebUI サーバー
 
 [テプラ クリエイター](https://www.kingjim.co.jp/sp/tepra_creator/) Ver.4.20 が提供する
 WebAPI 通信モジュール (`29108/tcp`) を経由してプリンター操作・印刷を行うサーバーです。
+
+![TEPRA WebUI - Label Creator](docs/images/screenshot.png)
 
 **主要機能:**
 
