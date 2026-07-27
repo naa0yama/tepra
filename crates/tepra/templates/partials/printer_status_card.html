@@ -18,6 +18,8 @@
 </div>
 {% if let Some(msg) = error %}
 <p class="text-error text-sm">{{ msg }}</p>
+{% else if let Some(msg) = notice %}
+<p class="text-info text-sm">{{ msg }}</p>
 {% else %}
 <p>Tape: {{ tape_width }} / {{ tape_kind }}</p>
 {% endif %}

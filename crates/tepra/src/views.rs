@@ -110,6 +110,10 @@ pub struct PrinterStatusCardTemplate {
     pub tape_kind: &'static str,
     /// Creator API error message, if the status fetch failed.
     pub error: Option<String>,
+    /// Neutral (non-error) notice shown when `lwstatus` 404s because the
+    /// printer is busy printing; distinct from `error` so it renders in a
+    /// muted color instead of red.
+    pub notice: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -139,6 +143,10 @@ pub struct MergePrinterPanelTemplate {
     /// independent of `margin_error` so a margin-only failure does not hide
     /// the online badge or tape info.
     pub status_error: Option<String>,
+    /// Neutral (non-error) notice shown when `lwstatus` 404s because the
+    /// printer is busy printing; distinct from `status_error` so it renders
+    /// in a muted color instead of red.
+    pub status_notice: Option<String>,
     /// Creator API error message when `getmargin` failed; independent of
     /// `status_error`.
     pub margin_error: Option<String>,

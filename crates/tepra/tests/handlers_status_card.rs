@@ -116,3 +116,61 @@ async fn status_card_client_error_shows_error_state() {
         "got:\n{html}"
     );
 }
+
+#[tokio::test]
+async fn status_card_lw_status_404_shows_neutral_busy_notice() {
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_online_status(Ok(OnlineStatusResponse { online: true }));
+    mock.push_lw_status(Err(TepraError::Http { status: 404 }));
+
+    let response = make_app(mock)
+        .oneshot(
+            Request::builder()
+                .uri("/ui/printers/PR-001/status-card")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+    assert!(
+        !html.contains("Cannot connect to TEPRA Creator WebAPI"),
+        "404 busy must not show the connection-error message; got:\n{html}"
+    );
+    assert!(
+        html.contains("印刷中はステータスを取得できません"),
+        "404 busy must show the neutral busy notice; got:\n{html}"
+    );
+    assert!(
+        html.contains("Online"),
+        "printer is still reachable while busy printing; got:\n{html}"
+    );
+}
+
+#[tokio::test]
+async fn status_card_lw_status_transport_error_shows_error_state() {
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_online_status(Ok(OnlineStatusResponse { online: true }));
+    mock.push_lw_status(Err(TepraError::Transport {
+        source: anyhow::anyhow!("connection refused"),
+    }));
+
+    let response = make_app(mock)
+        .oneshot(
+            Request::builder()
+                .uri("/ui/printers/PR-001/status-card")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+    assert!(
+        html.contains("Cannot connect to TEPRA Creator WebAPI"),
+        "true transport failure must keep the red error message; got:\n{html}"
+    );
+}
