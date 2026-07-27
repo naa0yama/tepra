@@ -585,6 +585,27 @@ fn resolve_ref<'a>(schema: &'a Value, openapi: &'a Value) -> &'a Value {
         })
 }
 
+/// Recursively resolve every `$ref` in `schema`, not just a top-level one, so
+/// e.g. an `array` schema's `items.$ref` is inlined too. `depth` bounds
+/// recursion against cyclic `$ref` chains (same guard style as
+/// [`sample_value`]; none of the current DTOs are self-referential).
+fn resolve_ref_deep(schema: &Value, openapi: &Value, depth: u8) -> Value {
+    let Some(depth) = depth.checked_sub(1) else {
+        return schema.clone();
+    };
+    match resolve_ref(schema, openapi) {
+        Value::Object(map) => map
+            .iter()
+            .map(|(key, value)| (key.clone(), resolve_ref_deep(value, openapi, depth)))
+            .collect(),
+        Value::Array(items) => items
+            .iter()
+            .map(|item| resolve_ref_deep(item, openapi, depth))
+            .collect(),
+        other => other.clone(),
+    }
+}
+
 /// Last path segment of a JSON-Schema `$ref` pointer
 /// (`#/components/schemas/Printer` -> `Printer`).
 fn ref_name(pointer: &str) -> String {
@@ -810,8 +831,8 @@ pub fn build_endpoint_views(openapi: &Value) -> Vec<EndpointView> {
 
             let request_schema = operation.pointer("/requestBody/content/application~1json/schema");
             let request_schema_json = request_schema
-                .map(|schema| resolve_ref(schema, openapi))
-                .and_then(|schema| serde_json::to_string_pretty(schema).ok());
+                .map(|schema| resolve_ref_deep(schema, openapi, 8))
+                .and_then(|schema| serde_json::to_string_pretty(&schema).ok());
             let request_properties = request_schema
                 .map(|schema| extract_properties(schema, openapi))
                 .unwrap_or_default();
@@ -819,8 +840,8 @@ pub fn build_endpoint_views(openapi: &Value) -> Vec<EndpointView> {
             let response_schema =
                 operation.pointer("/responses/200/content/application~1json/schema");
             let response_schema_json = response_schema
-                .map(|schema| resolve_ref(schema, openapi))
-                .and_then(|schema| serde_json::to_string_pretty(schema).ok());
+                .map(|schema| resolve_ref_deep(schema, openapi, 8))
+                .and_then(|schema| serde_json::to_string_pretty(&schema).ok());
             let response_properties = response_schema
                 .map(|schema| extract_properties(schema, openapi))
                 .unwrap_or_default();
@@ -1131,6 +1152,40 @@ mod tests {
         assert!(request.contains("copies"));
         let response = print.response_schema_json.as_ref().unwrap();
         assert!(response.contains("jobId"));
+    }
+
+    #[test]
+    fn build_endpoint_views_resolves_nested_ref_inside_array_items() {
+        let endpoints = build_endpoint_views(&fixture_openapi());
+        let list = endpoints.iter().find(|e| e.path == "/api/printer").unwrap();
+
+        let response = list.response_schema_json.as_ref().unwrap();
+        assert!(
+            !response.contains("$ref"),
+            "nested $ref should be inlined, got: {response}"
+        );
+        assert!(response.contains("printerName"));
+    }
+
+    #[test]
+    fn resolve_ref_deep_stops_at_depth_limit_on_cyclic_ref() {
+        let openapi = json!({
+            "components": {
+                "schemas": {
+                    "Cyclic": {
+                        "type": "object",
+                        "properties": {
+                            "self": {"$ref": "#/components/schemas/Cyclic"}
+                        }
+                    }
+                }
+            }
+        });
+        let schema = json!({"$ref": "#/components/schemas/Cyclic"});
+
+        // Must terminate (not stack-overflow / infinite loop) and produce a value.
+        let resolved = resolve_ref_deep(&schema, &openapi, 8);
+        assert!(resolved.is_object());
     }
 
     #[test]
