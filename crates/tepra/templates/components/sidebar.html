@@ -19,8 +19,10 @@
   <div class="flex flex-col items-center gap-2 px-4 py-6 border-b border-base-300 text-base-content">
     <a href="/ui/" class="flex flex-col items-center gap-2">
       <svg class="size-8" aria-hidden="true"><use href="#icon-printer"/></svg>
-      <span class="text-base font-semibold">Label Creator</span>
-      <span class="text-xs text-base-content/60">for TEPRA</span>
+      <div class="flex flex-col items-center leading-tight">
+        <span class="text-base font-semibold">Label Creator</span>
+        <span class="text-xs text-base-content/60">for TEPRA</span>
+      </div>
     </a>
     <span class="text-xs text-base-content/60">v{{ crate::views::APP_VERSION }} ({{ crate::views::GIT_HASH }})</span>
     <span class="text-xs text-base-content/60">
