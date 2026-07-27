@@ -9,6 +9,8 @@ use axum::{
 };
 use serde_json::Value;
 
+use tepra_core::dto::enums::StatusError;
+
 use crate::{
     jobs::{JobOutcome, JobRecord},
     merge::MergeField,
@@ -95,6 +97,50 @@ pub struct JobCardTemplate {
 // Printer status card partial (HTMX lazy-load target)
 // ---------------------------------------------------------------------------
 
+/// Converts a `lwstatus.error` device error code (see [`StatusError`]) into a
+/// warning display label. `NoError` returns `None` — no warning to show.
+#[must_use]
+pub const fn status_error_label(err: StatusError) -> Option<&'static str> {
+    match err {
+        StatusError::NoError => None,
+        StatusError::CutterError => Some("カッターエラー"),
+        StatusError::NoTapeCartridge => Some("テープカートリッジがありません"),
+        StatusError::HeadOverHeated => Some("ヘッドが高温です"),
+        StatusError::PrinterCancel => Some("印刷がキャンセルされました"),
+        StatusError::CoverOpen => Some("カバーが開いています"),
+        StatusError::LowVoltage => Some("電圧が低下しています"),
+        StatusError::PowerOffCancel => Some("電源オフによりキャンセルされました"),
+        StatusError::TapeEjectError => Some("テープ排出エラー"),
+        StatusError::TapeFeedError => Some("テープ送りエラー"),
+        StatusError::InkRibbonSlack => Some("インクリボンがたるんでいます"),
+        StatusError::InkRibbonShort => Some("インクリボンが不足しています"),
+        StatusError::TapeEnd => Some("テープ終端です"),
+        StatusError::CutLabelError => Some("ラベルカットエラー"),
+        StatusError::TemperatureError => Some("温度異常です"),
+        StatusError::InsufficientParameters => Some("パラメータが不足しています"),
+        StatusError::HalfCutterBladeNotSet => Some("ハーフカッター刃が未装着です"),
+        StatusError::FullCutterBladeNotSet => Some("フルカッター刃が未装着です"),
+        StatusError::HalfCutterBladeOff => Some("ハーフカッター刃が外れています"),
+        StatusError::FullCutterBladeOff => Some("フルカッター刃が外れています"),
+        StatusError::WinderCoverOpen => Some("ワインダーカバーが開いています"),
+        StatusError::VinylTapeTemperatureError => Some("ビニールテープの温度異常です"),
+        StatusError::WinderError => Some("ワインダーエラー"),
+        StatusError::HalfCutAllCut => Some("ハーフカットが全カットになっています"),
+        StatusError::BigrollRecognitionAbnormality => Some("ビッグロール認識異常"),
+        StatusError::BigrollNonCompliant => Some("ビッグロール非対応です"),
+        StatusError::StopPrintingByAutoPowerOff => Some("オートパワーオフにより印刷が停止しました"),
+        StatusError::StopPrintingByPowerSupplyChange => Some("電源切替により印刷が停止しました"),
+        StatusError::WinderSet => Some("ワインダーが装着されています"),
+        StatusError::WinderNotSet => Some("ワインダーが未装着です"),
+        StatusError::WinderHalfCutAllCut => {
+            Some("ワインダーのハーフカットが全カットになっています")
+        }
+        StatusError::FirmwareUpdating => Some("ファームウェア更新中です"),
+        StatusError::DeviceUsing => Some("デバイス使用中です"),
+        StatusError::UnknownError => Some("不明なエラー"),
+    }
+}
+
 /// Context for the printer status-card partial
 /// (`GET /ui/printers/{name}/status-card`).
 #[derive(Debug, Template)]
@@ -114,6 +160,9 @@ pub struct PrinterStatusCardTemplate {
     /// printer is busy printing; distinct from `error` so it renders in a
     /// muted color instead of red.
     pub notice: Option<String>,
+    /// Device error warning (e.g. `"カバーが開いています"`), from
+    /// `status_error_label`; `None` when `lwstatus.error` is `NoError`.
+    pub device_warning: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -147,6 +196,9 @@ pub struct MergePrinterPanelTemplate {
     /// printer is busy printing; distinct from `status_error` so it renders
     /// in a muted color instead of red.
     pub status_notice: Option<String>,
+    /// Device error warning (e.g. `"カバーが開いています"`), from
+    /// `status_error_label`; `None` when `lwstatus.error` is `NoError`.
+    pub status_device_warning: Option<String>,
     /// Creator API error message when `getmargin` failed; independent of
     /// `status_error`.
     pub margin_error: Option<String>,

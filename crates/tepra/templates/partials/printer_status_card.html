@@ -22,4 +22,7 @@
 <p class="text-info text-sm">{{ msg }}</p>
 {% else %}
 <p>Tape: {{ tape_width }} / {{ tape_kind }}</p>
+{% if let Some(msg) = device_warning %}
+<p class="text-warning text-sm">{{ msg }}</p>
+{% endif %}
 {% endif %}

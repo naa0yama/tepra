@@ -19,6 +19,9 @@
 {% else %}
 <ul class="text-sm space-y-1">
   <li>Tape: {{ tape_width }} / {{ tape_kind }}</li>
+  {% if let Some(msg) = status_device_warning %}
+  <li class="text-warning">{{ msg }}</li>
+  {% endif %}
   {% if let Some(msg) = margin_error %}
   <li class="text-error">Margin: {{ msg }}</li>
   {% else %}

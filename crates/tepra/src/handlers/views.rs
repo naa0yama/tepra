@@ -14,6 +14,7 @@ use opentelemetry_semantic_conventions::attribute as semconv;
 use serde::Deserialize;
 use tepra_core::{
     dto::{
+        enums::StatusError,
         job::JobControlRequest,
         tape_label::{tape_id_label, tape_kind_label},
         template::GetMarginRequest,
@@ -35,7 +36,7 @@ use crate::{
         JobCardTemplate, JobsPageTemplate, MergeFramesTemplate, MergePrinterPanelTemplate, NAV_API,
         NAV_JOBS, NAV_PRINT, NAV_PRINTERS, PrintPageTemplate, PrinterStatusCardTemplate,
         build_endpoint_views, build_job_entry_views, build_tapes_view, override_prefill_fields,
-        serial_prefill_fields,
+        serial_prefill_fields, status_error_label,
     },
 };
 
@@ -263,50 +264,120 @@ pub async fn status_card(
     let online_result = state.client.online_status(&name).await;
     let lw_result = state.client.lw_status(&name).await;
 
-    let (online, tape_width, tape_kind, error, notice) = match (online_result, lw_result) {
-        (Ok(online_resp), Ok(lw_resp)) => (
-            online_resp.online,
-            tape_id_label(lw_resp.tape_id),
-            tape_kind_label(lw_resp.tape_kind),
-            None,
-            None,
-        ),
-        (Ok(online_resp), Err(TepraError::Http { status: 404 })) => {
-            let notice = if online_resp.online {
-                debug!(printer_name = %name, "lw status 404 while printer busy printing");
-                Some(LW_STATUS_BUSY_NOTICE.to_owned())
-            } else {
-                debug!(printer_name = %name, "lw status 404 while printer offline");
-                None
-            };
-            (online_resp.online, String::new(), "不明", None, notice)
-        }
-        (online_result, lw_result) => {
-            if let Err(err) = &online_result {
-                warn!(printer_name = %name, error = %err, "failed to fetch online status");
-            }
-            if let Err(err) = &lw_result {
-                warn!(printer_name = %name, error = %err, "failed to fetch lw status");
-            }
-            (
-                false,
-                String::new(),
-                "不明",
-                Some(CREATOR_API_ERROR.to_owned()),
-                None,
-            )
-        }
-    };
+    let resolved = resolve_online_and_lw_status(&name, online_result, lw_result);
 
     Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
     HtmlTemplate(PrinterStatusCardTemplate {
         printer_name: name,
-        online,
-        tape_width,
-        tape_kind,
-        error,
-        notice,
+        online: resolved.online,
+        tape_width: resolved.tape_width,
+        tape_kind: resolved.tape_kind,
+        error: resolved.error,
+        notice: resolved.notice,
+        device_warning: resolved.device_warning,
     })
+}
+
+/// Result of resolving `onlinestatus` + `lwstatus` for [`status_card`] and
+/// [`print_printer_panel`]: online flag, loaded tape ID (`None` when
+/// `lwstatus` was unavailable), tape labels, connection error, busy notice,
+/// and device-error warning.
+struct StatusResolution {
+    online: bool,
+    tape_id: Option<u32>,
+    tape_width: String,
+    tape_kind: &'static str,
+    error: Option<String>,
+    notice: Option<String>,
+    device_warning: Option<String>,
+}
+
+/// Handles the `(Ok, Ok)` arm: successful `onlinestatus` + `lwstatus`,
+/// surfacing any non-`NoError` device status as a warning.
+fn resolve_status_ok(
+    online_resp: &tepra_core::dto::printer::OnlineStatusResponse,
+    lw_resp: &tepra_core::dto::printer::LwStatusResponse,
+) -> StatusResolution {
+    let status_error = StatusError::try_from(lw_resp.error).unwrap_or(StatusError::UnknownError);
+    let device_warning = status_error_label(status_error).map(std::borrow::ToOwned::to_owned);
+    StatusResolution {
+        online: online_resp.online,
+        tape_id: Some(lw_resp.tape_id),
+        tape_width: tape_id_label(lw_resp.tape_id),
+        tape_kind: tape_kind_label(lw_resp.tape_kind),
+        error: None,
+        notice: None,
+        device_warning,
+    }
+}
+
+/// Handles the `lwstatus` 404-while-online-status-ok arm: printer is busy
+/// printing (neutral notice) or genuinely offline (no notice).
+fn resolve_status_lw_404(
+    name: &str,
+    online_resp: &tepra_core::dto::printer::OnlineStatusResponse,
+) -> StatusResolution {
+    let notice = if online_resp.online {
+        debug!(printer_name = %name, "lw status 404 while printer busy printing");
+        Some(LW_STATUS_BUSY_NOTICE.to_owned())
+    } else {
+        debug!(printer_name = %name, "lw status 404 while printer offline");
+        None
+    };
+    StatusResolution {
+        online: online_resp.online,
+        tape_id: None,
+        tape_width: String::new(),
+        tape_kind: "不明",
+        error: None,
+        notice,
+        device_warning: None,
+    }
+}
+
+/// Handles the fallback arm: either `onlinestatus` or `lwstatus` failed
+/// outright (any error other than a `lwstatus` 404), a true connection
+/// failure.
+fn resolve_status_error(
+    name: &str,
+    online_result: &Result<tepra_core::dto::printer::OnlineStatusResponse, TepraError>,
+    lw_result: &Result<tepra_core::dto::printer::LwStatusResponse, TepraError>,
+) -> StatusResolution {
+    if let Err(err) = online_result {
+        warn!(printer_name = %name, error = %err, "failed to fetch online status");
+    }
+    if let Err(err) = lw_result {
+        warn!(printer_name = %name, error = %err, "failed to fetch lw status");
+    }
+    StatusResolution {
+        online: false,
+        tape_id: None,
+        tape_width: String::new(),
+        tape_kind: "不明",
+        error: Some(CREATOR_API_ERROR.to_owned()),
+        notice: None,
+        device_warning: None,
+    }
+}
+
+/// Shared `onlinestatus` + `lwstatus` resolution for [`status_card`] and
+/// [`print_printer_panel`].
+///
+/// WHY-NOT: duplicating this per handler — the two handlers previously
+/// carried near-identical match arms that drifted out of sync across the
+/// A/C bug-fix history; a single resolver keeps the branching in one place.
+fn resolve_online_and_lw_status(
+    name: &str,
+    online_result: Result<tepra_core::dto::printer::OnlineStatusResponse, TepraError>,
+    lw_result: Result<tepra_core::dto::printer::LwStatusResponse, TepraError>,
+) -> StatusResolution {
+    match (online_result, lw_result) {
+        (Ok(online_resp), Ok(lw_resp)) => resolve_status_ok(&online_resp, &lw_resp),
+        (Ok(online_resp), Err(TepraError::Http { status: 404 })) => {
+            resolve_status_lw_404(name, &online_resp)
+        }
+        (online_result, lw_result) => resolve_status_error(name, &online_result, &lw_result),
+    }
 }
 
 /// Formats a 0.1mm-unit margin value (`GetMarginResponse` field) as a
@@ -338,52 +409,9 @@ pub async fn print_printer_panel(
     let online_result = state.client.online_status(&name).await;
     let lw_result = state.client.lw_status(&name).await;
 
-    let (online, tape_id, tape_width, tape_kind, status_error, status_notice) =
-        match (online_result, lw_result) {
-            (Ok(online_resp), Ok(lw_resp)) => (
-                online_resp.online,
-                Some(lw_resp.tape_id),
-                tape_id_label(lw_resp.tape_id),
-                tape_kind_label(lw_resp.tape_kind),
-                None,
-                None,
-            ),
-            (Ok(online_resp), Err(TepraError::Http { status: 404 })) => {
-                let notice = if online_resp.online {
-                    debug!(printer_name = %name, "lw status 404 while printer busy printing");
-                    Some(LW_STATUS_BUSY_NOTICE.to_owned())
-                } else {
-                    debug!(printer_name = %name, "lw status 404 while printer offline");
-                    None
-                };
-                (
-                    online_resp.online,
-                    None,
-                    String::new(),
-                    "不明",
-                    None,
-                    notice,
-                )
-            }
-            (online_result, lw_result) => {
-                if let Err(err) = &online_result {
-                    warn!(printer_name = %name, error = %err, "failed to fetch online status");
-                }
-                if let Err(err) = &lw_result {
-                    warn!(printer_name = %name, error = %err, "failed to fetch lw status");
-                }
-                (
-                    false,
-                    None,
-                    String::new(),
-                    "不明",
-                    Some(CREATOR_API_ERROR.to_owned()),
-                    None,
-                )
-            }
-        };
+    let resolved = resolve_online_and_lw_status(&name, online_result, lw_result);
 
-    let (margin_top, margin_bottom, margin_left_right, margin_error) = match tape_id {
+    let (margin_top, margin_bottom, margin_left_right, margin_error) = match resolved.tape_id {
         Some(tape_id) => {
             let margin_result = state
                 .client
@@ -419,14 +447,15 @@ pub async fn print_printer_panel(
     Span::current().record(semconv::HTTP_RESPONSE_STATUS_CODE, 200_i64);
     HtmlTemplate(MergePrinterPanelTemplate {
         printer_name: name,
-        online,
-        tape_width,
-        tape_kind,
+        online: resolved.online,
+        tape_width: resolved.tape_width,
+        tape_kind: resolved.tape_kind,
         margin_top,
         margin_bottom,
         margin_left_right,
-        status_error,
-        status_notice,
+        status_error: resolved.error,
+        status_notice: resolved.notice,
+        status_device_warning: resolved.device_warning,
         margin_error,
     })
 }

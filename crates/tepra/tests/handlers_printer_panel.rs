@@ -33,10 +33,14 @@ async fn body_html(body: Body) -> String {
 }
 
 fn lw_status(tape_id: u32, tape_kind: i32) -> LwStatusResponse {
+    lw_status_with_error(tape_id, tape_kind, 0)
+}
+
+fn lw_status_with_error(tape_id: u32, tape_kind: i32, error: u32) -> LwStatusResponse {
     LwStatusResponse {
         tape_id,
         tape_kind,
-        error: 0,
+        error,
         br_tape_kind: 0,
         status: 0,
         status_type: 4,
@@ -191,6 +195,68 @@ async fn printer_panel_offline_lw_status_404_shows_neutral_offline() {
         "offline 404 must not show the busy-printing notice; got:\n{html}"
     );
     assert!(html.contains("Offline"), "got:\n{html}");
+}
+
+#[tokio::test]
+async fn printer_panel_device_error_shows_warning() {
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_online_status(Ok(OnlineStatusResponse { online: true }));
+    mock.push_lw_status(Ok(lw_status_with_error(261, 0, 0x21)));
+    mock.push_get_margin(Ok(GetMarginResponse {
+        top: 15,
+        bottom: 15,
+        left_right: 5,
+    }));
+
+    let response = make_app(mock)
+        .oneshot(
+            Request::builder()
+                .uri("/ui/print/PR-001/panel")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+    assert!(
+        html.contains("カバーが開いています"),
+        "device error must render the warning label; got:\n{html}"
+    );
+    assert!(
+        html.contains("text-warning"),
+        "device error must render in the warning color; got:\n{html}"
+    );
+}
+
+#[tokio::test]
+async fn printer_panel_no_device_error_shows_no_warning() {
+    let mock = Arc::new(MockTepraClient::new());
+    mock.push_online_status(Ok(OnlineStatusResponse { online: true }));
+    mock.push_lw_status(Ok(lw_status(261, 0)));
+    mock.push_get_margin(Ok(GetMarginResponse {
+        top: 15,
+        bottom: 15,
+        left_right: 5,
+    }));
+
+    let response = make_app(mock)
+        .oneshot(
+            Request::builder()
+                .uri("/ui/print/PR-001/panel")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+    let html = body_html(response.into_body()).await;
+    assert!(
+        !html.contains("text-warning"),
+        "NoError must not render a device warning; got:\n{html}"
+    );
 }
 
 #[tokio::test]
