@@ -641,7 +641,9 @@ fn test_api_docs_render_marks_sidebar_active() {
     let html = tmpl.render().unwrap();
 
     // Sidebar active branch (`components/sidebar.html`) picks up `nav_active`.
-    assert!(html.contains(r#"href="/ui/api" class="menu-active" aria-current="page""#));
+    assert!(html.contains(
+        r#"href="/ui/api" class="flex-nowrap justify-start menu-active" aria-current="page""#
+    ));
 }
 
 #[test]
@@ -780,5 +782,7 @@ fn test_jobs_render_marks_sidebar_active() {
     };
     let html = tmpl.render().unwrap();
 
-    assert!(html.contains(r#"href="/ui/jobs" class="menu-active" aria-current="page""#));
+    assert!(html.contains(
+        r#"href="/ui/jobs" class="flex-nowrap justify-start menu-active" aria-current="page""#
+    ));
 }
