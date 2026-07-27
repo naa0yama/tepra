@@ -14,7 +14,7 @@ WebAPI 通信モジュール (`29108/tcp`) を経由してプリンター操作�
 
 **主要機能:**
 
-- `data/` に配置したテンプレートを WebUI から選択して印刷指示
+- `templates/` に配置したテンプレートを WebUI から選択して印刷指示
 - REST API 経由でテンプレートへのデータ流し込み印刷
 - WebUI 上で OpenAPI ドキュメント参照
 - 画像の WebUI / REST API 印刷
@@ -51,7 +51,7 @@ cargo run -p tepra-web -- version
 # tepra serve config file
 # CLI arg > env var (TEPRA_*) > file > built-in default の順で上書き。
 
-template_dir = "data"
+template_dir = "templates"
 bind = "0.0.0.0:3000"
 creator_base = "http://localhost:29108"
 ```
@@ -154,6 +154,13 @@ crates/
 ## ライセンス
 
 [LICENSE](./LICENSE) に記載のライセンスの下で公開。
+
+### KING JIM
+
+`テプラ クリエイター` および `テプラ クリエイター WebAPI` は株式会社キングジムの商標です。
+
+- [テプラ クリエイター](https://www.kingjim.co.jp/sp/tepra_creator/)
+- [テプラ クリエイター WebAPI](https://www.kingjim.co.jp/sp/tepra_creator/developer/)
 
 ### OpenObserve (サードパーティ)
 
