@@ -425,6 +425,17 @@
         if (!btn) {
           return;
         }
+        // WHY-NOT: hook the submit handler or fetch call instead of here —
+        // setPrintMode/setCancelMode are the single seam where a job's
+        // active/terminal transition is observed (job_card's 1s self-poll
+        // terminal detection funnels through here via the MutationObserver
+        // above too), so resuming/pausing panel auto-refresh here covers
+        // every path. Placed before the mode-skip guard below so it still
+        // runs on the initial-load setPrintMode() call. Respect the user's
+        // toggle choice: only resume if they had auto-refresh enabled.
+        if (refreshToggle?.checked) {
+          startAutoRefresh();
+        }
         // Skip DOM writes when already in this mode: textContent's setter
         // always replaces the Text node, which re-triggers the frames-pane
         // MutationObserver even for an identical string, causing an
@@ -444,6 +455,12 @@
         if (!btn) {
           return;
         }
+        // WHY-NOT: pausing polling in the submit handler — this is the seam
+        // where the job becomes active (see setPrintMode above for the
+        // terminal-side rationale). lwstatus 404s as "busy" for the whole
+        // duration of an active job, so the panel poll is wasted work until
+        // the job reaches a terminal state.
+        stopAutoRefresh();
         // See setPrintMode: skip DOM writes when already in this mode to
         // avoid re-triggering the observer.
         if (btn.dataset.mode === "cancel") {
