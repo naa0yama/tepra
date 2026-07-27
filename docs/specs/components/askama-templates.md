@@ -13,8 +13,11 @@ crates/tepra/templates/
     index.html          # Printer list page (GET /ui/)
     print.html          # Print job page (GET /ui/print) with printer panel + polling
     api.html            # API Reference page (GET /ui/api)
+    jobs.html           # Job history page (GET /ui/jobs?page=N)
   partials/
     job_card.html              # HTMX job-status polling card (GET /ui/jobs/{printer}/{id})
+    job_entry.html             # One job-history accordion row (used by pages/jobs.html)
+    pagination.html            # DaisyUI join pager macro (used by pages/jobs.html)
     printer_status_card.html   # HTMX lazy-loaded printer status card (GET /ui/printers/{name}/status-card)
     endpoint_entry.html        # Per-endpoint collapse accordion macro (used by api.html)
     try_it_out.html            # Per-endpoint "Try it out" form macro (used by api.html)
@@ -47,6 +50,10 @@ Base layout used by all page templates via `{% extends %}`:
 - Accessibility: skip-to-content link, `<main id="main" tabindex="-1">`
 - Navbar: hamburger (mobile only), breadcrumb trail (`components/breadcrumbs.html`),
   and theme toggle (`components/theme_toggle.html`)
+- Page titling is owned solely by the navbar breadcrumb trail — no page
+  template renders a body-level `<h1>` for its own title (previously
+  `api.html` / `index.html` / `print.html` / `jobs.html` each duplicated the
+  current-page name in both places)
 - Responsive drawer nav — sidebar (`components/sidebar.html`) in `drawer-side`,
   collapses to hamburger on mobile
 - Toast container: `#toast-container` (DaisyUI toast, `aria-live="polite"`)
@@ -66,9 +73,17 @@ Extends `shells/dashboard.html`. Bound to `IndexTemplate` in `views.rs`.
 
 ### pages/print.html
 
-Extends `shells/dashboard.html`. Bound to `PrintTemplate` in `views.rs`.
+Extends `shells/dashboard.html`. Bound to `PrintPageTemplate` in `views.rs`.
 
 - Print job submission and status tracking for label printers
+- Reprint prefill: `GET /ui/print?from={record_id}` looks up the record in
+  `JobStore` and renders the form pre-filled (`value=`/`checked`/selected
+  option) from its saved `MergePrintRequest`, so the existing submit JS
+  (`collectRows`/`collectSerial`/`collectOverrides`) works unmodified
+  against server-rendered values (no client hydration needed). If the
+  record's `template` no longer exists in the current template list, the
+  page renders with an error instead of silently dropping the prefill (see
+  `partials/job_entry.html` / jobs history below for the link's origin)
 - Printer selection (`<select id="printer-info-select">`) with manual refresh button (`#printer-refresh-btn`)
   - Select is in a DaisyUI `join` layout with a refresh button (SVG icon, square button class)
   - Button calls `loadPrinterPanel(currentPrinter)` on click to immediately fetch updated status
@@ -77,6 +92,11 @@ Extends `shells/dashboard.html`. Bound to `PrintTemplate` in `views.rs`.
   - Auto-refresh behavior: when the navbar printer-refresh-toggle (`#printer-refresh-toggle`) is ON,
     the print page polls this endpoint every 5s via JavaScript `setInterval`, updating status in real-time
   - Polling stops when toggle is OFF or printer is unselected (`clearInterval`)
+  - Polling also pauses for the duration of an active print job: submitting a
+    print calls `stopAutoRefresh()`, and the panel poll only resumes
+    (`startAutoRefresh()`, toggle permitting) once the job card reports a
+    terminal state (`job_end`/`canceled`) — avoids the panel flickering
+    against the lwstatus 404 "busy" notice while a print is in flight
   - Global toggle state is persisted to `localStorage` via the dashboard shell's toggle-persistence script
 - Print job progress — fixed slot (`#print-result`), placed between the printer info
   panel and the copies/advanced settings in the right card. Always present from
@@ -119,6 +139,46 @@ Extends `shells/dashboard.html`. Bound to `PrintTemplate` in `views.rs`.
   - Hide tape-width confirmation (controlled by `display_tape_width` override; show when value = 2)
   - Hide print-setting confirmation (controlled by `display_print_setting` override; show when value = 2)
 
+### pages/jobs.html
+
+Extends `shells/dashboard.html`. Bound to `JobsPageTemplate` in `views.rs`
+(`GET /ui/jobs?page=N`, `nav_active = views::NAV_JOBS`).
+
+- Job history list: one `partials/job_entry.html` accordion item per
+  `JobEntryView` (newest first), server-side paginated via `JobStore::page`
+  — 20 records/page (`jobs::DEFAULT_PAGE_SIZE`), at most 100 records retained
+  (`jobs::MAX_RECORDS`) so at most 5 pages ever exist; out-of-range `page`
+  values are clamped
+- Empty-state hero when no jobs have been recorded yet (same idiom as `api.html`)
+- `partials/pagination.html` renders the pager below the list
+
+### partials/job_entry.html
+
+Macro file, imported by `pages/jobs.html`; not a standalone page.
+
+- Renders one job as a DaisyUI `collapse collapse-arrow join-item` accordion
+  item (same idiom as `partials/endpoint_entry.html`)
+- Collapse title: printer name badge, template name, submission time
+  (`data-epoch` attribute; a small client-side script formats it via
+  `toLocaleString` in the browser's local timezone — insta snapshots inject a
+  fixed epoch so the pre-JS-formatting markup stays deterministic), and an
+  outcome badge (`accepted`/`failed`)
+- Collapse content: submitted tape parameters table, outcome detail
+  (`jobid=N` or the upstream error message), a reprint button linking to
+  `GET /ui/print?from={record_id}`, and — only for accepted jobs — the live
+  `partials/job_card.html` progress view lazy-loaded via
+  `GET /ui/jobs/{printer}/{job_id}`. If that fetch fails (record expired /
+  evicted from the printer's own progress tracking), the entry degrades to
+  showing the stored outcome plus a "進捗は期限切れ" (progress expired) notice
+  instead of erroring
+
+### partials/pagination.html
+
+Macro file, imported by `pages/jobs.html`; not a standalone page.
+
+- Renders a DaisyUI `join` pager: previous/next controls plus page numbers,
+  linking back to `GET /ui/jobs?page=N`
+
 ### pages/api.html
 
 Extends `shells/dashboard.html`. Bound to `ApiDocsTemplate` in `views.rs`.
@@ -127,15 +187,24 @@ Extends `shells/dashboard.html`. Bound to `ApiDocsTemplate` in `views.rs`.
   the code-derived `openapi.json` (view-model built in-process by
   `build_endpoint_views`, not fetched client-side)
 - Organizes endpoints into two sections:
-  - **公式 Creator WebAPI** — official facade endpoints (`/api/printer/*`),
+  - **Official Creator WebAPI** — official facade endpoints (`/api/printer/*`),
     where `is_custom == false`
-  - **プログラム独自 REST** — program-specific helper endpoints (`/api/rest/*`),
+  - **Custom REST helpers** — program-specific helper endpoints (`/api/rest/*`),
     where `is_custom == true`
   - Section grouping is driven by the `is_custom` field in `EndpointView`,
     set by checking if the path starts with `/api/rest/` (no additional
     metadata required in `openapi.json`)
 - Each section renders a DaisyUI accordion (`join join-vertical`) with the
   endpoint entries rendered via the `endpoint_entry` macro
+- `request_schema_json` / `response_schema_json` inline every `$ref` in the
+  schema tree recursively (not just a top-level `$ref`), so e.g. an
+  `array` schema's `items.$ref` is resolved too (`views::resolve_ref_deep`,
+  depth-bounded to guard against cyclic refs)
+- Copy-to-clipboard: a delegated click listener on `[data-copy-btn]` reads
+  the sibling `[data-copy-source]` inside the same `[data-copy-wrapper]` and
+  writes it to `navigator.clipboard`; used for the endpoint path, the raw
+  JSON request/response schema, the sample response, and the try-it-out
+  result (see `endpoint_entry.html` / `try_it_out.html` below)
 - Printer-name dropdown population (inline `<script>`, IIFE-scoped): on load,
   a single client-side `fetch("/api/printer")` fills every
   `[data-printer-select]` `<option>` with the connected printer names, so the
@@ -168,10 +237,12 @@ Macro file: `{% macro endpoint_entry(endpoint, index) %}`. Imported by
 - Renders a single endpoint as a DaisyUI collapse accordion (`join-item`)
   with collapse-arrow
 - Collapse title: `method` badge (GET/POST colour-coded, fixed width) +
-  `path` code + `summary` + `destructive` badge if applicable
+  `path` code (with a `[data-copy-btn]` copy button) + `summary` +
+  `destructive` badge if applicable
 - Collapse content: property tables (Parameters, Request body, Response body) +
-  raw JSON schema disclosures (`<details>`, expanded by default) + `try_it_out`
-  macro for live execution
+  raw JSON schema disclosures (`<details>`, expanded by default, each with a
+  `[data-copy-btn]` copy button for the request schema / response schema /
+  sample response) + `try_it_out` macro for live execution
 
 ### partials/try_it_out.html
 
@@ -181,10 +252,11 @@ a standalone page.
 
 - Builds one execution form per endpoint from an `EndpointView`
 - `path_params` (extracted from `{...}` path segments) render as required
-  inputs; the `name` param renders as a `<select data-printer-select>` dropdown
-  (populated client-side, see `api.html` above), all other params as text
-  inputs. Endpoints with a request body get a JSON `<textarea>` prefilled with
-  `sample_json`
+  inputs; the `name` param renders as a `<select data-printer-select
+  class="select select-bordered grow">` dropdown (populated client-side, see
+  `api.html` above; styled to match the printer selects elsewhere in the
+  UI), all other params as text inputs. Endpoints with a request body get a
+  JSON `<textarea>` prefilled with `sample_json`
 - `query_params` (the operation's `in == "query"` parameters, e.g. `jobid`,
   `cutflag`) each render as a text input carrying `name` but **not**
   `data-path-param` — on the htmx GET path they are serialized into the query
@@ -195,6 +267,8 @@ a standalone page.
 - Destructive forms carry `data-destructive-form` and use a `type="button"`
   Execute (`data-destructive-trigger`) so the confirm gate in `api.html`
   mediates every execution
+- Result `<pre data-copy-source>` is wrapped in a `[data-copy-wrapper]` with
+  a `[data-copy-btn]` copy button, same pattern as `endpoint_entry.html`
 
 ### partials/property_table.html
 
@@ -218,6 +292,44 @@ Standalone partial, not extending any shell. Bound to `PrinterStatusCardTemplate
 - Renders error message when the status fetch fails (offline/unreachable printer)
 - Replaced the old per-printer detail page; lazy-loads into cards on the
   printer list (`pages/index.html`)
+- Device-error warning: when `lwstatus.error` is a non-`NoError`
+  `StatusError` variant (`tepra-core` `dto/enums.rs`), renders a warning
+  (yellow) badge with the Japanese label for that variant (see status
+  mapping below)
+
+#### Printer status display mapping (single source)
+
+`status_card` and `print_printer_panel` (`crates/tepra/src/handlers/views.rs`,
+via the shared `resolve_online_and_lw_status` resolver) both drive
+`printer_status_card.html` and `merge_printer_panel.html` from the same
+5-way resolution of `onlinestatus` + `lwstatus`. This is the only place this
+mapping is documented — `tepra-router.md`'s error-mapping section
+cross-references here rather than repeating it:
+
+| `onlinestatus` | `lwstatus`                | Display                                                                                         |
+| -------------- | ------------------------- | ----------------------------------------------------------------------------------------------- |
+| `online=true`  | `200`, `error=0`          | Normal (tape info)                                                                              |
+| `online=true`  | `200`, `error≠0`          | Device-error warning (yellow) — `StatusError` → Japanese label, exhaustive over all 32 variants |
+| `online=true`  | `404`                     | Busy (info, neutral) — "印刷中はステータスを取得できません"                                     |
+| `online=false` | any                       | Offline (neutral — no notice, not shown as an error)                                            |
+| N/A            | `Transport` / other error | Connection error (red) — "Cannot connect to TEPRA Creator WebAPI"                               |
+
+The `lwstatus` 404 case must resolve `online_resp.online` from the _paired_
+`onlinestatus` call, not treat the 404 as a standalone error — a device that
+is mid-print still returns `onlinestatus.online=true`, and only that arm
+should show the busy notice; `online=false` alongside a 404 is a genuinely
+offline printer, not a busy one.
+
+### partials/merge_printer_panel.html
+
+Standalone partial, not extending any shell. Bound to `MergePrinterPanelTemplate`.
+
+- `hx-get` target for `GET /ui/print/{printer}/panel`, used by `pages/print.html`'s
+  printer info panel
+- Shows the same online/offline/busy/device-warning/connection-error states as
+  `printer_status_card.html` (see the status mapping table above — driven by
+  the same `resolve_online_and_lw_status` resolver), plus margin values
+  (top/bottom/left-right) fetched from `getmargin` when a tape is loaded
 
 ### partials/job_card.html
 
@@ -249,8 +361,9 @@ Macro file: `{% macro sidebar(active) %}`.
   printer-mark icon + "Label Creator" / "for TEPRA" two-line brand label)
   followed by a separate DaisyUI `menu` list
 - Menu items (in render order): Printers (linked, `href="/ui/"`),
-  Print (linked, `href="/ui/print"`), Jobs (`menu-disabled`, "Coming soon"
-  badge), API (linked, `href="/ui/api"`) — Templates and Settings items removed
+  Print (linked, `href="/ui/print"`), Jobs (linked, `href="/ui/jobs"`,
+  `active` key `"jobs"`, `views::NAV_JOBS`), API (linked, `href="/ui/api"`)
+  — Templates and Settings items removed
 - `active` (from `nav_active`) marks the current item with `menu-active` +
   `aria-current="page"`
 
@@ -280,7 +393,14 @@ Macro file: `{% macro printer_refresh_toggle() %}`.
 - Navbar auto-refresh control for printer status polling on the print page
 - Renders a labeled toggle with refresh SVG icon, "Auto-refresh" text (sm+ screens),
   and `toggle-primary` DaisyUI styling
-- Checkbox `id="printer-refresh-toggle"`, `class="toggle"` for JS targeting
+- Checkbox `id="printer-refresh-toggle"`, `class="toggle toggle-sm toggle-primary
+  [--radius-selector:9999px]"` — the `[--radius-selector:9999px]` arbitrary
+  property forces a pill shape in every DaisyUI theme; the `business` dark
+  theme sets `--radius-selector: 0rem` (square, by theme design), so without
+  the override the toggle rendered square in dark mode only.
+  WHY-NOT `rounded-full`: DaisyUI's own utility and Tailwind's utility can
+  race for output order, making the override unreliable; overriding the CSS
+  variable directly is deterministic
 - Tooltip (`title="Auto-refresh printer status every 5s"`) explains the 5s interval
 - Persistence is wired by inline scripts in `shells/dashboard.html` (localStorage key:
   `PRINTER_AUTOREFRESH_KEY`), similar to theme toggle pattern
@@ -294,8 +414,10 @@ Macro file: `{% macro printer_refresh_toggle() %}`.
 | `IndexTemplate`             | `pages/index.html`                  |
 | `PrintPageTemplate`         | `pages/print.html`                  |
 | `PrinterStatusCardTemplate` | `partials/printer_status_card.html` |
+| `MergePrinterPanelTemplate` | `partials/merge_printer_panel.html` |
 | `JobCardTemplate`           | `partials/job_card.html`            |
 | `ApiDocsTemplate`           | `pages/api.html`                    |
+| `JobsPageTemplate`          | `pages/jobs.html`                   |
 
 All implement `askama::Template` and are wrapped in `HtmlTemplate<T>` for
 axum `IntoResponse` compatibility.
@@ -306,14 +428,17 @@ Compile-time constants injected into templates:
 - `GIT_HASH` — 7-character git short hash from `build.rs`; displays alongside version
   in sidebar footer as `v{APP_VERSION} ({GIT_HASH})`
 
-`IndexTemplate` and `ApiDocsTemplate` both carry
-`nav_active: String` (sidebar active section, `components/sidebar.html`) and
-`breadcrumbs: Vec<Breadcrumb>` (navbar trail, `components/breadcrumbs.html`).
-`nav_active` is set from named constants (`views::NAV_PRINTERS` /
-`views::NAV_API`) rather than literals, so the handlers that build it cannot
+`IndexTemplate`, `PrintPageTemplate`, `ApiDocsTemplate`, and `JobsPageTemplate`
+all carry `nav_active: String` (sidebar active section,
+`components/sidebar.html`) and `breadcrumbs: Vec<Breadcrumb>` (navbar trail,
+`components/breadcrumbs.html`). `nav_active` is set from named constants
+(`views::NAV_PRINTERS` / `views::NAV_PRINT` / `views::NAV_API` /
+`views::NAV_JOBS`) rather than literals, so the handlers that build it cannot
 drift out of sync with each other. `ApiDocsTemplate` additionally carries
 `endpoints: Vec<EndpointView>` (see `try_it_out.html` above) and
-`error: Option<String>`.
+`error: Option<String>`. `JobsPageTemplate` additionally carries
+`jobs: Vec<JobEntryView>`, `page`, `total`, `page_size`, and `total_pages`
+(see `pages/jobs.html` above).
 
 `EndpointView` carries both the raw schema JSON (`request_schema_json` /
 `response_schema_json` / `sample_json`, kept for the `<details>` disclosure)
@@ -333,6 +458,11 @@ REST helpers (`/api/rest/*`), `false` for the official Creator `WebAPI` facade
 (`/api/printer/*`). This field drives the two-section grouping in
 `pages/api.html`, determined by checking if the endpoint's `path` starts with
 the `CUSTOM_PATH_PREFIX` constant (`"/api/rest/"`).
+`JobEntryView` (built by `build_job_entry_views`, one call per `JobStore::page`
+result) is a plain data carrier flattening `JobRecord`/`JobOutcome` — see
+`partials/job_entry.html` above for its fields — so the template never
+pattern-matches `JobOutcome` itself.
+
 `Breadcrumb` is a plain data carrier (not an `askama::Template`):
 
 ```rust
@@ -350,3 +480,5 @@ Each handler builds its own trail — `index` yields a single non-linked
 - `docs/specs/architecture/pwa-asset-pipeline.md` — how CSS/JS assets are built and served
 - `docs/adr/latest/0003-server-rendered-ui-with-askama-and-htmx.md`
 - `docs/adr/latest/0007-ui-testing-strategy.md`
+- `docs/adr/latest/0011-ephemeral-in-memory-job-store.md` — `JobStore`'s
+  in-memory, 100-record-capped design backing `pages/jobs.html`

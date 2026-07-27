@@ -45,11 +45,18 @@
     `{title, value}` フィールド配列 )。res: 既存 `PrintResponse { result,
     jobid }`。テンプレ未存在 → 404、未知/重複 `title` または `rows`/`serial`
     件数不整合 → 400、Creator エラー → 502。型・純粋関数の詳細は
-    `tepra-core-tepra-client.md` の「Merge-print orchestration」節を参照
+    `tepra-core-tepra-client.md` の「Merge-print orchestration」節を参照。
+    `client.print` の Ok/Err 結果は `AppState.jobs` (`JobStore`) へ 1 箇所で
+    記録 ( UI `POST /ui/print/{printer}` と本 REST route の両方をカバー。
+    詳細は ADR 0011 参照 )
 - `build_ui_router(state)` — HTML UI ( Askama + HTMX )
   - `GET /` — `Redirect::permanent("/ui/")` ( ルートリダイレクト )
   - `GET /ui/` — index
   - `GET /ui/printers/{name}/status-card` — ステータスカード ( HTMX lazy-load 対象 )
+  - `GET /ui/jobs?page=N` — ジョブ履歴一覧 ( `JobStore::page` で新しい順に
+    サーバ側スライス。20 件/page、`page` 未指定は 1、範囲外はクランプ。
+    最大 100 件保持のため最大 5 page。詳細は `askama-templates.md` の
+    `pages/jobs.html` 節を参照 )
   - `GET /ui/jobs/{printer}/{job_id}` — ジョブカード ( 1s polling 対象 )
   - `POST /ui/jobs/{printer}/{job_id}/cancel` — ジョブキャンセル
     ( `job_control(control=3)` → `job_progress` 再取得 → `JobCardTemplate`
@@ -59,13 +66,19 @@
     view-model 化し DaisyUI accordion で描画。Try it out は既存 `/api/*` route を
     再利用 )
   - `GET /ui/print` — 流し込み印刷ページ ( テンプレプレビュー + テープ入力 +
-    printer 情報パネル )
+    printer 情報パネル )。`?from={record_id}` 指定時は `JobStore` から
+    該当ジョブを検索し、保存済み `MergePrintRequest` の値をサーバ側で
+    インラインレンダー ( `value=`/`checked`/selected option ) して
+    再印刷フォームとして再現する ( 再印刷ボタンの遷移先。詳細は
+    `askama-templates.md` の `pages/print.html` 節を参照 )
   - `GET /ui/print/frames` — テープ入力 partial ( テンプレ選択で htmx swap、
     importframe 由来の frame 一覧を返す )
   - `POST /ui/print/{printer}` — 印刷送信 ( 共有 `merge_print()` orchestration
     を呼び出し `JobCardTemplate` を返す )
   - `GET /ui/print/{printer}/panel` — printer 情報パネル ( onlinestatus +
-    lwstatus + getmargin を集約 )
+    lwstatus + getmargin を集約。online/offline/busy/device-error/接続不可の
+    5-way 表示マッピングは `askama-templates.md` の「Printer status display
+    mapping」節を参照。ここでは複製しない )
 
 ## 合成方法
 
@@ -79,6 +92,8 @@
 - `client: Arc<dyn TepraClient>` — Creator API 呼出 ( 共有 )
 - `registry: Arc<PrinterRegistry>` — per-printer actor lookup
 - `template_dir: PathBuf` — テンプレートファイル探索ルート
+- `jobs: Arc<JobStore>` — 印刷ジョブ履歴 ( in-memory、上限 100 件。
+  ephemeral — プロセス再起動で消失。ADR 0011 参照 )
 
 `AppState` は `Clone` 可で、 axum handler に `State<AppState>` として
 注入する。
@@ -87,6 +102,11 @@
 
 Creator API 呼出失敗は handler 層で `StatusCode::BAD_GATEWAY` (502) に
 写像 ( `printers.rs::err_502` 参照 )。
+
+`GET /ui/print/{printer}/panel` / `GET /ui/printers/{name}/status-card` は
+502 に丸めず、lwstatus 404 (busy) / device error / offline / 接続不可を
+個別表示に分岐する ( 5-way マッピングは `askama-templates.md` の「Printer
+status display mapping」節を参照。詳細をここへ複製しない )。
 
 ## OpenAPI ドキュメント生成
 
