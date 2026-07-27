@@ -92,8 +92,6 @@ expression: html
         
   
 
-  <h1 class="text-2xl font-bold mb-4">API Reference</h1>
-
   
     <h2 class="text-lg font-semibold mt-2 mb-2">Official Creator WebAPI</h2>
     <div class="join join-vertical w-full mb-6">

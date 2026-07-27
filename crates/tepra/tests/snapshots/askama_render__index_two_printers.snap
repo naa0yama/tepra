@@ -92,8 +92,6 @@ expression: html
         
   
 
-  <h1 class="text-2xl font-bold mb-4">Printers</h1>
-
   
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
       

@@ -90,8 +90,6 @@ expression: html
 
       <main id="main" tabindex="-1" class="flex-1 p-4">
         
-  <h1 class="text-2xl font-bold mb-4">Jobs</h1>
-
   
     <div class="join join-vertical w-full mb-4">
       
