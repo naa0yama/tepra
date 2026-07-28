@@ -27,7 +27,10 @@ The library crate `crates/tepra/` remains pure Rust (no Node.js dependency).
 
 Steps executed by Cargo before compilation:
 
-1. **pnpm check** — fails fast with a hint if `pnpm` is not on `PATH`.
+1. **pnpm check** — if `pnpm` is not on `PATH`, writes stub assets (empty
+   `app.css` / `htmx.min.js`, empty font dirs) to `$OUT_DIR` and returns `Ok`
+   so the build still succeeds (does not fail fast). A real asset build
+   requires `mise exec -- cargo build`.
 2. **`pnpm install --frozen-lockfile`** — installs devDependencies from lockfile.
 3. **Tailwind compile** — `pnpm exec tailwindcss -i src/styles/app.css -o $OUT_DIR/app.css --minify`.
 4. **Font copy** — `@fontsource/ibm-plex-sans-jp` and `@fontsource/ibm-plex-mono` woff2
@@ -39,14 +42,15 @@ Steps executed by Cargo before compilation:
 
 ## Frontend Dependencies (`package.json`)
 
-| Package                        | Role                             |
-| ------------------------------ | -------------------------------- |
-| `tailwindcss`                  | CSS framework (v4)               |
-| `@tailwindcss/cli`             | Tailwind CLI used in build.rs    |
-| `daisyui`                      | Component plugin for Tailwind v5 |
-| `@fontsource/ibm-plex-sans-jp` | Japanese + Latin woff2 files     |
-| `@fontsource/ibm-plex-mono`    | Monospace woff2 files            |
-| `htmx.org`                     | HTMX JavaScript bundle           |
+| Package                        | Role                                                  |
+| ------------------------------ | ----------------------------------------------------- |
+| `tailwindcss`                  | CSS framework (v4.3.2)                                |
+| `@tailwindcss/cli`             | Tailwind CLI used in build.rs                         |
+| `daisyui`                      | Component plugin for Tailwind (v5.6.5)                |
+| `@fontsource/ibm-plex-sans-jp` | Japanese + Latin woff2 files                          |
+| `@fontsource/ibm-plex-mono`    | Monospace woff2 files                                 |
+| `htmx.org`                     | HTMX JavaScript bundle                                |
+| `@playwright/mcp`              | Playwright MCP server for browser-driven verification |
 
 ## CSS Entry Point (`src/styles/app.css`)
 
