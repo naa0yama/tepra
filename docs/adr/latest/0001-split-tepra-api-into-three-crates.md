@@ -33,11 +33,13 @@ tepra-web -> tepra -> tepra-core
 - `tepra-core` (library): domain types, KING JIM WebAPI client trait and
   HTTP implementation, capability matrix, error type. No HTTP server,
   no templating.
-- `tepra` (library): Axum router mounted at `/api/v1`, job queue
-  manager, template manager, request validation. Consumes `tepra-core`.
-- `tepra-web` (library + binary `tepra`): Askama templates, HTMX
-  page handlers, static asset mount, binary entrypoint that wires
-  config + OTel + queue + nested REST router.
+- `tepra` (library): Axum router mounted at `/api/*` (see
+  `crates/tepra/src/router.rs`), job queue manager, template manager,
+  request validation, Askama templates, and HTMX page handlers
+  (`crates/tepra/src/views.rs`, `crates/tepra/src/handlers/views.rs`).
+  Consumes `tepra-core`.
+- `tepra-web` (binary `tepra`): binary entrypoint that wires config +
+  OTel + queue + nested UI/REST router, static asset mount.
 
 ## Consequences
 
@@ -69,3 +71,8 @@ Negative:
 ## History
 
 - 2026-06-27: initial version
+- 2026-07-28: factual correction — UI handlers (Askama/HTMX) and the
+  `/api/*` router live in `crates/tepra`, not `tepra-web` as originally
+  described; `/api/v1` never existed in code (actual mounts are
+  `/api/printer/*`, `/api/rest/*`, `/api/openapi.json`). Decision intent
+  unchanged; ADR 0010 already reflects this correctly.
