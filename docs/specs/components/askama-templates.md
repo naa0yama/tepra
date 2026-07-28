@@ -15,8 +15,12 @@ crates/tepra/templates/
     api.html            # API Reference page (GET /ui/api)
     jobs.html           # Job history page (GET /ui/jobs?page=N)
   partials/
+    error_alert.html           # Bound to ErrorAlertTemplate; wraps components::error_alert macro
+    frames_form.html           # Tape-card form macro, imported by merge_frames.html
     job_card.html              # HTMX job-status polling card (GET /ui/jobs/{printer}/{id})
     job_entry.html             # One job-history accordion row (used by pages/jobs.html)
+    merge_frames.html          # Bound to MergeFramesTemplate (GET /ui/print/frames); imports frames_form.html
+    merge_preview.html         # Included by pages/print.html for the print-preview section
     pagination.html            # DaisyUI join pager macro (used by pages/jobs.html)
     printer_status_card.html   # HTMX lazy-loaded printer status card (GET /ui/printers/{name}/status-card)
     endpoint_entry.html        # Per-endpoint collapse accordion macro (used by api.html)
@@ -416,6 +420,8 @@ Macro file: `{% macro printer_refresh_toggle() %}`.
 | `PrinterStatusCardTemplate` | `partials/printer_status_card.html` |
 | `MergePrinterPanelTemplate` | `partials/merge_printer_panel.html` |
 | `JobCardTemplate`           | `partials/job_card.html`            |
+| `MergeFramesTemplate`       | `partials/merge_frames.html`        |
+| `ErrorAlertTemplate`        | `partials/error_alert.html`         |
 | `ApiDocsTemplate`           | `pages/api.html`                    |
 | `JobsPageTemplate`          | `pages/jobs.html`                   |
 

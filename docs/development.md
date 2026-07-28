@@ -135,11 +135,16 @@ Conventional Commits: `<type>(<scope>): <description>`
 | `feat`     | 新機能                     |
 | `update`   | 既存機能の改善             |
 | `fix`      | バグ修正                   |
-| `chore`    | 動作変更なしのメンテナンス |
-| `docs`     | ドキュメント               |
-| `test`     | テスト                     |
+| `style`    | フォーマット等 見た目のみ  |
 | `refactor` | リファクタリング           |
+| `docs`     | ドキュメント               |
+| `perf`     | パフォーマンス改善         |
+| `test`     | テスト                     |
+| `build`    | ビルドシステム / 依存関係  |
 | `ci`       | CI/CD                      |
+| `chore`    | 動作変更なしのメンテナンス |
+| `remove`   | コード / 機能の削除        |
+| `revert`   | コミットの取り消し         |
 
 ## VSCode 拡張機能
 

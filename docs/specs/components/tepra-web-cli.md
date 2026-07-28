@@ -120,10 +120,12 @@ tepra config init
 2. `Commands::Serve(args)` の場合:
    - `load_config(&args)` で `ServeConfig` を合成 (figment cascade)
    - `init_telemetry()` 呼び出し後、 effective config を `INFO` ログ 1 行 emit
-   - `ReqwestTepraClient::new(config.creator_base)` を `Arc` で生成
+   - `ReqwestTepraClient::with_meters(config.creator_base, meters)` を `Arc` で生成
    - `AppState::new_with_template_dir(client, config.template_dir)` を構築
-   - 4 つの router builder を `.merge()` し、 `.layer(TraceLayer::new_for_http())`
-     を付加して `config.bind` に bind し、 `axum::serve` で起動
+   - `build_router` に 5 つの router builder ( jobs / templates / merge / ui /
+     assets ) を `.merge()` し、 `server_metrics_mw` middleware と
+     `make_span_with` / `on_response` をカスタムした `TraceLayer` を付加して
+     `config.bind` に bind し、 `axum::serve` で起動
 3. `Commands::Config(ConfigArgs { action: ConfigAction::Init(args) })` の場合:
    `config::write_default_toml(&args.path, args.force)` を呼び出し、成功時に
    書き込み先パスを stdout 出力
