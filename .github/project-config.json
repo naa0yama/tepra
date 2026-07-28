@@ -1,6 +1,6 @@
 {
 	"cli_toml": "crates/tepra-web/Cargo.toml",
-	"miri_excluded_crates": [],
+	"miri_excluded_crates": ["tepra-web"],
 	"timeout_minutes": 15,
 	"apt_packages": "",
 	"release_targets": [

@@ -17,6 +17,8 @@ target
 .claude/*.local.json
 .claude/artifacts/
 .claude/scheduled_tasks.lock
+.claude/skills/cc-plugin-claude-*
+.claude/skills/deps-sync-rust-pwa-stack/
 .claude/skills/lib-*/SKILL.md
 .claude/skills/tool-*/SKILL.md
 
@@ -54,5 +56,20 @@ src-tauri/gen/
 # Project-specific dependencies are listed here.
 
 # graft:keep-end
+
+# tepra
+templates/
+tepra.toml
+
+# pnpm (brust-web asset pipeline)
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# Playwright MCP scratch (page snapshots / console logs / ad-hoc screenshots)
+.playwright-mcp/
+
+# python
+__pycache__/
 
 # Under the unknown

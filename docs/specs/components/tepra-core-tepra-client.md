@@ -20,6 +20,8 @@
 - `job_info(name, jobid)` — `GET /api/printer/job/info/{name}?jobid=N`
 - `job_control(name, req)` — `POST /api/printer/job/control/{name}`
 - `import_frame(req)` — `POST /api/printer/template/importframe`
+  ( res item shape: `ImportFrameItem { column, title, attribute }` —
+  詳細は「Merge-print orchestration」節参照 )
 - `get_margin(name, req)` — `POST /api/printer/getmargin/{name}`
 
 `async_trait` を使用。 `Arc<dyn TepraClient>` で `AppState` に注入。
@@ -43,6 +45,97 @@
     JS `Boolean.toString()` 互換
   - 影響: `MockCall::Tapefeed(String, bool)` も同じ shape
 
+## Merge-print orchestration ( `tepra` crate )
+
+`.lw1` テンプレートに CSV データを流し込んで印刷する `POST
+/api/rest/merge-print/{printer}` ( `tepra-router.md` 参照 ) を支える型と純粋関数。
+`tepra-core` の DTO ではなく `crates/tepra/src/merge.rs` /
+`crates/tepra/src/handlers/merge_print.rs` に置く ( orchestration とその型は
+web crate の関心事、`TepraClient` trait とは別レイヤ )。
+
+### 型
+
+- `MergePrintRequest { template: String, rows: Vec<Vec<MergeField>>, serial:
+  Option<SerialSpec>, #[serde(flatten)] overrides: MergePrintOverrides }`
+  ( `handlers/merge_print.rs` ) — `rows` の外側 = テープ ( ラベル ) 単位、
+  内側 = そのテープの `{title, value}` フィールド配列
+- `MergeField { title: String, value: String }` ( `merge.rs` ) — `title` は
+  `ImportFrameItem::title` と一致する列タイトル ( 画面表示ヘッダ )
+- `SerialSpec { title, start: i64, count: u32, step: i64, pad: u8 }`
+  ( `merge.rs` ) — 連番生成スペック。ネイティブ WebAPI が無いため
+  `expand_serial` がサーバ側で流し込み行を生成する
+- `MergePrintOverrides` ( `merge.rs` ) — `copies` / `density` / `tape_cut` /
+  `half_cut` / `half_cut_separate` / `print_speed` / `margin_left_right` /
+  `display_tape_width` / `display_print_setting` をすべて `Option` で保持、
+  未指定は wire 既定 ( `merge_print_parameter` 参照 )
+  - `display_tape_width` ( Option<u32> ): 2 = 確認ダイアログ表示、1 = 非表示
+  - `display_print_setting` ( Option<u32> ): 2 = 確認ダイアログ表示、1 = 非表示;
+    また `display_transfer_tape` 表示制御も担当
+  - `print_speed` サーバ側既定値: 1 (High) → 2 (Low) に変更
+
+### 純粋関数 ( I/O 無し、単体テスト対象 )
+
+- `build_merge_csv(frames: &[ImportFrameItem], rows: &[Vec<MergeField>],
+  encoding: CsvEncoding) -> anyhow::Result<Vec<u8>>` — 与えられた `frames`
+  の配列順そのままでヘッダ無し RFC4180 CSV を組み立てる ( 順序保存、自身では
+  ソートしない )。呼び出し側 ( `fetch_template_and_frames` ) が `frames` を
+  事前に `column` セル参照順へ正規化して渡す契約。値は各行 ( テープ ) の
+  `title` で該当枠を引いて解決 ( 欠損 → 空 )。`frames` の重複 `title`、または
+  行内の未知/重複 `title` は `Err` ( handler で 400 に写像 )。
+  `CsvEncoding::{Utf8, ShiftJis}` ( `ShiftJis` は `encoding_rs` の CP932、
+  既定は `Utf8` )
+- `parse_cell_ref(cell: &str) -> (u32, u32)` ( `merge.rs` ) — セル参照
+  ( `"A1"` / `"AA10"` 等 ) を `(column_key, row_key)` へ分解。先頭の
+  アルファベット部を base-26 で列キーへ ( A=1, …, Z=26, AA=27, … )、末尾の
+  数字部を行キーへ ( 無ければ 0 )。アルファベット部が無ければ列キー 0
+- `sort_frames_by_column(frames: &mut [ImportFrameItem])` ( `merge.rs` ) —
+  `parse_cell_ref` の `(column_key, row_key)` で `frames` を列メジャー
+  ( 列キー優先、行キー副次 ) に安定ソート。`import_frame` の返却配列順は
+  セル参照順と一致するとは限らないため ( 例: `資産ラベルr1.lw1` )、
+  `fetch_template_and_frames` が `import_frame` 直後にこれを呼び、CSV 組立
+  ( `build_merge_csv` ) と UI 描画 ( `print_frames` ) が同一の正規化済み順序
+  を共有する。前提: テンプレートの列は A から連続 ( 欠番なし )
+- `expand_serial(spec: &SerialSpec) -> Vec<MergeField>` — `start` から `step`
+  刻みで `count` 個、`pad` 桁 0 埋めした値を `title` の `MergeField` として生成
+- `merge_print_parameter(overrides: &MergePrintOverrides) -> PrintParameter`
+  — SDK `defaultPrintParameter` ( `tepraprint.js` ) 由来の wire 既定値に
+  `overrides` を適用して `PrintParameter` を構築
+
+### DTO 是正: `ImportFrameItem`
+
+`crates/tepra-core/src/dto/template.rs` の `ImportFrameItem` は
+`{ column: String, title: String, attribute: ImportFrameAttribute }` が正
+( 旧 `id`/`width`/`height` は一次ソース `tepraprint.js` の importframe レスポンス
+と不一致だったため是正済み )。`column` はセル参照 ( `A1`/`B2` 等、CSV↔枠の
+バインドキー )、`title` は Creator 作成画面で入力した列タイトル ( UI 表示用 )。
+両者は別物で、`build_merge_csv` は `title` で解決し `column` 順で出力する。
+
+### Lister 是正: `.lw1` テンプレート列挙
+
+`crates/tepra/src/templates.rs` の一覧関数は `is_lbl` ( `.lbl` のみ判定 ) から
+`is_template` に改名し、`.lw1` / `.lbl` を case-insensitive で受理するよう
+是正済み ( 実テンプレファイルの拡張子は `.lw1` だが旧実装は `.lbl` のみを
+対象としており、`GET /api/rest/templates` に対象テンプレが出てこなかった )。
+
+## OpenAPI スキーマ導出 ( `schema` feature )
+
+`tepra` ( web ) の API リファレンスページ / `openapi.json` が使う DTO スキーマ
+は、DTO 定義そのものと同じ場所 = `tepra-core` に置く。 これにより cli など別
+front-end も同じスキーマ導出を再利用できる ( ADR 0010 )。
+
+- `dto/` の Request/Response 型に
+  `#[cfg_attr(feature = "schema", derive(utoipa::ToSchema))]` を付与
+- 各 pub field に `///` doc comment を付与する。`utoipa` は struct doc comment
+  を schema `description`、field doc comment を各 property の `description` に
+  出力するため、これらが `openapi.json` 経由で API リファレンスページの
+  プロパティ表 ( field / 型 / 必須 / 説明 ) の「説明」列を埋める。doc comment
+  自体は feature gate 不要 ( `schema` feature 有効時のみ utoipa が拾う )
+- `utoipa` 依存は `schema = ["dep:utoipa"]` feature の下に閉じ込め、default build
+  には一切 leak しない ( `cargo tree` で default に utoipa が現れないことを確認済み )
+- HTTP operation metadata ( `#[utoipa::path]` / `#[derive(OpenApi)]` ) は
+  `tepra-core` には置かず web crate 側に留める。 責務分割の詳細は
+  `tepra-router.md` の「OpenAPI ドキュメント生成」節を参照
+
 ## エラー型
 
 `TepraError` ( `error.rs` ):
@@ -51,7 +144,55 @@
 - `Parse { source }` — JSON deserialize 失敗
 - Creator API の errcode は今後 `dto::error` で扱う方針
 
+## Observability ( OTel client span )
+
+`ReqwestTepraClient` の 13 caller は全て `#[instrument]` を付与し、
+OTel HTTP client semantic conventions 1.23+ 準拠の CLIENT span を emit する。
+
+- span name は静的リテラル `"{METHOD} {url.template}"` 形式で低カーディナリティ
+  ( trace UI 上で endpoint 別に集約可能 )
+- helper ( `get_json` / `get_json_query` / `get_query_empty` / `post_json` /
+  `post_empty` ) には `#[instrument]` を付与しない。 helper 側は
+  `Span::current().record(...)` で caller span に属性を追記する
+  ( bare `"GET"` / `"POST"` の inner span を emit させない )
+- caller span 属性:
+  - `otel.kind = "CLIENT"`
+  - `http.request.method` = 静的 `"GET"` / `"POST"`
+  - `url.template` = 静的 template ( 例: `/api/printer/info/{name}` )
+  - `server.address` / `url.scheme` = client 設定値
+  - `url.full` = 展開後の実 URL ( helper record )
+  - `http.response.status_code` / `http.response.body.size` = helper record
+
+span name 一覧 ( 13 caller ):
+
+- `GET /api/printer` — `list_printers`
+- `GET /api/printer/version` — `version`
+- `GET /api/printer/autoselect` — `autoselect`
+- `GET /api/printer/info/{name}` — `printer_info`
+- `GET /api/printer/onlinestatus/{name}` — `online_status`
+- `GET /api/printer/lwstatus/{name}` — `lw_status`
+- `GET /api/printer/tapefeed/{name}` — `tapefeed`
+- `GET /api/printer/job/progress/{name}` — `job_progress`
+- `GET /api/printer/job/info/{name}` — `job_info`
+- `POST /api/printer/print/{name}` — `print`
+- `POST /api/printer/job/control/{name}` — `job_control`
+- `POST /api/printer/template/importframe` — `import_frame`
+- `POST /api/printer/getmargin/{name}` — `get_margin`
+
+実装メモ:
+
+- 動的 path template ( `{name}` を含むリテラル ) は clippy
+  `literal_string_with_formatting_args` を誤発火するため、
+  `concat!("GET ", "/api/printer/info/{name}")` でリテラル分割する
+- caller span の record 期待は `tests/client_span_name.rs` で検証。
+  wiremock + tracing-subscriber の custom Layer で 13 endpoint の
+  span name / `url.template` / `otel.kind` / `http.request.method` を
+  assert し、bare `"GET"` / `"POST"` span が emit されないことも保証する
+
 ## 関連
 
+- `docs/specs/architecture/otel-instrumentation.md` — 全体計装方針
 - `docs/specs/external/tepra-creator-webapi.md` — Creator API の生仕様
+- `docs/adr/latest/0010-openapi-schema-derivation-in-core-behind-feature-gate.md`
+  — `schema` feature 境界の決定記録
 - `crates/tepra-core/src/dto/` — Request/Response DTO 定義

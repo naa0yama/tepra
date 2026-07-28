@@ -1,3 +1,4 @@
+#![allow(deprecated)]
 //! Error-path tests for `ReqwestTepraClient` — transport and parse failures.
 // wiremock spawns a TCP listener which miri isolation blocks;
 // HTTP integration tests are not the target of UB detection.

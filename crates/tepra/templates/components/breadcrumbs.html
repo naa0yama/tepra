@@ -1,0 +1,19 @@
+{# templates/components/breadcrumbs.html #}
+{# `items` is a `Vec<Breadcrumb>` (`views::Breadcrumb`). Entries with `href`
+   render as links; the last (current-page) entry has no `href` and renders
+   as plain text. #}
+{% macro breadcrumbs(items) %}
+<div class="breadcrumbs text-sm flex-1 px-2">
+  <ul>
+    {% for item in items %}
+      <li>
+        {% if let Some(href) = item.href %}
+          <a href="{{ href }}">{{ item.label }}</a>
+        {% else %}
+          <span aria-current="page">{{ item.label }}</span>
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+</div>
+{% endmacro %}

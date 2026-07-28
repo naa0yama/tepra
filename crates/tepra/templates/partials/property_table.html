@@ -1,0 +1,30 @@
+{# templates/partials/property_table.html #}
+{% macro property_table(title, name_header, rows) %}
+  {% if !rows.is_empty() %}
+    <div>
+      <h3 class="font-semibold text-sm mb-1">{{ title }}</h3>
+      <div class="overflow-x-auto">
+        <table class="table table-sm">
+          <thead>
+            <tr>
+              <th>{{ name_header }}</th>
+              <th>Type</th>
+              <th>Required</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in rows %}
+              <tr>
+                <td><code>{{ row.name }}</code></td>
+                <td>{{ row.type_name }}</td>
+                <td>{% if row.required %}Yes{% else %}No{% endif %}</td>
+                <td>{% if let Some(description) = row.description %}{{ description }}{% else %}&mdash;{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+{% endmacro %}

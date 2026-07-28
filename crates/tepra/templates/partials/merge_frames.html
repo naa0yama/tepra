@@ -1,0 +1,9 @@
+{# templates/partials/merge_frames.html #}
+{% import "components/alert.html" as components %}
+{% import "partials/frames_form.html" as frames_form %}
+
+{% if let Some(e) = error %}
+  {{ components::error_alert(message=e) }}
+{% else %}
+  {{ frames_form::frames_form(template=template, tapes=tapes, serial=serial) }}
+{% endif %}

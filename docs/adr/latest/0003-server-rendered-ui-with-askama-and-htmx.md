@@ -33,9 +33,10 @@ Tailwind CLI to a checked-in `static/app.css`. No client-side JavaScript
 beyond HTMX and its required browser glue.
 
 The Tailwind output is committed so production builds never need Node.
-Page routes (`/`, `/templates`, `/print`) live in `tepra-web`; HTMX
-fragments are returned by the same `tepra-web` handlers (not by the
-`/api/v1` REST router).
+Page routes (`/`, `/templates`, `/print`) live in `crates/tepra`
+(`crates/tepra/src/views.rs`, `crates/tepra/src/handlers/views.rs`); HTMX
+fragments are returned by the same handlers (not by the `/api/*` REST
+router in `crates/tepra/src/router.rs`).
 
 ## Consequences
 
@@ -69,3 +70,7 @@ Negative:
 ## History
 
 - 2026-06-27: initial version
+- 2026-07-28: factual correction — UI page routes and HTMX handlers live
+  in `crates/tepra`, not `tepra-web` as originally described; `/api/v1`
+  never existed in code (actual REST mount is `/api/*`). Decision intent
+  unchanged; ADR 0010 already reflects this correctly.

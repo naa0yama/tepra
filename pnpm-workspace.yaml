@@ -1,0 +1,7 @@
+packages:
+  # graft:keep-start
+  - crates/tepra-web
+  # graft:keep-end
+  - tools/wireframe
+allowBuilds:
+  "@parcel/watcher": false

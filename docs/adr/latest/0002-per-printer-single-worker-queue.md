@@ -1,6 +1,6 @@
 # 0002. Per-printer single-worker queue for print jobs
 
-- Status: Accepted
+- Status: Superseded by ADR 0011
 - Date: 2026-06-27
 - Deciders: project owner
 
@@ -22,7 +22,7 @@ without forcing the caller to retry on collision, and surface a useful
 ## Decision
 
 Per registered printer, spawn exactly one `tokio::spawn` worker that
-consumes a FIFO queue. `POST /api/v1/jobs` always succeeds (provided
+consumes a FIFO queue. `POST /api/printer/print/{name}` always succeeds (provided
 parameters validate) and returns `state: "queued"` plus
 `queue_position: N`. The worker pops the next `JobId`, calls
 `tepra-core::TepraBackend::print`, then polls `job_progress` to terminal,
@@ -77,3 +77,10 @@ Negative:
 ## History
 
 - 2026-06-27: initial version
+- 2026-07-28: superseded by ADR 0011 (Ephemeral in-memory job store).
+  Handlers now call `state.client.print()` synchronously and record the
+  outcome directly (`merge_print` orchestration), rather than dispatching
+  through a per-printer FIFO worker queue.
+- 2026-07-28: factual correction — `/api/v1/jobs` never existed in code;
+  the actual mount is `POST /api/printer/print/{name}`. Superseded status
+  unaffected.

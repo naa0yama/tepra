@@ -1,0 +1,688 @@
+{# templates/pages/print.html #}
+{% extends "shells/dashboard.html" %}
+{% import "components/alert.html" as components %}
+{% import "partials/frames_form.html" as frames_form %}
+
+{% block title %}Print{% endblock %}
+
+{% block body %}
+  {% if let Some(e) = error %}
+    {{ components::error_alert(message=e) }}
+  {% endif %}
+  {% if template_mismatch %}
+    {{ components::error_alert(message="Reprint source template is no longer available; showing a best-effort fill.") }}
+  {% endif %}
+
+  <div class="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4">
+    <div class="flex flex-col gap-4">
+      <div class="card bg-base-100 shadow p-4">
+        <label class="form-control">
+          <div class="label"><span class="label-text">Template</span></div>
+          <select id="template-select" class="select select-bordered w-full">
+            <option value="" disabled {% if !prefill %}selected{% endif %}>Select template…</option>
+            {% for t in templates %}
+              <option value="{{ t.path }}" {% if t.path == selected_template %}selected{% endif %}>{{ t.path }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <div id="template-preview-pane" class="mt-4">
+          {% include "partials/merge_preview.html" %}
+        </div>
+      </div>
+
+      <div id="print-frames-pane" class="card bg-base-100 shadow p-4">
+        {% if prefill %}
+          {{ frames_form::frames_form(template=selected_template, tapes=tapes, serial=serial) }}
+        {% else %}
+          <div class="opacity-50 text-sm">Select a template to load frames.</div>
+        {% endif %}
+      </div>
+
+      <div class="card bg-base-100 shadow p-4">
+        <div class="collapse collapse-arrow border border-base-300 bg-base-200">
+          <input type="checkbox" id="rest-curl-toggle" aria-label="REST API curl sample" />
+          <div class="collapse-title font-semibold">REST API curl sample</div>
+          <div class="collapse-content w-full min-w-0">
+            <p class="text-sm opacity-70 mb-2">Equivalent REST request for the current template &amp; settings.</p>
+            <div class="relative">
+              <button type="button" id="curl-copy-btn" class="btn btn-xs btn-neutral absolute top-1 right-1 z-10" aria-label="Copy curl command">Copy</button>
+              <pre class="text-xs bg-base-300 rounded p-2 overflow-x-auto"><code id="curl-sample"></code></pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-base-100 shadow p-4">
+      <label class="form-control">
+        <div class="label"><span class="label-text">Printer</span></div>
+        <div class="join w-full">
+          <select id="printer-info-select" data-printer-select data-selected-printer="{{ selected_printer }}" class="select select-bordered join-item w-full" required></select>
+          <button type="button" id="printer-refresh-btn" class="btn btn-square join-item" aria-label="Refresh printer status now" title="Refresh now">
+            <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+          </button>
+        </div>
+      </label>
+      <div id="printer-info-panel" class="mt-4">
+        <div class="opacity-50 text-sm">Select a printer to view status.</div>
+      </div>
+
+      <div id="print-result" class="mt-4">
+        <div class="opacity-50 text-sm">No active print job.</div>
+      </div>
+
+      <div class="divider"></div>
+
+      <label class="form-control">
+        <div class="label"><span class="label-text">Copies</span></div>
+        <input type="number" min="1" max="999" value="{{ overrides.copies }}" class="input input-bordered w-full" id="print-copies" />
+      </label>
+
+      <div class="collapse collapse-arrow border border-base-300 bg-base-200 mt-2">
+        <input type="checkbox" aria-label="Advanced print settings" />
+        <div class="collapse-title font-semibold">Advanced print settings</div>
+        <div class="collapse-content grid grid-cols-1 gap-2 w-full min-w-0">
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Density</span></div>
+            <input type="number" min="-5" max="5" class="input input-bordered input-sm w-full" id="setting-density" {% if let Some(v) = overrides.density %}value="{{ v }}"{% endif %} />
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Print speed</span></div>
+            <select class="select select-bordered select-sm w-full" id="setting-print-speed">
+              <option value="" {% if overrides.print_speed == 0 %}selected{% endif %}>Low (default)</option>
+              <option value="1" {% if overrides.print_speed == 1 %}selected{% endif %}>High</option>
+              <option value="2" {% if overrides.print_speed == 2 %}selected{% endif %}>Low</option>
+              <option value="3" {% if overrides.print_speed == 3 %}selected{% endif %}>Middle</option>
+            </select>
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Tape cut</span></div>
+            <select class="select select-bordered select-sm w-full" id="setting-tape-cut">
+              <option value="" {% if overrides.tape_cut == 0 %}selected{% endif %}>Each label (default)</option>
+              <option value="1" {% if overrides.tape_cut == 1 %}selected{% endif %}>Not cut</option>
+              <option value="2" {% if overrides.tape_cut == 2 %}selected{% endif %}>Each label</option>
+              <option value="3" {% if overrides.tape_cut == 3 %}selected{% endif %}>After job</option>
+            </select>
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Half cut</span></div>
+            <select class="select select-bordered select-sm w-full" id="setting-half-cut">
+              <option value="" {% if overrides.half_cut == 0 %}selected{% endif %}>Half-cut (default)</option>
+              <option value="1" {% if overrides.half_cut == 1 %}selected{% endif %}>No half-cut</option>
+              <option value="2" {% if overrides.half_cut == 2 %}selected{% endif %}>Half-cut</option>
+            </select>
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Half cut separate</span></div>
+            <select class="select select-bordered select-sm w-full" id="setting-half-cut-separate">
+              <option value="" {% if overrides.half_cut_separate == 0 %}selected{% endif %}>Continuous (joined) (default)</option>
+              <option value="1" {% if overrides.half_cut_separate == 1 %}selected{% endif %}>Continuous (joined)</option>
+              <option value="2" {% if overrides.half_cut_separate == 2 %}selected{% endif %}>Continuous (separated)</option>
+            </select>
+          </label>
+          <label class="form-control w-full min-w-0">
+            <div class="label"><span class="label-text">Margin left/right (0.1mm)</span></div>
+            <input type="number" min="0" class="input input-bordered input-sm w-full" id="setting-margin-left-right" {% if let Some(v) = overrides.margin_left_right %}value="{{ v }}"{% endif %} />
+          </label>
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="checkbox" class="checkbox checkbox-sm" id="setting-display-tape-width" {% if overrides.display_tape_width_checked %}checked{% endif %} />
+            <span class="label-text">Hide tape-width confirmation</span>
+          </label>
+          <label class="label cursor-pointer justify-start gap-2">
+            <input type="checkbox" class="checkbox checkbox-sm" id="setting-display-print-setting" {% if overrides.display_print_setting_checked %}checked{% endif %} />
+            <span class="label-text">Hide print-setting confirmation</span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <dialog id="print-confirm-modal" class="modal">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">Confirm print</h3>
+      <p class="py-2">Send this job to the printer?</p>
+      <div class="modal-action">
+        <button type="button" class="btn" id="print-confirm-no">No</button>
+        <button type="button" class="btn btn-primary" id="print-confirm-yes">Yes</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script>
+    (() => {
+      const SKIP_CONFIRM_KEY = "printSkipConfirm";
+      const templateSelect = document.getElementById("template-select");
+      const previewImg = () => document.getElementById("template-preview");
+      const previewPlaceholder = () => document.getElementById("template-preview-placeholder");
+
+      function loadPreview(templatePath) {
+        const img = previewImg();
+        const placeholder = previewPlaceholder();
+        if (!img || !placeholder) {
+          return;
+        }
+        img.src = `/api/rest/templates/preview?path=${encodeURIComponent(templatePath)}`;
+        img.classList.remove("hidden");
+        placeholder.classList.add("hidden");
+      }
+
+      function loadFrames(templatePath) {
+        // Show an immediate spinner; the htmx.ajax innerHTML swap below
+        // replaces it once the frames response arrives, so no teardown needed.
+        const pane = document.getElementById("print-frames-pane");
+        if (pane) {
+          pane.innerHTML =
+            '<div class="flex justify-center p-4"><span class="loading loading-spinner loading-md"></span></div>';
+        }
+        htmx.ajax("GET", `/ui/print/frames?template=${encodeURIComponent(templatePath)}`, {
+          target: "#print-frames-pane",
+          swap: "innerHTML",
+        });
+      }
+
+      templateSelect?.addEventListener("change", () => {
+        const value = templateSelect.value;
+        if (!value) {
+          return;
+        }
+        // WHY-NOT: loadFrames() swaps out #print-frames-pane's job_card,
+        // so the closure's activeJob would otherwise keep referencing a
+        // job that no longer has a button to reflect onto.
+        setPrintMode();
+        loadPreview(value);
+        loadFrames(value);
+      });
+
+      // WHY-NOT: server-side printer <option> render — mirrors api.html's
+      // client-side fetch of /api/printer.
+      function populatePrinterSelects(root) {
+        fetch("/api/printer")
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}`);
+            }
+            return res.json();
+          })
+          .then((printers) => {
+            if (!Array.isArray(printers) || printers.length === 0) {
+              throw new Error("empty printer list");
+            }
+            (root ?? document).querySelectorAll("[data-printer-select]").forEach((select) => {
+              const selectedPrinter = select.dataset.selectedPrinter || "";
+              select.innerHTML = "";
+              const placeholder = document.createElement("option");
+              placeholder.value = "";
+              placeholder.disabled = true;
+              placeholder.textContent = "Select printer…";
+              select.appendChild(placeholder);
+              let matched = false;
+              printers.forEach((printer) => {
+                const option = document.createElement("option");
+                option.value = printer.printerName;
+                option.textContent = printer.printerName;
+                if (printer.printerName === selectedPrinter) {
+                  option.selected = true;
+                  matched = true;
+                }
+                select.appendChild(option);
+              });
+              // WHY-NOT: placeholder.selected = true unconditionally — a
+              // server-side selectedPrinter must win once matched, since
+              // innerHTML was just rebuilt and any prior selection is gone.
+              placeholder.selected = !matched;
+              // WHY-NOT: reimplementing currentPrinter/loadPrinterPanel here —
+              // setting option.selected programmatically does not fire
+              // "change", so dispatch it to run #printer-info-select's own
+              // change listener (currentPrinter tracking, loadPrinterPanel,
+              // conditional startAutoRefresh) the same way a manual pick would.
+              if (matched) {
+                select.dispatchEvent(new Event("change"));
+              }
+            });
+            renderCurlSample();
+          })
+          .catch(() => {
+            /* leave the select empty; the required attribute blocks submit */
+          });
+      }
+
+      function renderCurlSample() {
+        const code = document.getElementById("curl-sample");
+        if (!code) {
+          return;
+        }
+        const origin = window.location.origin;
+        const printer = document.getElementById("printer-info-select")?.value || "{printer}";
+        const url = `${origin}/api/rest/merge-print/${encodeURIComponent(printer)}`;
+        // Mirror submitPrint()'s body exactly so curl reproduces the form's request.
+        const template =
+          document.getElementById("print-form")?.dataset.template ||
+          document.getElementById("template-select")?.value ||
+          "";
+        const body = {
+          template,
+          rows: collectRows(),
+          serial: collectSerial(),
+          ...collectOverrides(),
+        };
+        const json = JSON.stringify(body, null, 2);
+        code.textContent =
+          `curl -X POST '${url}' \\\n` +
+          `  -H 'Content-Type: application/json' \\\n` +
+          `  -d '${json}'`;
+      }
+
+      document.body.addEventListener("htmx:afterSwap", (evt) => {
+        if (evt.detail.target?.id !== "print-frames-pane") {
+          return;
+        }
+        wireFramesForm();
+      });
+
+      function loadPrinterPanel(printerName) {
+        if (!printerName) {
+          return;
+        }
+        htmx.ajax("GET", `/ui/print/${encodeURIComponent(printerName)}/panel`, {
+          target: "#printer-info-panel",
+          swap: "innerHTML",
+        });
+      }
+
+      const printerSelectEl = document.getElementById("printer-info-select");
+      let currentPrinter = printerSelectEl?.value || "";
+      let refreshIntervalId = null;
+
+      document.getElementById("printer-refresh-btn")?.addEventListener("click", () => {
+        loadPrinterPanel(currentPrinter);
+      });
+
+      // WHY-NOT: htmx `hx-trigger="every 5s"` — see spec, dynamic on/off
+      // control needs attribute swapping + htmx.process(); setInterval is
+      // simpler to start/stop.
+      function stopAutoRefresh() {
+        if (refreshIntervalId !== null) {
+          clearInterval(refreshIntervalId);
+          refreshIntervalId = null;
+        }
+      }
+
+      function startAutoRefresh() {
+        stopAutoRefresh();
+        if (!currentPrinter) {
+          return;
+        }
+        refreshIntervalId = setInterval(() => loadPrinterPanel(currentPrinter), 5000);
+      }
+
+      const refreshToggle = document.getElementById("printer-refresh-toggle");
+      refreshToggle?.addEventListener("change", () => {
+        if (refreshToggle.checked) {
+          startAutoRefresh();
+        } else {
+          stopAutoRefresh();
+        }
+      });
+
+      // WHY-NOT: refreshToggle.checked — this script runs inside the body
+      // block of shells/dashboard.html, before the body-end script that
+      // restores the checkbox's checked state from localStorage, so the
+      // checkbox itself is still unchecked here.
+      if (localStorage.getItem(PRINTER_AUTOREFRESH_KEY) === "true") {
+        startAutoRefresh();
+      }
+
+      printerSelectEl?.addEventListener("change", (evt) => {
+        currentPrinter = evt.target.value;
+        loadPrinterPanel(currentPrinter);
+        if (refreshToggle?.checked) {
+          startAutoRefresh();
+        }
+      });
+      document.getElementById("printer-info-select")?.addEventListener("change", renderCurlSample);
+
+      // Recompute the curl sample when the user opens the REST collapse, so it
+      // reflects the current template/rows/settings rather than a stale render.
+      document.getElementById("rest-curl-toggle")?.addEventListener("change", (evt) => {
+        if (evt.target.checked) {
+          renderCurlSample();
+        }
+      });
+
+      // Populate the printer selector card on initial page load — it is
+      // static markup (not swapped in via htmx), so it needs its own call
+      // outside the print-frames-pane afterSwap handler above.
+      populatePrinterSelects();
+      renderCurlSample();
+
+      // Keep the curl sample in sync with ANY request-body field edit. The
+      // body is built from two regions: tape/serial fields in the htmx-swapped
+      // #print-frames-pane form, and copies + Advanced overrides that are
+      // static in the right column. Delegating on document.body catches both
+      // via event bubbling and survives the frames-pane swap without any
+      // rebinding. Bind BOTH events: text/number fields fire input (live
+      // per-keystroke), while the override <select>s and checkboxes fire only
+      // change.
+      document.body.addEventListener("input", renderCurlSample);
+      document.body.addEventListener("change", renderCurlSample);
+
+      function readNumberOrUndefined(el) {
+        if (!el || el.value === "") {
+          return undefined;
+        }
+        const n = Number(el.value);
+        return Number.isNaN(n) ? undefined : n;
+      }
+
+      function collectRows() {
+        return Array.from(document.querySelectorAll("#tapes-container [data-tape-card]")).map((card) =>
+          Array.from(card.querySelectorAll("[data-field-title]")).map((input) => ({
+            title: input.dataset.fieldTitle,
+            value: input.value,
+          })),
+        );
+      }
+
+      function collectSerial() {
+        const enabled = document.getElementById("serial-enable");
+        if (!enabled?.checked) {
+          return undefined;
+        }
+        return {
+          title: document.getElementById("serial-title")?.value ?? "",
+          start: readNumberOrUndefined(document.getElementById("serial-start")) ?? 0,
+          count: readNumberOrUndefined(document.getElementById("serial-count")) ?? 1,
+          step: readNumberOrUndefined(document.getElementById("serial-step")) ?? 1,
+          pad: readNumberOrUndefined(document.getElementById("serial-pad")) ?? 0,
+        };
+      }
+
+      function collectOverrides() {
+        return {
+          copies: readNumberOrUndefined(document.getElementById("print-copies")),
+          density: readNumberOrUndefined(document.getElementById("setting-density")),
+          tapeCut: readNumberOrUndefined(document.getElementById("setting-tape-cut")),
+          halfCut: readNumberOrUndefined(document.getElementById("setting-half-cut")),
+          halfCutSeparate: readNumberOrUndefined(document.getElementById("setting-half-cut-separate")),
+          printSpeed: readNumberOrUndefined(document.getElementById("setting-print-speed")),
+          marginLeftRight: readNumberOrUndefined(document.getElementById("setting-margin-left-right")),
+          displayTapeWidth: document.getElementById("setting-display-tape-width")?.checked ? 1 : 2,
+          displayPrintSetting: document.getElementById("setting-display-print-setting")?.checked ? 1 : 2,
+        };
+      }
+
+      // Active job the Print button morphs into a Cancel control for; null
+      // once the job reaches a terminal state (job_end or canceled).
+      let activeJob = null;
+
+      function setPrintMode() {
+        activeJob = null;
+        const btn = document.getElementById("print-submit-btn");
+        if (!btn) {
+          return;
+        }
+        // WHY-NOT: hook the submit handler or fetch call instead of here —
+        // setPrintMode/setCancelMode are the single seam where a job's
+        // active/terminal transition is observed (job_card's 1s self-poll
+        // terminal detection funnels through here via the MutationObserver
+        // above too), so resuming/pausing panel auto-refresh here covers
+        // every path. Placed before the mode-skip guard below so it still
+        // runs on the initial-load setPrintMode() call. Respect the user's
+        // toggle choice: only resume if they had auto-refresh enabled.
+        if (refreshToggle?.checked) {
+          startAutoRefresh();
+        }
+        // Skip DOM writes when already in this mode: textContent's setter
+        // always replaces the Text node, which re-triggers the frames-pane
+        // MutationObserver even for an identical string, causing an
+        // infinite reflectJobState <-> observer loop otherwise.
+        if (btn.dataset.mode === "print") {
+          return;
+        }
+        btn.textContent = "Print";
+        btn.classList.remove("btn-error");
+        btn.classList.add("btn-primary");
+        btn.dataset.mode = "print";
+      }
+
+      function setCancelMode(printer, jobId) {
+        activeJob = { printer, jobId };
+        const btn = document.getElementById("print-submit-btn");
+        if (!btn) {
+          return;
+        }
+        // WHY-NOT: pausing polling in the submit handler — this is the seam
+        // where the job becomes active (see setPrintMode above for the
+        // terminal-side rationale). lwstatus 404s as "busy" for the whole
+        // duration of an active job, so the panel poll is wasted work until
+        // the job reaches a terminal state.
+        stopAutoRefresh();
+        // See setPrintMode: skip DOM writes when already in this mode to
+        // avoid re-triggering the observer.
+        if (btn.dataset.mode === "cancel") {
+          return;
+        }
+        btn.textContent = "Cancel";
+        btn.classList.remove("btn-primary");
+        btn.classList.add("btn-error");
+        btn.dataset.mode = "cancel";
+      }
+
+      // Reflects the job card's data-terminal/data-printer markers onto the
+      // Print/Cancel button — called only via the MutationObserver below
+      // (root === #print-frames-pane, on any childList mutation within it).
+      function reflectJobState(root) {
+        const el = root?.matches?.("[data-terminal]") ? root : root?.querySelector?.("[data-terminal]");
+        if (!el) {
+          return;
+        }
+        if (el.dataset.terminal === "true") {
+          setPrintMode();
+          return;
+        }
+        const jobId = el.id.replace(/^job-/, "");
+        setCancelMode(el.dataset.printer, jobId);
+      }
+
+      // WHY-NOT: htmx:afterSwap body listener — job_card self-polls via
+      // hx-swap="outerHTML" every 1s; on that self-swap evt.detail.target
+      // does not point at the new terminal card, so the Print/Cancel button
+      // never reflects job completion. A MutationObserver on the fixed
+      // #print-result container (now a static slot present since page
+      // load) fires on any childList mutation regardless of htmx's
+      // event-dispatch quirks, and — unlike #print-frames-pane — never
+      // overlaps #print-submit-btn's subtree, so setPrintMode/setCancelMode
+      // writes can't re-trigger it.
+      const resultSlot = document.getElementById("print-result");
+      if (resultSlot) {
+        new MutationObserver(() => reflectJobState(resultSlot)).observe(resultSlot, {
+          childList: true,
+          subtree: true,
+        });
+      }
+
+      function submitPrint() {
+        const form = document.getElementById("print-form");
+        const printer = document.getElementById("printer-info-select")?.value;
+        const result = document.getElementById("print-result");
+        if (!form || !printer || !result) {
+          return;
+        }
+        const body = {
+          template: form.dataset.template,
+          rows: collectRows(),
+          serial: collectSerial(),
+          ...collectOverrides(),
+        };
+        fetch(`/ui/print/${encodeURIComponent(printer)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        })
+          .then((res) => res.text())
+          .then((html) => {
+            result.innerHTML = html;
+            htmx.process(result);
+          })
+          .catch((err) => {
+            result.textContent = String(err);
+          });
+      }
+
+      function cancelPrint() {
+        const result = document.getElementById("print-result");
+        if (!activeJob || !result) {
+          return;
+        }
+        fetch(`/ui/jobs/${encodeURIComponent(activeJob.printer)}/${encodeURIComponent(activeJob.jobId)}/cancel`, {
+          method: "POST",
+        })
+          .then((res) => res.text())
+          .then((html) => {
+            result.innerHTML = html;
+            htmx.process(result);
+          })
+          .catch((err) => {
+            result.textContent = String(err);
+          });
+      }
+
+      // WHY-NOT: rebind on every htmx:afterSwap — form/modal listeners must
+      // be attached again each time the frames partial (and its <form>) is
+      // replaced, since the previous DOM nodes (and their listeners) are gone.
+      function wireFramesForm() {
+        const form = document.getElementById("print-form");
+        const addRowButton = document.getElementById("add-row-button");
+        const serialEnable = document.getElementById("serial-enable");
+        const serialFields = document.getElementById("serial-fields");
+        const skipConfirm = document.getElementById("print-confirm-skip");
+
+        if (skipConfirm) {
+          skipConfirm.checked = localStorage.getItem(SKIP_CONFIRM_KEY) === "true";
+          skipConfirm.addEventListener("change", () => {
+            localStorage.setItem(SKIP_CONFIRM_KEY, skipConfirm.checked ? "true" : "false");
+          });
+        }
+
+        serialEnable?.addEventListener("change", () => {
+          serialFields?.classList.toggle("hidden", !serialEnable.checked);
+        });
+
+        addRowButton?.addEventListener("click", () => {
+          const container = document.getElementById("tapes-container");
+          const firstCard = container?.querySelector("[data-tape-card]");
+          if (!container || !firstCard) {
+            return;
+          }
+          const clone = firstCard.cloneNode(true);
+          clone.querySelectorAll("input").forEach((input) => {
+            input.value = "";
+          });
+          const index = container.querySelectorAll("[data-tape-card]").length + 1;
+          const label = clone.querySelector("[data-tape-label]");
+          if (label) {
+            label.textContent = `Tape ${index}`;
+          }
+          container.appendChild(clone);
+          renderCurlSample();
+        });
+
+        form?.addEventListener("click", (evt) => {
+          if (evt.target.closest("[data-remove-tape]")) {
+            const container = document.getElementById("tapes-container");
+            if (container && container.querySelectorAll("[data-tape-card]").length > 1) {
+              evt.target.closest("[data-tape-card]")?.remove();
+              renderCurlSample();
+            }
+          }
+        });
+
+        form?.addEventListener("submit", (evt) => {
+          evt.preventDefault();
+          const submitBtn = document.getElementById("print-submit-btn");
+          if (submitBtn?.dataset.mode === "cancel") {
+            cancelPrint();
+            return;
+          }
+          const printerSelect = document.getElementById("printer-info-select");
+          if (!printerSelect || !printerSelect.value) {
+            printerSelect?.reportValidity();
+            return;
+          }
+          if (localStorage.getItem(SKIP_CONFIRM_KEY) === "true") {
+            submitPrint();
+            return;
+          }
+          document.getElementById("print-confirm-modal")?.showModal();
+        });
+
+        // Frames just swapped in (template load / row reset); refresh the curl
+        // sample so it reflects the new rows without waiting for an edit.
+        renderCurlSample();
+      }
+
+      document.getElementById("print-confirm-yes")?.addEventListener("click", () => {
+        document.getElementById("print-confirm-modal")?.close();
+        submitPrint();
+      });
+      document.getElementById("print-confirm-no")?.addEventListener("click", () => {
+        document.getElementById("print-confirm-modal")?.close();
+      });
+
+      document.getElementById("curl-copy-btn")?.addEventListener("click", () => {
+        const code = document.getElementById("curl-sample");
+        const btn = document.getElementById("curl-copy-btn");
+        if (!code || !btn) {
+          return;
+        }
+        const text = code.textContent;
+        const flash = () => {
+          const original = btn.textContent;
+          btn.textContent = "Copied!";
+          setTimeout(() => {
+            btn.textContent = original;
+          }, 1500);
+        };
+        // WHY-NOT: navigator.clipboard.writeText unconditionally — it is
+        // undefined outside a secure context (e.g. the printer UI reached
+        // over plain http://<ip>:3000 on the LAN) and would throw there, so
+        // guard it and fall back to a hidden-textarea execCommand copy.
+        const fallbackCopy = () => {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          try {
+            document.execCommand("copy");
+            flash();
+          } finally {
+            textarea.remove();
+          }
+        };
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText(text).then(flash).catch(fallbackCopy);
+        } else {
+          fallbackCopy();
+        }
+      });
+
+      // Server-side prefill (?from=<id>) renders #print-frames-pane's <form>
+      // inline on initial load, so no htmx:afterSwap fires to wire it up —
+      // do it here instead.
+      if (document.getElementById("print-form")) {
+        wireFramesForm();
+        // WHY-NOT: rely on <select> "change" — server-side `selected` on
+        // #template-select's <option> renders the template pre-chosen but
+        // does not fire "change", so loadPreview() (normally wired to that
+        // event) would otherwise never run on reprint.
+        if (templateSelect?.value) {
+          loadPreview(templateSelect.value);
+        }
+      }
+    })();
+  </script>
+{% endblock %}

@@ -29,6 +29,13 @@ pub enum TepraError {
         source: anyhow::Error,
     },
 
+    /// The server returned a non-success HTTP status code.
+    #[error("HTTP error {status}")]
+    Http {
+        /// HTTP status code (e.g. 404, 500).
+        status: u16,
+    },
+
     /// The per-printer actor worker has shut down; the request cannot be processed.
     #[error("Printer actor has shut down")]
     ActorShutdown,

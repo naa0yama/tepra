@@ -1,0 +1,33 @@
+{# templates/partials/merge_printer_panel.html #}
+<div class="flex items-center justify-between mb-2">
+  <div class="flex items-center gap-2">
+    <svg class="size-5" aria-hidden="true"><use href="#icon-printer"/></svg>
+    <span class="card-title">{{ printer_name }}</span>
+  </div>
+  <div class="badge badge-outline {% if online %}badge-success{% else %}badge-error{% endif %} rounded-full">
+  {% if online %}
+    Online
+  {% else %}
+    Offline
+  {% endif %}
+  </div>
+</div>
+{% if let Some(msg) = status_error %}
+<p class="text-error text-sm">{{ msg }}</p>
+{% else if let Some(msg) = status_notice %}
+<p class="text-info text-sm">{{ msg }}</p>
+{% else %}
+<ul class="text-sm space-y-1">
+  <li>Tape: {{ tape_width }} / {{ tape_kind }}</li>
+  {% if let Some(msg) = status_device_warning %}
+  <li class="text-warning">{{ msg }}</li>
+  {% endif %}
+  {% if let Some(msg) = margin_error %}
+  <li class="text-error">Margin: {{ msg }}</li>
+  {% else %}
+  <li>Margin top: {{ margin_top }}</li>
+  <li>Margin bottom: {{ margin_bottom }}</li>
+  <li>Margin left/right: {{ margin_left_right }}</li>
+  {% endif %}
+</ul>
+{% endif %}

@@ -38,19 +38,31 @@ Positive:
 
 Negative:
 
-- Span granularity is at the HTTP layer only. Business-logic spans inside
-  handlers still require `#[instrument]` where needed.
+- Span granularity is at the HTTP layer only; handler-internal I/O (upstream
+  client calls, actor spawns) is not visible without additional instrumentation.
 - Default field set (method, URI, status) is sufficient for MVP; richer
   attributes (user-agent, request-id) need custom `MakeSpan` if required later.
 
+Implemented complement:
+
+- All axum handlers carry `#[instrument(name = "handler.<fn>", skip_all, fields(...))]`
+  producing child spans with OTel HTTP server semconv attributes:
+  `http.request.method`, `http.route`, `http.response.status_code` (recorded
+  after response), `url.scheme`. This gives full parent–child trace visibility
+  from TraceLayer root span down into handler logic.
+
 ## Alternatives Considered
 
-- **Per-handler `#[instrument]`** — rejected for the HTTP observability layer.
-  Every new route must remember to add the annotation; easy to miss. Acceptable
-  as a complement for handler-internal logic, not as a replacement.
+- **Per-handler `#[instrument]`** — rejected as the _sole_ HTTP observability
+  layer (every new route must remember to add the annotation; easy to miss).
+  Used as a complement: all handlers carry `#[instrument]` child spans with
+  OTel HTTP server semconv attributes alongside the TraceLayer root span.
 - **Custom OTel middleware** — rejected. Duplicates what `TraceLayer` already
   provides; adds maintenance burden with no benefit for this project's scope.
 
 ## History
 
 - 2026-06-28: initial version
+- 2026-07-03: reflect Cycle 11 implementation — all handlers instrumented with
+  `#[instrument]` child spans (OTel HTTP server semconv); updated Negative
+  consequence and Alternatives Considered to match actual state

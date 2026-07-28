@@ -1,0 +1,73 @@
+{# templates/components/sidebar.html #}
+{# Dashboard sidebar navigation. `active` is the current section key
+   (`views::NAV_PRINTERS`, e.g. "printers"). Unimplemented sections render
+   disabled with a "Coming soon" badge and no link. #}
+{% macro sidebar(active) %}
+<div class="bg-base-100 border-r border-base-300 min-h-full w-64 flex flex-col">
+  {# WHY-NOT: repeating the printer-mark path data at both call sites below —
+     a hidden <symbol> keeps the markup as the single source, referenced via
+     <use>. favicon.svg keeps its own copy since it is served standalone and
+     needs a fixed stroke color, not `currentColor`. #}
+  <svg class="hidden" aria-hidden="true">
+    <symbol id="icon-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="6" y="3" width="12" height="6" rx="1"/>
+      <path d="M6 14H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2h-2"/>
+      <rect x="6" y="14" width="12" height="7" rx="1"/>
+    </symbol>
+  </svg>
+
+  <div class="flex flex-col items-center gap-2 px-4 py-6 border-b border-base-300 text-base-content">
+    <a href="/ui/" class="flex flex-col items-center gap-2">
+      <svg class="size-8" aria-hidden="true"><use href="#icon-printer"/></svg>
+      <div class="flex flex-col items-center leading-tight">
+        <span class="text-base font-semibold">Label Creator</span>
+        <span class="text-xs text-base-content/60">for TEPRA</span>
+      </div>
+    </a>
+    <span class="text-xs text-base-content/60">v{{ crate::views::APP_VERSION }} ({{ crate::views::GIT_HASH }})</span>
+    <span class="text-xs text-base-content/60">
+      Created by <a href="https://github.com/naa0yama" class="link link-hover" target="_blank" rel="noopener noreferrer">naa0yama</a>
+    </span>
+  </div>
+
+  <ul class="menu p-4 gap-1 w-full">
+  <li>
+    <a href="/ui/" class="flex-nowrap justify-start{% if active == "printers" %} menu-active{% endif %}"{% if active == "printers" %} aria-current="page"{% endif %}>
+      <svg class="size-5" aria-hidden="true"><use href="#icon-printer"/></svg>
+      Printers
+    </a>
+  </li>
+
+  <li>
+    <a href="/ui/print" class="flex-nowrap justify-start{% if active == "print" %} menu-active{% endif %}"{% if active == "print" %} aria-current="page"{% endif %}>
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2 2 7l10 5 10-5-10-5Z"/>
+        <path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/>
+      </svg>
+      Print
+    </a>
+  </li>
+
+  <li>
+    <a href="/ui/jobs" class="flex-nowrap justify-start{% if active == "jobs" %} menu-active{% endif %}"{% if active == "jobs" %} aria-current="page"{% endif %}>
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+        <rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/>
+      </svg>
+      Jobs
+    </a>
+  </li>
+
+  <li>
+    <a href="/ui/api" class="flex-nowrap justify-start{% if active == "api" %} menu-active{% endif %}"{% if active == "api" %} aria-current="page"{% endif %}>
+      <svg class="size-5" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="16 18 22 12 16 6"/>
+        <polyline points="8 6 2 12 8 18"/>
+      </svg>
+      API
+    </a>
+  </li>
+
+  </ul>
+</div>
+{% endmacro %}

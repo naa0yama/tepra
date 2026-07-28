@@ -1,0 +1,26 @@
+{# templates/partials/pagination.html #}
+{% macro pagination(page, total_pages) %}
+  {% if *total_pages > 1 %}
+    <div class="join">
+      {% if *page > 1 %}
+        <a href="/ui/jobs?page={{ page - 1 }}" class="join-item btn btn-sm" aria-label="Previous page">&laquo;</a>
+      {% else %}
+        <span class="join-item btn btn-sm btn-disabled" aria-hidden="true">&laquo;</span>
+      {% endif %}
+
+      {% for n in 1..=*total_pages %}
+        <a
+          href="/ui/jobs?page={{ n }}"
+          class="join-item btn btn-sm {% if n == *page %}btn-active{% endif %}"
+          {% if n == *page %}aria-current="page"{% endif %}
+        >{{ n }}</a>
+      {% endfor %}
+
+      {% if *page < *total_pages %}
+        <a href="/ui/jobs?page={{ page + 1 }}" class="join-item btn btn-sm" aria-label="Next page">&raquo;</a>
+      {% else %}
+        <span class="join-item btn btn-sm btn-disabled" aria-hidden="true">&raquo;</span>
+      {% endif %}
+    </div>
+  {% endif %}
+{% endmacro %}

@@ -8,7 +8,7 @@
 
 The KING JIM TEPRA Creator WebAPI is a Windows-only .NET service. The
 production deployment target is therefore a Windows host running both
-the Creator backend and `tepra-api`. Two user-facing affordances are
+the Creator backend and `tepra`. Two user-facing affordances are
 required on Windows that do not apply to the headless Linux
 development build:
 
@@ -22,17 +22,21 @@ crates (`tray-icon`, `windows-service`) for cross-platform CI.
 
 ## Decision
 
-Ship a single binary `tepra-api` with clap-derived subcommands. Each
+Ship a single binary `tepra` with clap-derived subcommands. Each
 subcommand is gated by `#[cfg(...)]` so the binary remains
 cross-compilable:
 
-| Subcommand          | OS gate           | Purpose                                      |
-| ------------------- | ----------------- | -------------------------------------------- |
-| `serve`             | all               | foreground HTTP server (dev + service entry) |
-| `version`           | all               | print build metadata                         |
-| `tray`              | `#[cfg(windows)]` | system tray + auto-spawn `serve` in-process  |
-| `install-service`   | `#[cfg(windows)]` | register Windows service via SCM             |
-| `uninstall-service` | `#[cfg(windows)]` | unregister                                   |
+| Subcommand          | OS gate           | Purpose                                      | Impl status                                                    |
+| ------------------- | ----------------- | -------------------------------------------- | -------------------------------------------------------------- |
+| `serve`             | all               | foreground HTTP server (dev + service entry) | Implemented                                                    |
+| `version`           | all               | print build metadata                         | Implemented                                                    |
+| `tray`              | `#[cfg(windows)]` | system tray + auto-spawn `serve` in-process  | Not implemented (planned; absent from current `Commands` enum) |
+| `install-service`   | `#[cfg(windows)]` | register Windows service via SCM             | Not implemented (planned; absent from current `Commands` enum) |
+| `uninstall-service` | `#[cfg(windows)]` | unregister                                   | Not implemented (planned; absent from current `Commands` enum) |
+
+`crates/tepra-web/src/cli.rs`'s `Commands` enum currently defines only
+`Serve` / `Config` / `Version`. The Windows-only rows above record an
+accepted decision that has not yet been reflected in code.
 
 A single binary keeps build / packaging simple and ensures the tray and
 service entry points share `serve` semantics by direct function call
@@ -53,7 +57,7 @@ Positive:
   handling.
 - Tray and service share `serve` initialization, eliminating drift
   between deployment modes.
-- Adding future subcommands (e.g. `tepra-api healthcheck`) follows the
+- Adding future subcommands (e.g. `tepra healthcheck`) follows the
   same pattern.
 
 Negative:
@@ -67,7 +71,7 @@ Negative:
 
 ## Alternatives Considered
 
-- **Separate binaries** (`tepra-api-server`, `tepra-api-tray`) —
+- **Separate binaries** (`tepra-server`, `tepra-tray`) —
   rejected. Doubles the build / packaging surface and forces IPC or
   re-exec between tray and server for what is logically one process.
 - **External wrapper (NSSM)** — rejected. Adds a third-party
@@ -80,3 +84,6 @@ Negative:
 ## History
 
 - 2026-06-28: initial version
+- 2026-07-28: added Impl status column — `tray` / `install-service` /
+  `uninstall-service` are not yet reflected in
+  `crates/tepra-web/src/cli.rs`'s `Commands` enum

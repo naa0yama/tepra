@@ -476,10 +476,9 @@ mod tests {
     async fn import_frame_records_call() {
         let mock = MockTepraClient::new();
         mock.push_import_frame(Ok(vec![ImportFrameItem {
-            id: 1,
+            column: "A1".into(),
+            title: "Name".into(),
             attribute: ImportFrameAttribute::Text,
-            width: 100,
-            height: 50,
         }]));
 
         let req = ImportFrameRequest {
@@ -489,7 +488,7 @@ mod tests {
             },
         };
         let result = mock.import_frame(req).await.unwrap();
-        assert_eq!(result[0].id, 1);
+        assert_eq!(result[0].column, "A1");
         assert!(matches!(mock.calls()[0], MockCall::ImportFrame(_)));
     }
 

@@ -11,4 +11,7 @@ pub mod enums;
 pub mod error;
 pub mod job;
 pub mod printer;
+pub mod tape_label;
 pub mod template;
+
+pub use tape_label::{tape_id_label, tape_kind_label};
