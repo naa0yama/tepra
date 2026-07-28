@@ -11,12 +11,18 @@ tepra <SUBCOMMAND>
   serve         全プラットフォーム / HTTP サーバ起動
   config init   全プラットフォーム / デフォルト値入り tepra.toml を生成
   version       全プラットフォーム / ビルドメタ表示
-  tray          Windows のみ ( ADR 0005 ) / トレイ常駐 + serve 内蔵
-  install-service / uninstall-service  Windows のみ
+  tray          未実装 ( ADR 0005 で決定 / 現行コードには未反映 )
+  install-service / uninstall-service  未実装 ( ADR 0005 で決定 / 現行コードには未反映 )
 ```
 
+現行 `Commands` enum ( `crates/tepra-web/src/cli.rs` ) は `serve` /
+`config` / `version` の 3 つのみ。`tray` / `install-service` /
+`uninstall-service` は ADR 0005 の決定事項だが未実装 — Windows 専用
+crate ( `tray-icon` / `windows-service` ) も未 pull。
+
 OS gate は `#[cfg(windows)]` で表現し、 Linux ビルドでは
-`tray-icon` / `windows-service` 等の Windows 専用 crate を pull しない。
+`tray-icon` / `windows-service` 等の Windows 専用 crate を pull しない
+設計 ( 実装時点の予定 )。
 
 ## `serve` arguments
 

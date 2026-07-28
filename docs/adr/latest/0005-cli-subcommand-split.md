@@ -26,13 +26,17 @@ Ship a single binary `tepra` with clap-derived subcommands. Each
 subcommand is gated by `#[cfg(...)]` so the binary remains
 cross-compilable:
 
-| Subcommand          | OS gate           | Purpose                                      |
-| ------------------- | ----------------- | -------------------------------------------- |
-| `serve`             | all               | foreground HTTP server (dev + service entry) |
-| `version`           | all               | print build metadata                         |
-| `tray`              | `#[cfg(windows)]` | system tray + auto-spawn `serve` in-process  |
-| `install-service`   | `#[cfg(windows)]` | register Windows service via SCM             |
-| `uninstall-service` | `#[cfg(windows)]` | unregister                                   |
+| Subcommand          | OS gate           | Purpose                                      | Impl status                                                    |
+| ------------------- | ----------------- | -------------------------------------------- | -------------------------------------------------------------- |
+| `serve`             | all               | foreground HTTP server (dev + service entry) | Implemented                                                    |
+| `version`           | all               | print build metadata                         | Implemented                                                    |
+| `tray`              | `#[cfg(windows)]` | system tray + auto-spawn `serve` in-process  | Not implemented (planned; absent from current `Commands` enum) |
+| `install-service`   | `#[cfg(windows)]` | register Windows service via SCM             | Not implemented (planned; absent from current `Commands` enum) |
+| `uninstall-service` | `#[cfg(windows)]` | unregister                                   | Not implemented (planned; absent from current `Commands` enum) |
+
+`crates/tepra-web/src/cli.rs`'s `Commands` enum currently defines only
+`Serve` / `Config` / `Version`. The Windows-only rows above record an
+accepted decision that has not yet been reflected in code.
 
 A single binary keeps build / packaging simple and ensures the tray and
 service entry points share `serve` semantics by direct function call
@@ -80,3 +84,6 @@ Negative:
 ## History
 
 - 2026-06-28: initial version
+- 2026-07-28: added Impl status column — `tray` / `install-service` /
+  `uninstall-service` are not yet reflected in
+  `crates/tepra-web/src/cli.rs`'s `Commands` enum
