@@ -1,6 +1,6 @@
 # 0004. Printer actor pattern for FIFO single-worker queue
 
-- Status: Accepted
+- Status: Superseded by ADR 0011
 - Date: 2026-06-28
 - Deciders: project owner
 
@@ -90,3 +90,12 @@ Negative:
 ## History
 
 - 2026-06-28: initial version
+- 2026-07-28: superseded by ADR 0011 (Ephemeral in-memory job store).
+  The `PrinterActor` / `PrinterRegistry` pair described here is not wired
+  into the production call path — handlers
+  (`crates/tepra/src/handlers/jobs.rs`, `merge_print.rs`) call
+  `state.client.print()` synchronously instead of sending `Msg` over an
+  actor `mpsc::Sender`. The `registry` field on `AppState` is referenced
+  only by its `Debug` impl; the actor/registry modules remain in the
+  tree but are exercised solely by `crates/tepra/tests/actor_*.rs`. See
+  `docs/specs/architecture/printer-actor.md` for the current state.

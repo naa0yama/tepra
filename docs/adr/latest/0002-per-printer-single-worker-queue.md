@@ -1,6 +1,6 @@
 # 0002. Per-printer single-worker queue for print jobs
 
-- Status: Accepted
+- Status: Superseded by ADR 0011
 - Date: 2026-06-27
 - Deciders: project owner
 
@@ -77,3 +77,7 @@ Negative:
 ## History
 
 - 2026-06-27: initial version
+- 2026-07-28: superseded by ADR 0011 (Ephemeral in-memory job store).
+  Handlers now call `state.client.print()` synchronously and record the
+  outcome directly (`merge_print` orchestration), rather than dispatching
+  through a per-printer FIFO worker queue.
