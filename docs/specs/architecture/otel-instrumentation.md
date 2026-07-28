@@ -37,12 +37,12 @@
 
 - `service.name` ( 呼び出し元 binary から注入、`OTEL_SERVICE_NAME` env
   var で上書き可 ) / `service.version` ( `CARGO_PKG_VERSION` ) /
-  `vcs.repository.ref.revision` ( `GIT_HASH`、後述 build.rs 由来 )
+  `vcs.ref.head.revision` ( `GIT_HASH`、後述 build.rs 由来 )
 - `service.instance.id` ( `{hostname}-{pid}` ) / `host.name`
   ( `gethostname` ) / `host.arch` / `os.type` / `process.pid` /
   `process.executable.name` / `process.runtime.name` ( `"rustc"` ) /
   `process.runtime.version`
-- `vcs.repository.ref.revision` ( `GIT_HASH` ) は `crates/tepra-web/build.rs`
+- `vcs.ref.head.revision` ( `GIT_HASH` ) は `crates/tepra-web/build.rs`
   が `git rev-parse --short=12 HEAD` を `cargo:rustc-env=GIT_HASH=...` で
   埋め込み、`env!("GIT_HASH")` として `init_telemetry()` に渡す
 
@@ -115,7 +115,7 @@ Observability セクション参照。
 - OTel semconv 定義済 span ( HTTP / DB / RPC ) は semconv 準拠
   ( 例: `GET /users/{id}` )
 - application 固有 span は `<component>.<operation>` 形式
-  ( 例: `handler.list_printers` / `printer_actor.run` )
+  ( 例: `handler.list_printers` / `actor.worker.run` )
 - 動的値 ( path parameter 実値、user id 等 ) は span name に含めず属性に載せる
 
 ## 関連
