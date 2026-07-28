@@ -2,12 +2,12 @@
 	"name": "tepra-frontend",
 	"private": true,
 	"devDependencies": {
-		"@playwright/mcp": "0.0.77",
-		"@fontsource/ibm-plex-mono": "5.2.5",
-		"@fontsource/ibm-plex-sans-jp": "5.2.5",
-		"@tailwindcss/cli": "4.3.2",
-		"daisyui": "5.6.5",
-		"htmx.org": "2.0.4",
-		"tailwindcss": "4.3.2"
+		"@playwright/mcp": "0.0.78",
+		"@fontsource/ibm-plex-mono": "5.3.0",
+		"@fontsource/ibm-plex-sans-jp": "5.3.0",
+		"@tailwindcss/cli": "4.3.3",
+		"daisyui": "5.7.0",
+		"htmx.org": "2.0.10",
+		"tailwindcss": "4.3.3"
 	}
 }
