@@ -21,8 +21,8 @@ importers:
         specifier: 4.3.3
         version: 4.3.3
       daisyui:
-        specifier: 5.7.7
-        version: 5.7.7
+        specifier: 5.7.8
+        version: 5.7.8
       htmx.org:
         specifier: 2.0.10
         version: 2.0.10
@@ -244,8 +244,8 @@ packages:
     resolution: {integrity: sha512-yQbXgO/OSZVD2IsiLlro+7Hf6Q18EJrKSEsdoMzKePKXct3gvD8oLcOQdIzGupr5Fj+EDe8gO/lxc1BzfMpxvA==}
     engines: {node: '>=8'}
 
-  daisyui@5.7.7:
-    resolution: {integrity: sha512-k3fza99NburOj18SGqMmvMOoIP4iSKkw4PbaE8gCxNOvwoNdEg4HlKgNJjsh+00RijMVKNgOTNqw42FfOT5Ukw==}
+  daisyui@5.7.8:
+    resolution: {integrity: sha512-/r3QoXteCOSlbvUM7bfOTIkc3rq6WskDRKgdTIF7M3ufdnY8gXsAo/CfRUNM2La21Kpnr34PGyU3uDFJ6sGJog==}
 
   detect-libc@1.0.3:
     resolution: {integrity: sha512-pGjwhsmsp4kL2RTz08wcOlGN83otlqHeD/Z5T8GXZB+/YcpQ/dgo+lbU8ZsGxV0HIvqqxo9l7mqYwyYMD9bKDg==}
@@ -576,7 +576,7 @@ snapshots:
     dependencies:
       fill-range: 7.1.1
 
-  daisyui@5.7.7: {}
+  daisyui@5.7.8: {}
 
   detect-libc@1.0.3: {}
 
