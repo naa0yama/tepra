@@ -2,7 +2,7 @@
 	"name": "tepra-frontend",
 	"private": true,
 	"devDependencies": {
-		"@playwright/mcp": "0.0.78",
+		"@playwright/mcp": "0.0.79",
 		"@fontsource/ibm-plex-mono": "5.3.0",
 		"@fontsource/ibm-plex-sans-jp": "5.3.0",
 		"@tailwindcss/cli": "4.3.3",
