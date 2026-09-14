@@ -2445,7 +2445,7 @@ dependencies = [
 
 [[package]]
 name = "tepra"
-version = "0.1.25"
+version = "0.1.26"
 dependencies = [
  "anyhow",
  "askama",
@@ -2471,7 +2471,7 @@ dependencies = [
 
 [[package]]
 name = "tepra-core"
-version = "0.1.25"
+version = "0.1.26"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2498,7 +2498,7 @@ dependencies = [
 
 [[package]]
 name = "tepra-web"
-version = "0.1.25"
+version = "0.1.26"
 dependencies = [
  "anyhow",
  "assert_cmd",
